@@ -1,7 +1,3 @@
-:root {
-  --toolbarHeight: 90px;
-}
-
 .toolBar {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -21,91 +17,9 @@
   margin: 0;
 }
 
-.listContainer {
-  padding: var(--toolbarHeight) 0;
-}
-
 .addItem {
   padding: 0.5em 0;
   font-size: 20px;
   text-indent: 1em;
   box-sizing: border-box;
-}
-
-.items {
-  width: 100%;
-  padding: 0;
-  margin: 0;
-}
-
-.item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: left;
-  width: 100%;
-  list-style: none;
-  margin: 0;
-  padding: 0.5em 0;
-  border-bottom: 1px dotted rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.button {
-  background: transparent;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  font-size: 18px;
-  max-width: 20em;
-  border: 0 none;
-}
-
-@keyframes popout {
-  0% {
-    opacity: 0;
-    transform: scale(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.tick {
-  align-self: flex-end;
-  margin-left: auto;
-  font-size: 35px;
-  width: 55px;
-  padding: 0;
-  color: white;
-  background: rgb(100, 150, 0);
-  border-radius: 5px;
-}
-
-.tick:global(.enter) {
-  animation: popout 0.2s 1 0.4s backwards cubic-bezier(0.51, 1.31, 0.37, 1.23);
-}
-
-.tick:global(.leave) {
-  animation: popout reverse 0.1s 1 forwards ease-in;
-}
-
-.undo {
-  position: fixed;
-  text-align: center;
-  width: 100%;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(30, 30, 90);
-  bottom: 0;
-}
-
-.undoButton {
-  padding: 0.5em;
-  border: 0 none;
-  font-size: inherit;
-  transition: all 0.3s ease-in-out;
 }

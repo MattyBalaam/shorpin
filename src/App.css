@@ -1,3 +1,7 @@
+:root {
+  --toolbarHeight: 90px;
+}
+
 html {
   box-sizing: border-box;
   background: #eee;

@@ -1,22 +1,22 @@
 import React, { Component, StrictMode } from "react";
-import { Transition } from "react-spring";
+
 import uuidMini from "../utils/uuid-mini";
 import Animator from "./Animator";
+import Undo from "./Undo";
+import Items, { ItemProps } from "./Items";
 import "../App.css";
 import styles from "../App.module.css";
 
-interface Item {
-  id: string;
-  name: string;
-}
-
 interface State {
-  items: Item[];
+  items: ItemProps[];
   newItem: string;
-  undos: Item[][] | [];
+  undos: ItemProps[][] | [];
 }
 
-const getLastItem = (undos: Item[][], items: Item[]) => {
+const getLastItem = (
+  undos: ItemProps[][],
+  items: ItemProps[]
+): string | null => {
   if (!items[0] && undos[0][0]) return undos[0][0].name;
 
   if (!undos[0]) return null;
@@ -25,7 +25,7 @@ const getLastItem = (undos: Item[][], items: Item[]) => {
     ({ id }) => !items.find(item => item.id === id)
   );
 
-  return lastRemoved && lastRemoved.name;
+  return lastRemoved ? lastRemoved.name : null;
 };
 
 const getInitialState = () => {
@@ -105,46 +105,8 @@ class App extends Component<{}, State> {
               onKeyDown={this.handleKeyDown}
             />
           </header>
-          <article className={styles.listContainer}>
-            <ul className={styles.items}>
-              <Animator
-                items={items}
-                itemRender={({ props, item, state }) => (
-                  <li className={styles.item} style={props} key={item.id}>
-                    <button
-                      className={styles.button}
-                      type="button"
-                      onClick={() => this.handleRemove(item.id)}
-                    >
-                      <span>{item.name}</span>
-                      <span className={`${styles.tick} ${state}`}>✔</span>
-                    </button>
-                  </li>
-                )}
-              />
-            </ul>
-          </article>
-
-          <Transition
-            items={undos.length > 0}
-            from={{ opacity: 0, transform: "translateY(5em)" }}
-            enter={{ opacity: 1, transform: "translateY(0em)" }}
-            leave={{ opacity: 0, transform: "translateY(5em)" }}
-          >
-            {show =>
-              show &&
-              (props => (
-                <aside className={`${styles.undo}`} style={props}>
-                  <button
-                    className={styles.undoButton}
-                    onClick={this.handleUndo}
-                  >
-                    Undo for: {getLastItem(undos, items)}
-                  </button>
-                </aside>
-              ))
-            }
-          </Transition>
+          <Items items={items} onRemove={this.handleRemove} />
+          <Undo undo={getLastItem(undos, items)} onUndo={this.handleUndo} />
         </div>
       </StrictMode>
     );
