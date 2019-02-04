@@ -65,5 +65,5 @@
 .showTick {
   opacity: 1;
   transform: scale(1);
-  transition: 0.1s all cubic-bezier(0.51, 1.31, 0.37, 1.23);
+  transition: 0.3s all cubic-bezier(0.51, 1.31, 0.37, 1.23);
 }

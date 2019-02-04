@@ -1,9 +1,11 @@
 import React, { Component, StrictMode } from "react";
 
 import uuidMini from "../utils/uuid-mini";
-import Animator from "./Animator";
 import Undo from "./Undo";
 import Items, { ItemProps } from "./Items";
+import getList from "../utils/getList";
+import setList from "../utils/setList";
+
 import "../App.css";
 import styles from "../App.module.css";
 
@@ -17,9 +19,9 @@ const getLastItem = (
   undos: ItemProps[][],
   items: ItemProps[]
 ): string | null => {
-  if (!items[0] && undos[0][0]) return undos[0][0].name;
-
   if (!undos[0]) return null;
+
+  if (!items[0] && undos[0][0]) return undos[0][0].name;
 
   const lastRemoved = undos[0].find(
     ({ id }) => !items.find(item => item.id === id)
@@ -29,11 +31,6 @@ const getLastItem = (
 };
 
 const getInitialState = () => {
-  const stored = window.localStorage.getItem("shorpin");
-  if (stored) {
-    return JSON.parse(stored) as State;
-  }
-
   return {
     newItem: "",
     items: [],
@@ -41,12 +38,21 @@ const getInitialState = () => {
   };
 };
 
-const saveState = (stateString: string) => {
-  window.localStorage.setItem("shorpin", stateString);
+const saveState = async (stateString: string) => {
+  await setList(stateString);
 };
 
 class App extends Component<{}, State> {
   state = getInitialState();
+
+  componentDidMount = async () => {
+    try {
+      const stored = await getList();
+      this.setState(stored);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   doAState = (func: (state: State) => any) => {
     //any could be tighter
