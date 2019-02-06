@@ -9,16 +9,19 @@ import setList from "../utils/setList";
 import "../App.css";
 import styles from "../App.module.css";
 
+const POLLING = 10000; //10 seconds
+
+type Items = ItemProps[];
+
 interface State {
-  items: ItemProps[];
+  items: Items;
   newItem: string;
-  undos: ItemProps[][] | [];
+  itemsAdded: Items;
+  itemsRemoved: Items;
+  undos: Items[] | [];
 }
 
-const getLastItem = (
-  undos: ItemProps[][],
-  items: ItemProps[]
-): string | null => {
+const getLastItem = (undos: Items[], items: Items): string | null => {
   if (!undos[0]) return null;
 
   if (!items[0] && undos[0][0]) return undos[0][0].name;
@@ -34,30 +37,67 @@ const getInitialState = () => {
   return {
     newItem: "",
     items: [],
+    itemsAdded: [],
+    itemsRemoved: [],
     undos: []
   };
 };
 
-const saveState = async (stateString: string) => {
+const saveItems = async (stateString: string) => {
   await setList(stateString);
 };
 
 class App extends Component<{}, State> {
   state = getInitialState();
+  wait: number | undefined;
 
   componentDidMount = async () => {
     try {
-      const stored = await getList();
-      this.setState(stored);
+      const items = (await getList()) || [];
+
+      this.setState({ items });
     } catch (err) {
       console.log(err);
     }
   };
 
+  componentWillUnmount() {
+    window.clearInterval(this.polling);
+  }
+
+  consolidateFromServer = async () => {
+    const items = (await getList()) || [];
+
+    const getItemsAdded = (newA: Items, oldA: Items) =>
+      newA.filter(({ id }) => !oldA.find(item => item.id === id));
+
+    const getItemsRemoved = (newA: Items, oldA: Items) =>
+      oldA.filter(({ id }) => !newA.find(item => item.id === id));
+
+    const { items: previousItems } = this.state;
+
+    const itemsAdded = getItemsAdded(items, previousItems);
+    const itemsRemoved = getItemsRemoved(items, previousItems);
+
+    if (!(itemsAdded || itemsRemoved)) return;
+
+    this.setState({ items, itemsAdded, itemsRemoved }, this.waitToCloseFlash);
+  };
+
+  waitToCloseFlash() {
+    window.clearTimeout(this.wait);
+    this.wait = window.setTimeout(
+      () => this.setState({ itemsAdded: [], itemsRemoved: [] }),
+      5000
+    );
+  }
+
+  polling = window.setInterval(this.consolidateFromServer, POLLING);
+
   doAState = (func: (state: State) => any) => {
     //any could be tighter
     this.setState(func, () => {
-      saveState(JSON.stringify(this.state));
+      saveItems(JSON.stringify(this.state.items));
     });
   };
 
@@ -75,6 +115,10 @@ class App extends Component<{}, State> {
     this.setState({
       newItem: e.currentTarget.value
     });
+  };
+
+  handleFocus = () => {
+    this.consolidateFromServer();
   };
 
   handleRemove = (idToRemove: string) => {
@@ -95,7 +139,7 @@ class App extends Component<{}, State> {
   };
 
   render() {
-    const { items, newItem, undos } = this.state;
+    const { items, newItem, itemsAdded, itemsRemoved, undos } = this.state;
 
     return (
       <StrictMode>
@@ -107,10 +151,27 @@ class App extends Component<{}, State> {
               placeholder="add new item"
               type="text"
               value={newItem}
+              onFocus={this.handleFocus}
               onChange={this.handleChange}
               onKeyDown={this.handleKeyDown}
             />
           </header>
+          {itemsAdded.length > 0 && (
+            <div className={styles.itemAdded}>
+              <p>New:</p>
+              <ul className={styles.refreshItems}>
+                {itemsAdded.map(itemList)}{" "}
+              </ul>
+            </div>
+          )}
+          {itemsRemoved.length > 0 && (
+            <div className={styles.itemRemoved}>
+              <p>Removed:</p>
+              <ul className={styles.refreshItems}>
+                {itemsRemoved.map(itemList)}
+              </ul>
+            </div>
+          )}
           <Items items={items} onRemove={this.handleRemove} />
           <Undo undo={getLastItem(undos, items)} onUndo={this.handleUndo} />
         </div>
@@ -119,4 +180,5 @@ class App extends Component<{}, State> {
   }
 }
 
+const itemList = ({ name, id }: ItemProps) => <li key={id}>{name}</li>;
 export default App;

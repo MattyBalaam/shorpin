@@ -18,7 +18,7 @@ export default ({ items, onRemove }: ItemsProps) => (
       <Animator
         items={items}
         itemRender={({ props, item, state }) => (
-          <li className={styles.item} style={props} key={item.id}>
+          <li className={styles.item} style={props}>
             <button
               className={styles.button}
               type="button"

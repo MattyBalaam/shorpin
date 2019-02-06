@@ -55,7 +55,7 @@
   width: 45px;
   padding: 0;
   color: white;
-  background: rgb(100, 150, 0);
+  background: var(--green);
   border-radius: 50%;
   transform: scale(0);
   opacity: 0;

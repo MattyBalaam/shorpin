@@ -1,5 +1,7 @@
 :root {
   --toolbarHeight: 90px;
+  --green: rgb(100, 150, 0);
+  --red: rgb(150, 50, 0);
 }
 
 html {

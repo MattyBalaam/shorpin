@@ -52,7 +52,7 @@ export default function Animator({ items, itemRender }: Props) {
         height: "0em"
       }}
     >
-      {(item, state, x) => props => itemRender({ props, item, state, x })}
+      {(item, state) => props => itemRender({ props, item, state })}
     </Transition>
   );
 }
