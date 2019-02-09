@@ -49,6 +49,7 @@ const saveItems = async (stateString: string) => {
 
 class App extends Component<{}, State> {
   state = getInitialState();
+  polling: number | undefined;
   wait: number | undefined;
 
   componentDidMount = async () => {
@@ -59,11 +60,31 @@ class App extends Component<{}, State> {
     } catch (err) {
       console.log(err);
     }
+    this.addListeners();
   };
 
   componentWillUnmount() {
     window.clearInterval(this.polling);
+    document.removeEventListener("visibilitychange", this.visibilityHandler);
   }
+
+  setUpPolling() {
+    this.polling = window.setInterval(this.consolidateFromServer, POLLING);
+  }
+
+  addListeners() {
+    this.setUpPolling();
+    document.addEventListener("visibilitychange", this.visibilityHandler);
+  }
+
+  visibilityHandler = () => {
+    window.clearInterval(this.polling);
+
+    if (document.visibilityState === "visible") {
+      this.consolidateFromServer();
+      this.setUpPolling();
+    }
+  };
 
   consolidateFromServer = async () => {
     const items = (await getList()) || [];
@@ -91,8 +112,6 @@ class App extends Component<{}, State> {
       5000
     );
   }
-
-  polling = window.setInterval(this.consolidateFromServer, POLLING);
 
   doAState = (func: (state: State) => any) => {
     //any could be tighter

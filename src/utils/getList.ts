@@ -5,6 +5,7 @@ const fullURL = `${protocol}//${hostname}:${PORT}/${URL}`;
 
 const getList = async () => {
   const response = await fetch(fullURL, {
+    cache: "no-cache",
     method: "GET",
     headers: {
       Accept: "application/json",

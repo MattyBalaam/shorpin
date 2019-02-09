@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
@@ -11,9 +12,6 @@ const renameFile = promisify(fs.rename);
 
 const PORT = 3569;
 const HOST = "0.0.0.0";
-
-const PATH = "./lists";
-const NAME = "shoppinglist";
 
 const getFilename = (
   prefix: string = "",
@@ -30,7 +28,6 @@ const getFilename = (
 const URL = "/shopping";
 
 const storeState = async (state: string) => {
-  console.log("state", state);
   const filename = getFilename();
   try {
     if (await exists(filename)) {
@@ -56,6 +53,7 @@ const getState = async () => {
 
 const server = () => {
   const app = express();
+  app.use(compression({ threshold: 750 }));
   app.use(bodyParser.json());
 
   app.use(function(req, res, next) {
