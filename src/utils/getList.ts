@@ -1,7 +1,7 @@
 const { protocol, hostname } = location;
 const URL = "shopping";
-const PORT = "3569";
-const fullURL = `${protocol}//${hostname}:${PORT}/${URL}`;
+const PORT = process.env.NODE_ENV === "development" ? ":3569" : null;
+const fullURL = `${protocol}//${hostname}${PORT}/${URL}`;
 
 const getList = async () => {
   const response = await fetch(fullURL, {

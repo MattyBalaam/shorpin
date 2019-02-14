@@ -3,6 +3,7 @@ import React, { Component, StrictMode } from "react";
 import uuidMini from "../utils/uuid-mini";
 import Undo from "./Undo";
 import Items, { ItemProps } from "./Items";
+import InfoModal from "./InfoModal";
 import getList from "../utils/getList";
 import setList from "../utils/setList";
 
@@ -10,10 +11,22 @@ import "../App.css";
 import styles from "../App.module.css";
 
 const POLLING = 10000; //10 seconds
+const RETRY = 5000; //5 seconds
+
+enum Error {
+  LOADING = "loading errror",
+  SAVING = "saving error"
+}
+
+enum Info {
+  SUCCESS = "saved"
+}
 
 type Items = ItemProps[];
 
 interface State {
+  info?: string;
+  infoType?: Error | Info;
   items: Items;
   newItem: string;
   itemsAdded: Items;
@@ -36,6 +49,8 @@ const getLastItem = (undos: Items[], items: Items): string | null => {
 const getInitialState = () => {
   return {
     newItem: "",
+    info: undefined,
+    infoType: undefined,
     items: [],
     itemsAdded: [],
     itemsRemoved: [],
@@ -44,7 +59,16 @@ const getInitialState = () => {
 };
 
 const saveItems = async (stateString: string) => {
-  await setList(stateString);
+  try {
+    const { success } = await setList(stateString);
+    if (!success) {
+      window.setTimeout(() => saveItems(stateString), RETRY);
+      return Error.SAVING;
+    }
+    return Info.SUCCESS;
+  } catch (err) {
+    return err.toString();
+  }
 };
 
 class App extends Component<{}, State> {
@@ -58,7 +82,7 @@ class App extends Component<{}, State> {
 
       this.setState({ items });
     } catch (err) {
-      console.log(err);
+      this.setState({ info: err.toString(), infoType: Error.LOADING });
     }
     this.addListeners();
   };
@@ -87,22 +111,35 @@ class App extends Component<{}, State> {
   };
 
   consolidateFromServer = async () => {
-    const items = (await getList()) || [];
+    try {
+      const items = (await getList()) || [];
 
-    const getItemsAdded = (newA: Items, oldA: Items) =>
-      newA.filter(({ id }) => !oldA.find(item => item.id === id));
+      const getItemsAdded = (newA: Items, oldA: Items) =>
+        newA.filter(({ id }) => !oldA.find(item => item.id === id));
 
-    const getItemsRemoved = (newA: Items, oldA: Items) =>
-      oldA.filter(({ id }) => !newA.find(item => item.id === id));
+      const getItemsRemoved = (newA: Items, oldA: Items) =>
+        oldA.filter(({ id }) => !newA.find(item => item.id === id));
 
-    const { items: previousItems } = this.state;
+      const { items: previousItems } = this.state;
 
-    const itemsAdded = getItemsAdded(items, previousItems);
-    const itemsRemoved = getItemsRemoved(items, previousItems);
+      const itemsAdded = getItemsAdded(items, previousItems);
+      const itemsRemoved = getItemsRemoved(items, previousItems);
 
-    if (!(itemsAdded || itemsRemoved)) return;
+      if (!(itemsAdded || itemsRemoved)) return;
 
-    this.setState({ items, itemsAdded, itemsRemoved }, this.waitToCloseFlash);
+      this.setState(
+        {
+          items,
+          itemsAdded,
+          itemsRemoved,
+          info: undefined,
+          infoType: undefined
+        },
+        this.waitToCloseFlash
+      );
+    } catch (err) {
+      this.setState({ info: err.toString(), infoType: Error.LOADING });
+    }
   };
 
   waitToCloseFlash() {
@@ -115,9 +152,24 @@ class App extends Component<{}, State> {
 
   doAState = (func: (state: State) => any) => {
     //any could be tighter
-    this.setState(func, () => {
-      saveItems(JSON.stringify(this.state.items));
-    });
+    this.setState(func, this.doASave);
+  };
+
+  doASave = async () => {
+    try {
+      this.setState({ info: "Saving" });
+      const save = await saveItems(JSON.stringify(this.state.items));
+      if (save === Info.SUCCESS) {
+        window.setTimeout(() => {
+          this.setState({ info: undefined });
+        }, 500); // TODO);
+      } else {
+        this.setState({ info: save, infoType: Error.SAVING });
+        window.setTimeout(this.doASave, RETRY);
+      }
+    } catch (err) {
+      this.setState({ info: err.toString(), infoType: Error.SAVING });
+    }
   };
 
   handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -158,7 +210,15 @@ class App extends Component<{}, State> {
   };
 
   render() {
-    const { items, newItem, itemsAdded, itemsRemoved, undos } = this.state;
+    const {
+      info,
+      infoType,
+      items,
+      newItem,
+      itemsAdded,
+      itemsRemoved,
+      undos
+    } = this.state;
 
     return (
       <StrictMode>
@@ -191,6 +251,7 @@ class App extends Component<{}, State> {
               </ul>
             </div>
           )}
+          {info && <InfoModal message={info} type={infoType} />}
           <Items items={items} onRemove={this.handleRemove} />
           <Undo undo={getLastItem(undos, items)} onUndo={this.handleUndo} />
         </div>
