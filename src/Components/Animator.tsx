@@ -1,5 +1,5 @@
 import React, { useState, ReactNode } from "react";
-import { Transition, config } from "react-spring";
+import { Transition, config } from "react-spring/renderprops";
 
 interface Item {
   id: string;

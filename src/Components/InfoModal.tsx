@@ -1,5 +1,5 @@
 import React from "react";
-import { animated, useSpring } from "react-spring/hooks.js"; //TODO https://github.com/react-spring/react-spring/issues/354
+import { animated, useSpring } from "react-spring";
 import styles from "./InfoModal.module.css";
 
 interface Props {

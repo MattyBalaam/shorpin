@@ -1,5 +1,7 @@
 import React from "react";
 import Animator from "./Animator";
+//@ts-ignore
+import Item from "./Item";
 import styles from "./Items.module.css";
 
 export interface ItemProps {
@@ -18,24 +20,7 @@ export default ({ items, onRemove }: ItemsProps) => (
       <Animator
         items={items}
         itemRender={({ props, item, state }) => (
-          <li className={styles.item} style={props}>
-            <button
-              className={styles.button}
-              type="button"
-              onClick={() => onRemove(item.id)}
-            >
-              <div className={styles.buttonInner}>
-                <span>{item.name}</span>
-                <span
-                  className={`${styles.tick} ${
-                    item.finished && state !== "leave" ? styles.showTick : ""
-                  }`}
-                >
-                  ✔
-                </span>
-              </div>
-            </button>
-          </li>
+          <Item props={props} item={item} state={state} onRemove={onRemove} />
         )}
       />
     </ul>
