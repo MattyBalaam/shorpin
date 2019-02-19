@@ -10,17 +10,18 @@ const writeFile = promisify(fs.writeFile);
 const exists = promisify(fs.exists);
 const renameFile = promisify(fs.rename);
 
+const DIR = "/data/lists";
 const PORT = 3569;
 const HOST = "0.0.0.0";
 
 const getFilename = (
-  prefix: string = "",
+  suffix: string = "",
   name: string = "shoppinglist",
-  dir: string = "server/lists",
+  dir: string = DIR,
   ext: string = ".json"
 ) =>
   path.format({
-    name: `${name}${prefix}`,
+    name: `${name}${suffix}`,
     dir,
     ext
   });
@@ -29,17 +30,11 @@ const URL = "/shopping";
 
 const storeState = async (state: string) => {
   const filename = getFilename();
-  try {
-    if (await exists(filename)) {
-      await renameFile(filename, getFilename(Date.now().toString()));
-    }
-    await writeFile(filename, JSON.stringify(state));
-    console.log("done??");
-    return true;
-  } catch (err) {
-    console.log(err);
-    return err;
+
+  if (await exists(filename)) {
+    await renameFile(filename, getFilename(Date.now().toString()));
   }
+  return writeFile(filename, JSON.stringify(state));
 };
 
 const getState = async () => {
@@ -52,6 +47,10 @@ const getState = async () => {
 };
 
 const server = () => {
+  if (!fs.existsSync(DIR)) {
+    fs.mkdirSync(DIR);
+  }
+
   const app = express();
   app.use(compression({ threshold: 750 }));
   app.use(bodyParser.json());
@@ -70,7 +69,6 @@ const server = () => {
   app.get(URL, async (req, res) => {
     try {
       const state = await getState();
-      console.log(state);
       res.send({
         state
       });
@@ -89,9 +87,10 @@ const server = () => {
       res.send({
         success: true
       });
-    } catch {
+    } catch (err) {
       res.send({
-        success: false
+        success: false,
+        err
       });
     }
   });

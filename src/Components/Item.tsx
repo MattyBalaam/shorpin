@@ -31,12 +31,12 @@ export default ({ props, item, state, onRemove }: ItemRenderProps) => {
     const config = {
       mass: velocity,
       tension: 500 * velocity,
-      friction: 150
+      friction: 50
     };
 
-    if (!down && delta[0] < -100) {
+    if (!down && delta[0] < -window.outerWidth * 0.5) {
       set({
-        xy: [-1000, 0],
+        xy: [-window.outerWidth * 1.5, 0],
         config
       } as any);
       window.setTimeout(() => {
@@ -53,10 +53,8 @@ export default ({ props, item, state, onRemove }: ItemRenderProps) => {
 
   return (
     <li className={styles.item} style={props}>
-      ]
-      <animated.button
+      <animated.div
         className={styles.button}
-        type="button"
         {...bind()}
         style={{
           //@ts-ignore
@@ -75,7 +73,7 @@ export default ({ props, item, state, onRemove }: ItemRenderProps) => {
             ✔
           </button>
         </div>
-      </animated.button>
+      </animated.div>
     </li>
   );
 };

@@ -1,6 +1,7 @@
 const { protocol, hostname } = location;
 const URL = "shopping";
-const PORT = process.env.NODE_ENV === "development" ? ":3569" : null;
+//TODO - fine for local devving - figure out local docker running...
+const PORT = process.env.NODE_ENV === "development" ? ":3569" : "";
 const fullURL = `${protocol}//${hostname}${PORT}/${URL}`;
 
 const getList = async () => {

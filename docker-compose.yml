@@ -1,0 +1,12 @@
+version: "2"
+
+services:
+  server:
+    build: .
+    volumes:
+      - data/:/data
+    ports:
+      - 3569:3569
+
+volumes:
+  data:

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css?family=Acme");
+
 :root {
   --toolbarHeight: 90px;
   --green: rgb(100, 150, 0);
@@ -7,6 +9,10 @@
 html {
   box-sizing: border-box;
   background: #eee;
+}
+
+body {
+  font-family: "Acme", sans-serif;
 }
 
 *,

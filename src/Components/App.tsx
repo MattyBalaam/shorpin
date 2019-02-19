@@ -123,15 +123,22 @@ class App extends Component<{}, State> {
       const { items: previousItems } = this.state;
 
       const itemsAdded = getItemsAdded(items, previousItems);
-      const itemsRemoved = getItemsRemoved(items, previousItems);
+      const itemsRemoved = getItemsRemoved(items, previousItems) || [];
 
       if (!(itemsAdded || itemsRemoved)) return;
+
+      const { undos: prevUndos } = this.state;
+
+      const undos = itemsRemoved.length
+        ? [this.state.items, ...prevUndos.slice(0, 7)]
+        : prevUndos;
 
       this.setState(
         {
           items,
           itemsAdded,
           itemsRemoved,
+          undos,
           info: undefined,
           infoType: undefined
         },

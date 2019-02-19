@@ -23,9 +23,9 @@
 .button {
   background: transparent;
   width: 100%;
-  font-size: 18px;
+  font-size: 22px;
   border: 0 none;
-  padding: 1em 0;
+  padding: 1em;
 }
 
 .buttonInner {
@@ -48,6 +48,8 @@
 }
 
 .tick {
+  font-size: 18px;
+  border: 0 none;
   align-self: flex-end;
   margin-left: auto;
   font-size: 35px;
@@ -60,6 +62,16 @@
   transform: scale(0);
   opacity: 0;
   transition: 0.1s all ease-in;
+  position: relative;
+  z-index: 99;
+}
+
+.tick:hover {
+  opacity: 0.6;
+}
+
+.tick:active {
+  opacity: 0.2;
 }
 
 .showTick {
