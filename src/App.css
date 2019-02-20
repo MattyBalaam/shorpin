@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css?family=Acme");
+@import url("https://fonts.googleapis.com/css?family=Comfortaa");
 
 :root {
   --toolbarHeight: 90px;
@@ -12,11 +12,20 @@ html {
 }
 
 body {
-  font-family: "Acme", sans-serif;
+  font-family: "Comfortaa", cursive;
+  letter-spacing: -0.045em;
+}
+
+* {
+  font-family: inherit;
 }
 
 *,
 *:before,
 *:after {
   box-sizing: inherit;
+}
+
+:link:not(:hover) {
+  text-decoration: none;
 }

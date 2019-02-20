@@ -10,7 +10,9 @@ const writeFile = promisify(fs.writeFile);
 const exists = promisify(fs.exists);
 const renameFile = promisify(fs.rename);
 
-const DIR = "/data/lists";
+const isDev = process.env.NODE_ENV === "development";
+
+const DIR = isDev ? "data/lists" : "/data/lists";
 const PORT = 3569;
 const HOST = "0.0.0.0";
 
@@ -48,7 +50,11 @@ const getState = async () => {
 
 const server = () => {
   if (!fs.existsSync(DIR)) {
-    fs.mkdirSync(DIR);
+    fs.readdir("/", (err, items) => items.map(item => console.log(item)));
+
+    fs.mkdir(DIR, { recursive: true }, err => {
+      console.log(err);
+    });
   }
 
   const app = express();

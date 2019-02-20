@@ -1,6 +1,7 @@
 import React, { CSSProperties } from "react";
 import { animated, useSpring } from "react-spring";
 import { useGesture } from "react-with-gesture";
+import Linkify from "linkifyjs/react";
 
 import styles from "./Items.module.css";
 
@@ -62,7 +63,7 @@ export default ({ props, item, state, onRemove }: ItemRenderProps) => {
         }}
       >
         <div className={styles.buttonInner}>
-          <span>{item.name}</span>
+          <Linkify tagName="span">{item.name}</Linkify>
           <button
             type="button"
             className={`${styles.tick} ${
