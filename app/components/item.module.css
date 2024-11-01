@@ -49,18 +49,18 @@
 
 .tick {
   font-size: 18px;
-  border: 0 none;
-  align-self: flex-end;
-  margin-left: auto;
-  font-size: 35px;
-  height: 45px;
-  width: 45px;
+  /* border: 0 none; */
+  /* align-self: flex-end; */
+  /* margin-left: auto; */
+  /* font-size: 35px; */
+  /* height: 45px; */
+  /* width: 45px; */
   padding: 0;
-  color: white;
-  background: var(--green);
+  /* color: white; */
+  /* background: var(--green); */
   border-radius: 50%;
-  transform: scale(0);
-  opacity: 0;
+  /* transform: scale(0); */
+  /* opacity: 0; */
   transition: 0.1s all ease-in;
   position: relative;
   z-index: 99;
@@ -78,4 +78,10 @@
   opacity: 1;
   transform: scale(1);
   transition: 0.3s all cubic-bezier(0.51, 1.31, 0.37, 1.23);
+}
+
+.wrapper {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / span 3;
 }
