@@ -1,60 +1,29 @@
 import type * as Route from "./+types.list";
 
-import fs from "node:fs";
-import { Form, useFetcher } from "react-router";
-import { Item } from "~/components/item";
-import { useTransition, animated } from "@react-spring/web";
+import { Form, Link } from "react-router";
+
 import { Items } from "~/components/items";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
-export async function loader({ params }: Route.LoaderArgs) {
-	const filename = `/files/${params.list}`;
-
-	const data = (fs.existsSync(filename)
-		? fs.readdirSync(filename)
-		: []) as unknown as Array<{
-		name: string;
-		value: string;
-	}>;
-
-	return {
-		list: params.list,
-		data: data,
-	};
-}
-
-export async function action({ request }: Route.ActionArgs) {
-	const formData = await request.formData();
-
-	const toDelete = formData.get("delete");
-
-	const data = Object.entries(Object.fromEntries(formData))
-		.map(
-			//server indicates the value has been stored already.
-			// use this to track items when dragging to delete
-			([name, value]) => ({
-				name: name === "new" ? crypto.randomUUID() : name,
-				value: value.toString(),
-			}),
-		)
-		.filter(({ name, value }) => {
-			if (name === "delete" || name === toDelete) return false;
-
-			return !!value;
-		});
-
-	return {
-		data,
-	};
-}
+export { action, loader } from "./list.server";
 
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
-	const data = actionData ? actionData.data : loaderData.data;
+	const data = actionData?.data || loaderData.data;
 
 	const buttonRef = useRef<HTMLButtonElement>(null);
 
+	if (loaderData.error) {
+		return (
+			<div>
+				<h1>{loaderData.list}</h1>
+				<p>{loaderData.error}</p>
+				<Link to="/">back to dir</Link>
+			</div>
+		);
+	}
+
 	return (
-		<div>
+		<div style={{ display: "grid", gap: "1em" }}>
 			<h1>{loaderData.list}</h1>
 			<Form
 				method="POST"
@@ -73,6 +42,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 					}
 				}}
 			>
+				<input type="hidden" name="list" value={loaderData.list} />
+
 				<Items
 					data={data}
 					handleSubmit={() => {
@@ -83,9 +54,9 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 				<input
 					name="new"
 					style={{
+						height: 40,
 						gridColumn: "input",
-						padding: "0.5em",
-						zIndex: -1,
+						padding: "0 0.5em",
 					}}
 					// biome-ignore lint/a11y/noAutofocus: <explanation>
 					autoFocus
@@ -105,6 +76,14 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 					submit
 				</button>
 			</Form>
+
+			<div style={{ display: "grid", gap: "1em" }}>
+				<Link to="/">back to dir</Link>
+
+				<Link to="./confirm-delete" relative="route">
+					Delete list
+				</Link>
+			</div>
 		</div>
 	);
 }

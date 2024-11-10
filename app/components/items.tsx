@@ -15,7 +15,7 @@ export function Items({ data, handleSubmit }: ItemsProps) {
 		from: { height: 10, overflow: "hidden" },
 		enter: { height: 40 },
 		leave: { height: 0, overflow: "hidden" },
-		trail: 100 / data.length,
+		trail: 500 / data.length,
 		keys,
 	});
 

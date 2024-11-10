@@ -1,6 +1,5 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef } from "react";
 import { animated, useSpring } from "@react-spring/web";
-import type { SpringValue } from "@react-spring/web";
 
 import { useDrag } from "@use-gesture/react";
 // import Linkify from "linkifyjs/react";
@@ -20,13 +19,7 @@ export interface ItemRenderProps {
 	handleSubmit: () => void;
 }
 
-export function Item({
-	// item,
-	// onRemove,
-	name,
-	value,
-	handleSubmit,
-}: ItemRenderProps) {
+export function Item({ name, value, handleSubmit }: ItemRenderProps) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const cancelRef = useRef<HTMLInputElement>(null);
 
