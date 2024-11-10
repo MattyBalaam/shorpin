@@ -15,8 +15,6 @@ export async function loader({ params }: Route.LoaderArgs) {
 	const filename = getFileName(params.list);
 
 	if (!fs.existsSync(filename)) {
-		console.log({ filename });
-
 		return {
 			list: params.list,
 			data: [],
@@ -31,12 +29,15 @@ export async function loader({ params }: Route.LoaderArgs) {
 		data: Array<{
 			name: string;
 			value: string;
+			deleted?: boolean;
 		}>;
 	};
 
+	console.log(data);
+
 	return {
 		list,
-		data: data,
+		data: data.filter(({ deleted }) => !deleted),
 	};
 }
 
@@ -48,25 +49,37 @@ export async function action({ request, params }: Route.ActionArgs) {
 	const toDelete = formData.get("delete");
 	const list = formData.get("list");
 
-	const data = Object.entries(Object.fromEntries(formData))
-		.map(
-			//server indicates the value has been stored already.
-			// use this to track items when dragging to delete
-			([name, value]) => ({
-				name: name === "new" ? crypto.randomUUID() : name,
-				value: value.toString(),
-			}),
-		)
-		.filter(({ name, value }) => {
-			if (name === "list" || name === "delete" || name === toDelete)
-				return false;
+	const existingData = JSON.parse(
+		fs.readFileSync(filename, { encoding: "utf-8" }),
+	).data as Array<{
+		name: string;
+		value: string;
+		deleted?: boolean;
+	}>;
 
-			return !!value;
-		});
+	const newData = Object.entries(Object.fromEntries(formData))
+		.map(([name, value]) => ({
+			name: name === "new" ? crypto.randomUUID() : name,
+			value: value.toString(),
+			deleted: Boolean(
+				name === toDelete ||
+					// we want to delete any values which may have been delete elsewhere
+					existingData.find((data) => data.name === name)?.deleted,
+			),
+		}))
+		.filter(({ name, value }) => value && name !== "delete" && name !== "list");
 
-	fs.writeFileSync(filename, JSON.stringify({ list, data }));
+	const fullData = [
+		...existingData.filter(
+			({ name, deleted }) =>
+				!deleted && !newData.find((newValue) => name === newValue.name),
+		),
+		...newData,
+	];
+
+	fs.writeFileSync(filename, JSON.stringify({ list, data: fullData }));
 
 	return {
-		data,
+		data: fullData.filter(({ deleted }) => !deleted),
 	};
 }
