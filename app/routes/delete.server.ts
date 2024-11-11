@@ -5,7 +5,7 @@ import { redirect } from "react-router";
 
 import { getFileName } from "~/routes/list.server";
 
-export async function action({ request, params }: Route.ActionArgs) {
+export async function action({ params }: Route.ActionArgs) {
 	const filename = getFileName(params.list);
 
 	fs.renameSync(filename, `${filename}.deleted`);

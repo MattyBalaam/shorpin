@@ -23,14 +23,15 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 	}
 
 	return (
-		<div style={{ display: "grid", gap: "1em" }}>
+		<div style={{ display: "grid", gap: "2em" }}>
 			<h1>{loaderData.list}</h1>
+
 			<Form
 				method="POST"
 				style={{
 					display: "grid",
 					gridTemplateColumns: "[input] 1fr [done] auto",
-					gap: "0 1em",
+					gap: "1em",
 				}}
 				onSubmit={(e) => {
 					const newInput = e.currentTarget.elements.namedItem("new");
@@ -52,9 +53,9 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 				/>
 
 				<input
+					type="text"
 					name="new"
 					style={{
-						height: 40,
 						gridColumn: "input",
 						padding: "0 0.5em",
 					}}
@@ -69,7 +70,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 						marginTop: "2em",
 						alignSelf: "start",
 						minWidth: 0,
-						width: 100, //TODO
 					}}
 					ref={buttonRef}
 				>
@@ -77,10 +77,22 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 				</button>
 			</Form>
 
-			<div style={{ display: "grid", gap: "1em" }}>
+			{JSON.stringify(data)}
+
+			<hr />
+
+			{JSON.stringify(actionData?.debug)}
+
+			<div
+				style={{
+					display: "grid",
+					gap: "1em",
+					gridTemplateColumns: "max-content max-content",
+				}}
+			>
 				<Link to="/">back to dir</Link>
 
-				<Link to="./confirm-delete" relative="route">
+				<Link to="./confirm-delete" relative="route" style={{ color: "red" }}>
 					Delete list
 				</Link>
 			</div>

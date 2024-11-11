@@ -33,8 +33,6 @@ export async function loader({ params }: Route.LoaderArgs) {
 		}>;
 	};
 
-	console.log(data);
-
 	return {
 		list,
 		data: data.filter(({ deleted }) => !deleted),
@@ -49,13 +47,13 @@ export async function action({ request, params }: Route.ActionArgs) {
 	const toDelete = formData.get("delete");
 	const list = formData.get("list");
 
-	const existingData = JSON.parse(
-		fs.readFileSync(filename, { encoding: "utf-8" }),
-	).data as Array<{
-		name: string;
-		value: string;
-		deleted?: boolean;
-	}>;
+	const existingData = (
+		JSON.parse(fs.readFileSync(filename, { encoding: "utf-8" })).data as Array<{
+			name: string;
+			value: string;
+			deleted?: boolean;
+		}>
+	).filter(({ deleted }) => !deleted);
 
 	const newData = Object.entries(Object.fromEntries(formData))
 		.map(([name, value]) => ({
@@ -67,12 +65,17 @@ export async function action({ request, params }: Route.ActionArgs) {
 					existingData.find((data) => data.name === name)?.deleted,
 			),
 		}))
-		.filter(({ name, value }) => value && name !== "delete" && name !== "list");
+		.filter(({ name, value }) => {
+			if (!value) {
+				return false;
+			}
+
+			return name !== "delete" && name !== "list";
+		});
 
 	const fullData = [
 		...existingData.filter(
-			({ name, deleted }) =>
-				!deleted && !newData.find((newValue) => name === newValue.name),
+			({ name }) => !newData.find((newValue) => name === newValue.name),
 		),
 		...newData,
 	];
@@ -81,5 +84,6 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 	return {
 		data: fullData.filter(({ deleted }) => !deleted),
+		debug: fullData,
 	};
 }

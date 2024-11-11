@@ -19,13 +19,17 @@ export function Items({ data, handleSubmit }: ItemsProps) {
 		keys,
 	});
 
-	return transitions((style, item) => (
-		<animated.div style={style} className={styles.wrapper}>
-			<Item
-				name={item.name}
-				value={item.value || ""}
-				handleSubmit={handleSubmit}
-			/>
-		</animated.div>
-	));
+	return (
+		<div className={styles.items}>
+			{transitions((style, item) => (
+				<animated.div style={style} className={styles.wrapper}>
+					<Item
+						name={item.name}
+						value={item.value || ""}
+						handleSubmit={handleSubmit}
+					/>
+				</animated.div>
+			))}
+		</div>
+	);
 }

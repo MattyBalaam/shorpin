@@ -30,8 +30,6 @@ export async function action({ request }: Route.ActionArgs) {
 
 	const newList = list.replace(" ", "-");
 
-	console.log({ newList });
-
 	if (newList) {
 		if (!fs.existsSync(fileDir)) {
 			fs.mkdirSync(fileDir);

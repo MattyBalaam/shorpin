@@ -17,7 +17,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 	return (
 		<div>
 			<h1>Lists</h1>
-			<ul>
+			<ul className={styles.list}>
 				{loaderData.dir.map(({ list, file }) => {
 					return (
 						<li key={list}>
@@ -28,7 +28,14 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 			</ul>
 			<hr />
 			<Form className={styles.form} method="post">
-				<label htmlFor="new-list">New List</label>
+				<label
+					htmlFor="new-list"
+					style={{
+						gridColumn: "span 2",
+					}}
+				>
+					New List
+				</label>
 				<input id="new-list" name="new-list" type="text" />
 				<button type="submit">Create</button>
 			</Form>
