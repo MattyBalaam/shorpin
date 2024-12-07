@@ -1,9 +1,11 @@
 import { animated, useTransition } from "@react-spring/web";
 import styles from "./Undo.module.css";
+import { Button } from "./button/button";
 
 interface Props {
 	undo: string | null | false;
 	onUndo: () => void;
+	lastChange: any; //TODO
 }
 
 export function Undo({ lastChange }: Props) {
@@ -23,9 +25,9 @@ export function Undo({ lastChange }: Props) {
 							className={`${styles.undo}`}
 							style={props}
 						>
-							<button type="submit" className={styles.undoButton}>
+							<Button type="submit" className={styles.undoButton}>
 								Undo for: {lastChange}
-							</button>
+							</Button>
 						</animated.aside>
 					),
 			)}

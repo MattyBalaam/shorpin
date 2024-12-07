@@ -4,25 +4,26 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"@react-router/node": "7.0.0-pre.2",
-		"@react-router/serve": "7.0.0-pre.2",
+		"@react-router/node": "7.0.2",
+		"@react-router/serve": "7.0.2",
 		"isbot": "^5.1.17",
-		"react": "^18.3.1",
-		"react-dom": "^18.3.1",
-		"react-router": "7.0.0-pre.2",
+		"react": "19.0.0",
+		"react-dom": "19.0.0",
+		"react-router": "7.0.2",
 		"react-swipeable": "7.0.1"
 	},
 	"devDependencies": {
-		"@react-router/dev": "7.0.0-pre.2",
-		"@types/react": "^18.3.9",
-		"@types/react-dom": "^18.3.0",
+		"@react-router/dev": "7.0.2",
+		"@react-spring/web": "9.7.5",
+		"@types/react": "19.0.1",
+		"@types/react-dom": "19.0.1",
 		"@use-gesture/react": "10.3.1",
 		"autoprefixer": "^10.4.20",
 		"postcss": "^8.4.47",
-		"@react-spring/web": "9.7.4",
+		"react-router-devtools": "1.0.5",
 		"typescript": "5.6.2",
-		"vite": "^5.4.8",
-		"vite-tsconfig-paths": "5.0.1"
+		"vite": "6.0.3",
+		"vite-tsconfig-paths": "5.1.4"
 	},
 	"dependencies2": {
 		"@types/body-parser": "^1.17.0",

@@ -1,9 +1,11 @@
-import type * as Route from "./+types.list";
+import type { Route } from "./+types/list";
 
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
 
 import { Items } from "~/components/items";
 import { useRef } from "react";
+import { Button } from "~/components/button/button";
+import { Link } from "~/components/link/link";
 
 export { action, loader } from "./list.server";
 
@@ -21,6 +23,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 			</div>
 		);
 	}
+
+	const handleSubmit = () => {
+		buttonRef.current?.click();
+	};
+
+	const lastDeleted = actionData?.lastDeleted;
 
 	return (
 		<div style={{ display: "grid", gap: "2em" }}>
@@ -45,12 +53,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 			>
 				<input type="hidden" name="list" value={loaderData.list} />
 
-				<Items
-					data={data}
-					handleSubmit={() => {
-						buttonRef.current?.click();
-					}}
-				/>
+				<Items data={data} handleSubmit={handleSubmit} />
 
 				<input
 					type="text"
@@ -63,7 +66,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 					autoFocus
 				/>
 
-				<button
+				<Button
 					type="submit"
 					style={{
 						gridColumn: "1 ",
@@ -74,14 +77,55 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 					ref={buttonRef}
 				>
 					submit
-				</button>
+				</Button>
+
+				{lastDeleted ? (
+					<label>
+						undo for: {lastDeleted.value}
+						<input
+							type="radio"
+							name="undelete"
+							value={lastDeleted.name}
+							onClick={(e) => {
+								handleSubmit();
+
+								e.currentTarget.checked = false;
+							}}
+							onKeyUp={(e) => {
+								if (e.key !== "Enter") return;
+
+								e.currentTarget.checked = true;
+								handleSubmit();
+								e.currentTarget.checked = false;
+							}}
+							style={
+								{
+									// appearance: "none",
+								}
+							}
+						/>
+					</label>
+				) : null}
+
+				{/* <Button
+					type="submit"
+					style={{
+						gridColumn: "2",
+						marginTop: "2em",
+						alignSelf: "start",
+						minWidth: 0,
+					}}
+					value="undo"
+				>
+					undo
+				</Button> */}
 			</Form>
 
-			{JSON.stringify(data)}
+			{/* {JSON.stringify(data)} */}
 
 			<hr />
 
-			{JSON.stringify(actionData?.debug)}
+			{/* {JSON.stringify(actionData?.debug)} */}
 
 			<div
 				style={{
@@ -90,9 +134,16 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 					gridTemplateColumns: "max-content max-content",
 				}}
 			>
-				<Link to="/">back to dir</Link>
+				<Link variant="button" to="/">
+					back to dir
+				</Link>
 
-				<Link to="./confirm-delete" relative="route" style={{ color: "red" }}>
+				<Link
+					variant="button"
+					to="./confirm-delete"
+					relative="route"
+					style={{ color: "red" }}
+				>
 					Delete list
 				</Link>
 			</div>

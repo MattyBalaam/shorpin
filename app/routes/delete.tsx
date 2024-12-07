@@ -1,4 +1,5 @@
 import { Form } from "react-router";
+import { Button } from "~/components/button/button";
 
 export { action } from "./delete.server";
 
@@ -7,9 +8,9 @@ export default function Delete() {
 		<Form method="POST">
 			<h1>Are you sure you want to delete?</h1>
 
-			<button type="submit" style={{ color: "red" }}>
+			<Button type="submit" style={{ color: "red" }}>
 				Yes
-			</button>
+			</Button>
 		</Form>
 	);
 }

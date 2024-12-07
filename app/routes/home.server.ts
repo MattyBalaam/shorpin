@@ -1,4 +1,4 @@
-import type * as Route from "./+types.home";
+import type { Route } from "./+types/home";
 
 import fs from "node:fs";
 import { redirect } from "react-router";

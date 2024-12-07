@@ -5,7 +5,7 @@ body {
   }
 }
 
-a,
+/* a,
 button {
   padding: 0.3em 0.5em;
   text-decoration: none;
@@ -17,7 +17,7 @@ button {
   &:hover {
     opacity: 0.8;
   }
-}
+} */
 
 input[type="text"] {
   background: none;

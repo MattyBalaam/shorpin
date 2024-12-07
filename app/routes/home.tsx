@@ -1,8 +1,11 @@
-import type * as Route from "./+types.home";
+import type { Route } from "./+types/home";
 
-import { Form, Link, type MetaFunction } from "react-router";
+import { Form, type MetaFunction } from "react-router";
+
+import { Link } from "~/components/link/link";
 
 import styles from "./home.module.css";
+import { Button } from "~/components/button/button";
 
 export { loader, action } from "./home.server";
 
@@ -27,6 +30,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 				})}
 			</ul>
 			<hr />
+
 			<Form className={styles.form} method="post">
 				<label
 					htmlFor="new-list"
@@ -36,8 +40,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 				>
 					New List
 				</label>
-				<input id="new-list" name="new-list" type="text" />
-				<button type="submit">Create</button>
+				<input id="new-list" name="new-list" type="text" required />
+				<Button type="submit">Create new list</Button>
 			</Form>
 		</div>
 	);

@@ -1,4 +1,4 @@
-import type * as Route from "./+types.delete";
+import type { Route } from "./+types/delete";
 
 import fs from "node:fs";
 import { redirect } from "react-router";
