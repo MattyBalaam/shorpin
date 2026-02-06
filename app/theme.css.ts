@@ -16,6 +16,10 @@ export const [themeClass, vars] = createTheme({
   palette: {
     primary: "blue",
     secondary: "yellow",
+    chrome: "grey",
+    chromeLight: "lightGrey",
+    text: "black",
+    textOnChrome: "white",
   },
   font: {
     // System font stack for optimal performance and native feel

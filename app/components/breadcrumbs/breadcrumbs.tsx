@@ -41,7 +41,7 @@ export function Breadcrumbs() {
   const breadcrumbs: BreadcrumbItem[] = isHomePage
     ? breadcrumbsFromRoutes
     : [
-        { label: "Home", to: "/" },
+        { label: "Lists", to: "/" },
         ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/"),
       ];
 

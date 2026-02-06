@@ -5,7 +5,7 @@ import { reset } from "./layers.css";
 globalStyle("html, body, ul, ol, li, dialog", {
   "@layer": {
     [reset]: {
-      margin: 0,
+      marginBlockEnd: 0,
       padding: 0,
       border: 0,
       fontSize: "100%",
@@ -17,7 +17,11 @@ globalStyle("html, body, ul, ol, li, dialog", {
 
 globalStyle("html", {
   "@layer": {
-    [reset]: { boxSizing: "border-box" },
+    [reset]: {
+      boxSizing: "border-box",
+      /* Prevent font size inflation */
+      textSizeAdjust: "none",
+    },
   },
 });
 
@@ -37,3 +41,14 @@ globalStyle("html, body, #legacySpaRoot", {
     },
   },
 });
+
+/* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
+globalStyle("ul[role='list'], ol[role='list']", {
+  listStyle: "none",
+});
+
+/* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
+// ul[role='list'],
+// ol[role='list'] {
+//   list-style: none;
+// }

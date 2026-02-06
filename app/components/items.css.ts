@@ -5,6 +5,7 @@ export const wrapper = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / 4",
   cursor: "grab",
+  marginBlockEnd: 0,
   ":active": {
     cursor: "grabbing",
   },

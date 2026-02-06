@@ -176,7 +176,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       method="POST"
       className={styles.form}
     >
-      <h1>{defaultValue.name}</h1>
       {/* hidden submit button which will be used if a user presses enter or reorders */}
       <button
         ref={reorderSubmitRef}
@@ -246,9 +245,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               undo for: {lastDeleted.value}
             </button>
           ) : null}
-          <Link variant="button" to="/">
-            back to dir
-          </Link>
 
           <Link
             variant="button"

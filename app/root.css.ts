@@ -2,10 +2,11 @@ import { globalStyle, style } from "@vanilla-extract/css";
 
 export const main = style({
   margin: "0 auto",
-  maxWidth: "60ch",
+  display: "grid",
+  // maxWidth: "60ch", // move to content
   width: "100%",
-  padding: "0",
-  boxSizing: "border-box",
+  height: "100lvh",
+  gridTemplateRows: "[breadcrumbs] auto  [content] 1fr [actions] auto",
 });
 
 globalStyle("body, h1", {

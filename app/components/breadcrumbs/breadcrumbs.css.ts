@@ -2,8 +2,9 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "~/theme.css";
 
 export const nav = style({
+  paddingBlock: "0.5rem 0",
   paddingInline: vars.spacing.appMargin,
-  paddingBlock: "0.5rem",
+  gridRow: "breadcrumbs",
 });
 
 export const list = style({
@@ -13,7 +14,7 @@ export const list = style({
   display: "flex",
   flexWrap: "wrap",
   gap: "0.5em",
-  alignItems: "center",
+  alignItems: "baseline",
 });
 
 export const item = style({

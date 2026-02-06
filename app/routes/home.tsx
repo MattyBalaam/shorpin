@@ -1,6 +1,7 @@
 import type { Route } from "./+types/home";
 
 import {
+  href,
   Form as RouterForm,
   ShouldRevalidateFunction,
   type MetaFunction,
@@ -10,14 +11,15 @@ import { z } from "zod/v4";
 
 import { Link } from "~/components/link/link";
 
-import * as styles from "./home.css";
-
 import { supabase } from "~/lib/supabase.server";
 
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/button/button";
+
+import * as styles from "./home.css";
+import { Suspense, use } from "react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -37,22 +39,16 @@ const zCreate = z.object({
 });
 
 export async function loader(args: Route.LoaderArgs) {
-  const { data: lists, error } = await supabase
-    .from("lists")
-    .select("id, name, slug")
-    .eq("state", "active")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching lists:", error);
-    return { dir: [] };
-  }
-
   return {
-    dir: lists.map((list) => ({
-      file: list.slug,
-      list: list.name,
-    })),
+    lists: supabase
+      .from("lists")
+      .select("id, name, slug")
+      .eq("state", "active")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return data;
+      }),
   };
 }
 
@@ -69,8 +65,6 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const listName = result.data["new-list"];
   const slug = listName.normalize("NFD");
-
-  console.log({ slug });
 
   if (listName) {
     const { data: existing } = await supabase
@@ -98,6 +92,29 @@ export async function action({ request, context }: Route.ActionArgs) {
   );
 }
 
+function Lists({
+  data,
+}: {
+  data: Promise<Array<{ id: string; name: string; slug: string }>>;
+}) {
+  const lists = use(data);
+
+  return (
+    <ul className={styles.list}>
+      {lists.map(({ id, name, slug }) => {
+        return (
+          <li key={id} role="list" className={styles.item}>
+            <Link to={href("/lists/:list", { list: slug })}>{name}</Link>{" "}
+            <Link to={href("/lists/:list/confirm-delete", { list: slug })}>
+              delete
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function Index({ loaderData }: Route.ComponentProps) {
   const { form, fields } = useForm(zCreate, {
     shouldValidate: "onBlur",
@@ -105,37 +122,28 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   });
 
   return (
-    <div>
-      <h1 id="list-label">Lists</h1>
+    <>
       <nav>
-        <ul>
-          {loaderData.dir.map(
-            ({ list, file }: { list: string; file: string }) => {
-              return (
-                <li key={file}>
-                  {list}
-
-                  <Link to={`/lists/${file}`}>edit</Link>
-                </li>
-              );
-            },
-          )}
-        </ul>
+        <Suspense fallback={<p>We are loading…</p>}>
+          <Lists data={loaderData.lists} />
+        </Suspense>
       </nav>
       <hr />
 
       <RouterForm method="POST" {...form.props}>
         {/* <Form method="POST" {...form.props} validationErrors={form.fieldErrors}> */}
 
-        <conform-input
-          name={fields["new-list"].name}
-          id={fields["new-list"].id}
-          label="New list"
-        />
+        <div className={styles.newList}>
+          <div>
+            <label htmlFor={fields["new-list"].id}>New list</label>
+            <input name={fields["new-list"].name} id={fields["new-list"].id} />
+          </div>
 
-        <Button type="submit">Create new list</Button>
+          <Button type="submit">Create new list</Button>
+        </div>
+
         {/* </Form> */}
       </RouterForm>
-    </div>
+    </>
   );
 }
