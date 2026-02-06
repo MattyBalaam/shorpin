@@ -17,6 +17,7 @@ import "~/styles/reset.css";
 import { Toaster, toast } from "sonner";
 
 import "./app.css";
+import "~/styles/typography.css";
 
 import "~/components/conform-input";
 
