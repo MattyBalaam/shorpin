@@ -1,4 +1,4 @@
-import { useMatches } from "react-router";
+import { useMatches, useLocation } from "react-router";
 import { Link } from "~/components/link/link";
 import * as styles from "./breadcrumbs.css";
 
@@ -16,8 +16,9 @@ interface BreadcrumbItem {
 
 export function Breadcrumbs() {
   const matches = useMatches();
+  const location = useLocation();
 
-  const breadcrumbs: BreadcrumbItem[] = matches
+  const breadcrumbsFromRoutes: BreadcrumbItem[] = matches
     .filter((match): match is typeof match & { handle: BreadcrumbHandle } =>
       Boolean(match.handle?.breadcrumb),
     )
@@ -33,6 +34,16 @@ export function Breadcrumbs() {
         to: breadcrumb.to ?? match.pathname,
       };
     });
+
+  // If we're on the home page, only show "Home" as current page
+  const isHomePage = location.pathname === "/";
+
+  const breadcrumbs: BreadcrumbItem[] = isHomePage
+    ? breadcrumbsFromRoutes
+    : [
+        { label: "Home", to: "/" },
+        ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/"),
+      ];
 
   if (breadcrumbs.length === 0) {
     return null;
