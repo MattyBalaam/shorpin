@@ -4,7 +4,6 @@ import { vars } from "~/theme.css";
 export const nav = style({
   paddingInline: vars.spacing.appMargin,
   paddingBlock: "0.5rem",
-  fontSize: "0.875em",
 });
 
 export const list = style({
@@ -18,7 +17,7 @@ export const list = style({
 });
 
 export const item = style({
-  display: "flex",
+  display: "inline-flex",
   alignItems: "center",
   gap: "0.5em",
 });
@@ -29,5 +28,9 @@ export const separator = style({
 });
 
 export const currentPage = style({
-  fontWeight: "bold",
+  fontSize: "inherit",
+  fontWeight: vars.fontWeight.bold,
+  lineHeight: "inherit",
+  margin: 0,
+  display: "inline",
 });
