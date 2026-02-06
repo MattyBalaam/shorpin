@@ -3,11 +3,12 @@ import { vars } from "~/theme.css";
 
 export const form = style({
   display: "grid",
-  gridTemplateRows: "[heading] auto [items] 1fr [actions] auto",
+  gridTemplateRows: "[items] 1fr [actions] auto",
   height: "100lvh",
 });
 
 export const items = style({
+  gridRow: "items",
   paddingInline: vars.spacing.appMargin,
   position: "relative",
   overflow: "hidden",
@@ -58,6 +59,7 @@ export const undoButton = style({
 });
 
 export const actions = style({
+  gridRow: "actions",
   display: "grid",
   padding: vars.spacing.appMargin,
   gap: "1em",
