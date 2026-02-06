@@ -5,6 +5,7 @@ export const form = style({
   display: "grid",
   gridTemplateRows: "[items] 1fr [actions] auto",
   height: "100lvh",
+  overflow: "hidden",
 });
 
 export const items = style({
