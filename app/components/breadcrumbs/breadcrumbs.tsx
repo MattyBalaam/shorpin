@@ -58,12 +58,14 @@ export function Breadcrumbs() {
           return (
             <li key={crumb.to} className={styles.item}>
               {isLast ? (
-                <span className={styles.currentPage} aria-current="page">
+                <h1 className={styles.currentPage} aria-current="page">
                   {crumb.label}
-                </span>
+                </h1>
               ) : (
                 <>
-                  <Link to={crumb.to}>{crumb.label}</Link>
+                  <Link to={crumb.to} className={styles.link}>
+                    {crumb.label}
+                  </Link>
                   <span className={styles.separator} aria-hidden="true">
                     →
                   </span>

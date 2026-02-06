@@ -25,6 +25,13 @@ export const item = style({
 export const separator = style({
   opacity: 0.5,
   userSelect: "none",
+  display: "inline-flex",
+  alignItems: "center",
+});
+
+export const link = style({
+  display: "inline-flex",
+  alignItems: "center",
 });
 
 export const currentPage = style({
@@ -32,5 +39,6 @@ export const currentPage = style({
   fontWeight: vars.fontWeight.bold,
   lineHeight: "inherit",
   margin: 0,
-  display: "inline",
+  display: "inline-flex",
+  alignItems: "center",
 });
