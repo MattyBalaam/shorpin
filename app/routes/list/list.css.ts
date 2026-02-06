@@ -14,7 +14,7 @@ export const items = style({
   display: "grid",
   ":after": {
     content: "",
-    height: "2em",
+    height: "1rem",
     position: "absolute",
     insetInline: "0",
     bottom: 0,
@@ -23,7 +23,7 @@ export const items = style({
   },
   ":before": {
     content: "",
-    height: "2em",
+    height: "1rem",
     position: "absolute",
     insetInline: "0",
     top: 0,
@@ -33,7 +33,7 @@ export const items = style({
 });
 
 export const itemsScroll = style({
-  paddingBlock: "2em",
+  paddingBlock: "1rem",
   display: "grid",
   gridTemplateColumns: "[input] 1fr [drag] auto [done] auto",
   alignItems: "start",
