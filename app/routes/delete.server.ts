@@ -1,14 +1,17 @@
 import type { Route } from "./+types/delete";
 
-import fs from "node:fs";
-import { redirect } from "react-router";
+import { redirectWithSuccess } from "remix-toast";
+import { supabase } from "~/lib/supabase.server";
 
-import { getFileName } from "~/routes/list.server";
+export async function action({ params: { list } }: Route.ActionArgs) {
+  const { error } = await supabase
+    .from("lists")
+    .update({ state: "deleted", updated_at: Date.now() })
+    .eq("slug", list);
 
-export async function action({ params }: Route.ActionArgs) {
-	const filename = getFileName(params.list);
+  if (error) {
+    console.error("Error deleting list:", error);
+  }
 
-	fs.renameSync(filename, `${filename}.deleted`);
-
-	return redirect("/");
+  return redirectWithSuccess("/", "List " + list + " deleted successfully");
 }

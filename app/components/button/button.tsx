@@ -1,19 +1,19 @@
 import type { ButtonHTMLAttributes } from "react";
-import clickableStyles from "~/components/shared/clickable-element.module.css";
+import * as clickableStyles from "~/components/shared/clickable-element.css";
 
 export function Button({
-	type = "button",
-	className,
-	...props
+  type = "button",
+  className,
+  ...props
 }: React.DetailedHTMLProps<
-	ButtonHTMLAttributes<HTMLButtonElement>,
-	HTMLButtonElement
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  HTMLButtonElement
 >) {
-	return (
-		<button
-			className={[clickableStyles.clickable, className].join(" ")}
-			type={type}
-			{...props}
-		/>
-	);
+  return (
+    <button
+      className={[clickableStyles.clickable, className].join(" ")}
+      type={type}
+      {...props}
+    />
+  );
 }

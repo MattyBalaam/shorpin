@@ -4,3 +4,6 @@ node_modules
 /build
 .env
 .react-router
+
+# Local Netlify folder
+.netlify

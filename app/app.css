@@ -2,28 +2,12 @@ html,
 body {
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
+    padding: 0;
+    margin: 0;
   }
 }
 
-/* a,
-button {
-  padding: 0.3em 0.5em;
-  text-decoration: none;
-  outline: 2px solid currentColor;
-  min-width: 0;
-  width: max-content;
-  border-radius: 3px;
-  background: none;
-  &:hover {
-    opacity: 0.8;
-  }
-} */
-
-input[type="text"] {
-  background: none;
-  height: 40px;
-  &:focus {
-    border: 1px dotted currentColor;
-    outline: auto;
-  }
+/* Prevent iOS Safari from zooming on input focus */
+input {
+  font-size: 16px;
 }

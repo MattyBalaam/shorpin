@@ -1,0 +1,18 @@
+import { style } from "@vanilla-extract/css";
+
+export const wrapper = style({
+  display: "grid",
+  gridTemplateColumns: "subgrid",
+  gridColumn: "1 / 4",
+  cursor: "grab",
+  ":active": {
+    cursor: "grabbing",
+  },
+});
+
+export const items = style({
+  display: "grid",
+  gridTemplateColumns: "subgrid",
+  gridColumn: "1 / 4",
+  padding: 0,
+});

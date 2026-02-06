@@ -1,87 +1,110 @@
 import { useRef } from "react";
-import { animated, useSpring } from "@react-spring/web";
+import { type DragControls, motion, useAnimate } from "motion/react";
 
-import { useDrag } from "@use-gesture/react";
-// import Linkify from "linkifyjs/react";
-
-import styles from "./item.module.css";
-
-export interface ItemProps {
-	id: string;
-	name: string;
-	finished: boolean;
-}
+import * as styles from "./item.css";
+import { type FieldMetadata } from "@conform-to/react/future";
+import { useNavigation } from "react-router";
 
 export interface ItemRenderProps {
-	name: string;
-	value: string | null;
-	handleSubmit: () => void;
+  fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
+  edited: boolean;
+  reorderControls: DragControls;
+  isDragging: boolean;
+  onSwipeDelete: () => void;
 }
 
-export function Item({ name, value, handleSubmit }: ItemRenderProps) {
-	const inputRef = useRef<HTMLInputElement>(null);
-	const cancelRef = useRef<HTMLInputElement>(null);
+// This is a row for an item in the list with an input and a delete button
+export function Item({
+  fieldsetMetadata,
+  edited,
+  reorderControls,
+  isDragging,
+  onSwipeDelete,
+}: ItemRenderProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [scope, animate] = useAnimate();
 
-	const [{ x }, api] = useSpring(() => ({ x: 0 }));
+  const navigation = useNavigation();
 
-	const bind = useDrag(({ active, movement: [mx], cancel }) => {
-		if (
-			document.activeElement === inputRef.current &&
-			inputRef.current?.selectionEnd &&
-			inputRef.current?.selectionStart &&
-			inputRef.current?.selectionEnd - inputRef.current?.selectionStart > 0
-		)
-			cancel();
+  const fieldset = fieldsetMetadata.getFieldset();
 
-		if (mx < -200) {
-			cancelRef.current?.click();
-		}
+  async function handleDragEnd(
+    _e: PointerEvent,
+    info: { velocity: { x: number }; offset: { x: number } },
+  ) {
+    if (Math.abs(info.velocity.x) > 200 || Math.abs(info.offset.x) > 350) {
+      const direction = info.velocity.x > 0 || info.offset.x > 0 ? 1 : -1;
 
-		api.start({ x: active ? mx * 0.8 : 0, immediate: active });
-	});
+      onSwipeDelete();
 
-	const dragHandlers = value !== "" ? bind() : undefined;
+      animate(
+        scope.current,
+        {
+          x: direction * window.innerWidth,
+          height: 0,
+        },
+        {
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+          velocity: info.velocity.x,
+        },
+      );
 
-	return (
-		<animated.div
-			style={{
-				display: "grid",
-				gridTemplateColumns: "subgrid",
-				gridColumn: "1 / span 3",
-				x,
-			}}
-			{...dragHandlers}
-		>
-			<input
-				name={name}
-				defaultValue={value || ""}
-				className={styles.input}
-				ref={inputRef}
-			/>
+      cancelRef.current?.click();
+    }
+  }
 
-			{value ? (
-				<label style={{ gridColumn: "cancel" }} className={styles.delete}>
-					<span className={styles.tick}>
-						✅
-						<input
-							type="radio"
-							name="delete"
-							value={name}
-							ref={cancelRef}
-							onClick={handleSubmit}
-							onKeyUp={(e) => {
-								if (e.key !== "Enter") return;
+  return (
+    <motion.div
+      ref={scope}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className={styles.itemContainer}
+    >
+      <input
+        name={fieldset.value.name}
+        id={fieldset.value.id}
+        defaultValue={fieldset.value.defaultValue}
+        className={styles.input}
+        autoComplete="none"
+        onBlur={function submitIfEdited(e) {
+          if (edited) {
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
+      />
 
-								e.currentTarget.checked = true;
-								handleSubmit();
-							}}
-							style={{
-								appearance: "none",
-							}}
-						/>
-					</span>
-				</label>
-			) : null}
-		</animated.div>
-	);
+      <div
+        className={`${styles.dragHandle} ${isDragging ? styles.dragHandleDragging : ""}`}
+        onPointerDown={(event) => {
+          reorderControls.start(event);
+        }}
+      >
+        |||{" "}
+        {edited ? (navigation.state === "idle" ? "edited" : "saving...") : ""}
+      </div>
+
+      <div className={styles.deleteButton}>
+        <button
+          className={styles.tick}
+          type="submit"
+          name="__INTENT__"
+          value={`delete-item-${fieldset.id.defaultValue}`}
+          ref={cancelRef}
+        >
+          ✅
+        </button>
+      </div>
+
+      <input
+        name={fieldset.id.name}
+        id={fieldset.id.id}
+        defaultValue={fieldset.id.defaultValue}
+        type="hidden"
+      />
+    </motion.div>
+  );
 }
