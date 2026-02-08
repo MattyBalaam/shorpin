@@ -1,4 +1,4 @@
-type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,10 +7,30 @@ type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -29,7 +49,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           list_id?: string | null
-          sort_order?: number
+          sort_order: number
           state?: Database["public"]["Enums"]["list_item_state"]
           updated_at: number
           updated_by?: string | null
@@ -62,6 +82,8 @@ export type Database = {
           name: string
           slug: string
           state: Database["public"]["Enums"]["list_item_state"]
+          theme_primary: string | null
+          theme_secondary: string | null
           updated_at: number
         }
         Insert: {
@@ -70,6 +92,8 @@ export type Database = {
           name: string
           slug: string
           state?: Database["public"]["Enums"]["list_item_state"]
+          theme_primary?: string | null
+          theme_secondary?: string | null
           updated_at?: number
         }
         Update: {
@@ -78,6 +102,8 @@ export type Database = {
           name?: string
           slug?: string
           state?: Database["public"]["Enums"]["list_item_state"]
+          theme_primary?: string | null
+          theme_secondary?: string | null
           updated_at?: number
         }
         Relationships: []
@@ -102,7 +128,7 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-type Tables<
+export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
@@ -131,7 +157,7 @@ type Tables<
       : never
     : never
 
-type TablesInsert<
+export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -156,7 +182,7 @@ type TablesInsert<
       : never
     : never
 
-type TablesUpdate<
+export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -181,7 +207,7 @@ type TablesUpdate<
       : never
     : never
 
-type Enums<
+export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -198,7 +224,7 @@ type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-type CompositeTypes<
+export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -215,10 +241,14 @@ type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-const Constants = {
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       list_item_state: ["active", "deleted"],
     },
   },
 } as const
+
