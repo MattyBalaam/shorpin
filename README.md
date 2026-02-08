@@ -105,7 +105,7 @@ vars.palette.secondary; // Secondary color
 No script configured. Generate types manually with:
 
 ```bash
-npx supabase gen types typescript --local > app/lib/database.types.ts
+pnpx supabase gen types typescript --local > app/lib/database.types.ts
 ```
 
 **Schema:**
