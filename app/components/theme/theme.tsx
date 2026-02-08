@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { vars } from "~/styles/theme.css";
 import { Button } from "../button/button";
 
@@ -60,6 +60,16 @@ export function Theme({
     }
     return null;
   });
+
+  // Sync colors when props change (e.g., after revalidation from another client)
+  useEffect(
+    function syncColorsFromProps() {
+      if (defaultPrimary && defaultSecondary) {
+        setColors({ primary: defaultPrimary, secondary: defaultSecondary });
+      }
+    },
+    [defaultPrimary, defaultSecondary],
+  );
 
   const primaryVarName = extractVarName(vars.palette.primary);
   const secondaryVarName = extractVarName(vars.palette.secondary);
