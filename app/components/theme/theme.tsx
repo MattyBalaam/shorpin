@@ -38,11 +38,16 @@ export function Theme({
   defaultSecondary,
   fieldNames,
 }: ThemeProps) {
-  const [colors, setColors] = useState(() => {
+  // Only set colors if we have saved values from the database
+  // or if the user has clicked the button to generate new ones
+  const [colors, setColors] = useState<{
+    primary: string;
+    secondary: string;
+  } | null>(() => {
     if (defaultPrimary && defaultSecondary) {
       return { primary: defaultPrimary, secondary: defaultSecondary };
     }
-    return generateComplementaryColors();
+    return null;
   });
 
   function handleGenerateColors() {
@@ -54,17 +59,23 @@ export function Theme({
 
   return (
     <>
-      <style>
-        {`:root {
-          ${primaryVarName}: ${colors.primary};
-          ${secondaryVarName}: ${colors.secondary};
-        }`}
-      </style>
-      <input type="hidden" name={fieldNames.primary} value={colors.primary} />
+      {colors && (
+        <style>
+          {`:root {
+            ${primaryVarName}: ${colors.primary};
+            ${secondaryVarName}: ${colors.secondary};
+          }`}
+        </style>
+      )}
+      <input
+        type="hidden"
+        name={fieldNames.primary}
+        value={colors?.primary ?? ""}
+      />
       <input
         type="hidden"
         name={fieldNames.secondary}
-        value={colors.secondary}
+        value={colors?.secondary ?? ""}
       />
       <button type="button" onClick={handleGenerateColors}>
         🎨
