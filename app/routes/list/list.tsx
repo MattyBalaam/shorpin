@@ -206,15 +206,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           type="hidden"
         />
 
-        <Theme
-          defaultPrimary={defaultValue.themePrimary}
-          defaultSecondary={defaultValue.themeSecondary}
-          fieldNames={{
-            primary: fields.themePrimary.name,
-            secondary: fields.themeSecondary.name,
-          }}
-        />
-
         <div className={styles.items}>
           <div className={styles.itemsScroll}>
             <Items
@@ -242,6 +233,14 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
         <Actions>
           <div className={styles.actions}>
+            <Theme
+              defaultPrimary={defaultValue.themePrimary}
+              defaultSecondary={defaultValue.themeSecondary}
+              fieldNames={{
+                primary: fields.themePrimary.name,
+                secondary: fields.themeSecondary.name,
+              }}
+            />
             <label htmlFor={fields.name.id}>New</label>
             <input name={fields.new.name} id={fields.new.id} autoFocus />
             <Button
