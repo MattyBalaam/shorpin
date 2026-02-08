@@ -216,6 +216,17 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
     }
   }
 
+  // Update theme colors if provided
+  if (result.data.themePrimary && result.data.themeSecondary) {
+    await supabase
+      .from("lists")
+      .update({
+        theme_primary: result.data.themePrimary,
+        theme_secondary: result.data.themeSecondary,
+      })
+      .eq("id", listId);
+  }
+
   const allItems = zItems.parse(Object.values(existingMap));
 
   return {
