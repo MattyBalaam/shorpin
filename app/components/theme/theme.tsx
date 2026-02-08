@@ -38,12 +38,16 @@ export function Theme({
   defaultSecondary,
   fieldNames,
 }: ThemeProps) {
-  const [colors] = useState(() => {
+  const [colors, setColors] = useState(() => {
     if (defaultPrimary && defaultSecondary) {
       return { primary: defaultPrimary, secondary: defaultSecondary };
     }
     return generateComplementaryColors();
   });
+
+  function handleGenerateColors() {
+    setColors(generateComplementaryColors());
+  }
 
   const primaryVarName = extractVarName(vars.palette.primary);
   const secondaryVarName = extractVarName(vars.palette.secondary);
@@ -62,6 +66,9 @@ export function Theme({
         name={fieldNames.secondary}
         value={colors.secondary}
       />
+      <button type="button" onClick={handleGenerateColors}>
+        🎨
+      </button>
     </>
   );
 }
