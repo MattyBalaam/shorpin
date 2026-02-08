@@ -14,8 +14,8 @@ export const [themeClass, vars] = createTheme({
     xxxl: "3rem", // 48px
   },
   palette: {
-    primary: "blue",
-    secondary: "yellow",
+    primary: "#A9CBB7",
+    secondary: "#EDEBA0",
     chrome: "grey",
     chromeLight: "lightGrey",
     text: "black",

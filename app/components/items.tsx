@@ -68,7 +68,7 @@ const variants = {
   item: {
     open: {
       height: "auto",
-      paddingBottom: "0.25rem",
+      paddingBottom: "0.1rem",
       transitionEnd: {
         overflow: "visible",
       },

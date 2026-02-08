@@ -4,6 +4,7 @@ import { type DragControls, motion, useAnimate } from "motion/react";
 import * as styles from "./item.css";
 import { type FieldMetadata } from "@conform-to/react/future";
 import { useNavigation } from "react-router";
+import { VisuallyHidden } from "./visually-hidden/visually-hidden";
 
 export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
@@ -64,47 +65,71 @@ export function Item({
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={styles.itemContainer}
     >
-      <input
-        name={fieldset.value.name}
-        id={fieldset.value.id}
-        defaultValue={fieldset.value.defaultValue}
-        className={styles.input}
-        autoComplete="none"
-        onBlur={function submitIfEdited(e) {
-          if (edited) {
-            e.currentTarget.form?.requestSubmit();
-          }
-        }}
-      />
+      <div className={styles.item}>
+        <input
+          className={styles.input}
+          name={fieldset.value.name}
+          id={fieldset.value.id}
+          defaultValue={fieldset.value.defaultValue}
+          autoComplete="none"
+          onBlur={function submitIfEdited(e) {
+            if (edited) {
+              e.currentTarget.form?.requestSubmit();
+            }
+          }}
+        />
 
-      <div
-        className={`${styles.dragHandle} ${isDragging ? styles.dragHandleDragging : ""}`}
-        onPointerDown={(event) => {
-          reorderControls.start(event);
-        }}
-      >
-        |||{" "}
-        {edited ? (navigation.state === "idle" ? "edited" : "saving...") : ""}
-      </div>
+        <span className={styles.state}>
+          {edited ? (
+            navigation.state === "idle" ? (
+              <>
+                <VisuallyHidden> edited</VisuallyHidden>
+                <span aria-hidden>✏️</span>
+              </>
+            ) : (
+              <>
+                <VisuallyHidden>saving</VisuallyHidden>
+                <span aria-hidden className={styles.saving}></span>
+              </>
+            )
+          ) : (
+            <>
+              <VisuallyHidden>saved</VisuallyHidden>
+              <span aria-hidden>✔️</span>
+            </>
+          )}
+        </span>
 
-      <div className={styles.deleteButton}>
-        <button
-          className={styles.tick}
-          type="submit"
-          name="__INTENT__"
-          value={`delete-item-${fieldset.id.defaultValue}`}
-          ref={cancelRef}
+        <span
+          className={`${styles.dragHandle} }`}
+          onPointerDown={(event) => {
+            reorderControls.start(event);
+          }}
         >
-          ✅
-        </button>
-      </div>
+          <VisuallyHidden>swipe to remove</VisuallyHidden>
+          <span aria-hidden>||||||||||</span>
+        </span>
 
-      <input
-        name={fieldset.id.name}
-        id={fieldset.id.id}
-        defaultValue={fieldset.id.defaultValue}
-        type="hidden"
-      />
+        <span className={styles.deleteButton}>
+          <button
+            className={styles.tick}
+            type="submit"
+            name="__INTENT__"
+            value={`delete-item-${fieldset.id.defaultValue}`}
+            ref={cancelRef}
+          >
+            <VisuallyHidden>delete item</VisuallyHidden>🗑️
+          </button>
+        </span>
+
+        {/* passes up the items id */}
+        <input
+          name={fieldset.id.name}
+          id={fieldset.id.id}
+          defaultValue={fieldset.id.defaultValue}
+          type="hidden"
+        />
+      </div>
     </motion.div>
   );
 }

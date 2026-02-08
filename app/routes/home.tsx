@@ -20,6 +20,7 @@ import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
 import { Suspense, use } from "react";
+import { Actions } from "~/components/actions/actions";
 
 export const meta: MetaFunction = () => {
   return [
@@ -103,11 +104,22 @@ function Lists({
     <ul className={styles.list}>
       {lists.map(({ id, name, slug }) => {
         return (
-          <li key={id} role="list" className={styles.item}>
-            <Link to={href("/lists/:list", { list: slug })}>{name}</Link>{" "}
-            <Link to={href("/lists/:list/confirm-delete", { list: slug })}>
-              delete
-            </Link>
+          <li key={id} role="list" className={styles.itemWrapper}>
+            <span className={styles.item}>
+              <Link
+                className={styles.itemLink}
+                to={href("/lists/:list", { list: slug })}
+              >
+                {name}
+              </Link>
+              <Link
+                className={styles.itemDelete}
+                variant="button"
+                to={href("/lists/:list/confirm-delete", { list: slug })}
+              >
+                delete
+              </Link>
+            </span>
           </li>
         );
       })}
@@ -123,27 +135,34 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <nav>
-        <Suspense fallback={<p>We are loading…</p>}>
+      <nav className={styles.listWrapper}>
+        <Suspense
+          fallback={<p className={styles.listLoader}>We are loading…</p>}
+        >
           <Lists data={loaderData.lists} />
         </Suspense>
       </nav>
       <hr />
 
-      <RouterForm method="POST" {...form.props}>
-        {/* <Form method="POST" {...form.props} validationErrors={form.fieldErrors}> */}
+      <Actions>
+        <RouterForm method="POST" {...form.props} className={styles.actions}>
+          {/* <Form method="POST" {...form.props} validationErrors={form.fieldErrors}> */}
 
-        <div className={styles.newList}>
-          <div>
-            <label htmlFor={fields["new-list"].id}>New list</label>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} />
+          <div className={styles.newList}>
+            <div>
+              <label htmlFor={fields["new-list"].id}>New list</label>
+              <input
+                name={fields["new-list"].name}
+                id={fields["new-list"].id}
+              />
+            </div>
+
+            <Button type="submit">Create new list</Button>
           </div>
 
-          <Button type="submit">Create new list</Button>
-        </div>
-
-        {/* </Form> */}
-      </RouterForm>
+          {/* </Form> */}
+        </RouterForm>
+      </Actions>
     </>
   );
 }

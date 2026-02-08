@@ -1,10 +1,10 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "~/theme.css";
+import { vars } from "~/styles/theme.css";
 
 export const nav = style({
   paddingBlock: "0.5rem 0",
-  paddingInline: vars.spacing.appMargin,
   gridRow: "breadcrumbs",
+  gridColumn: "content",
 });
 
 export const list = style({

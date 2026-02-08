@@ -7,10 +7,13 @@ interface LinkProps extends ComponentProps<typeof RouterLink> {
   variant?: "default" | "button";
 }
 
-export function Link({ variant = "default", ...props }: LinkProps) {
+export function Link({ variant = "default", className, ...props }: LinkProps) {
   return (
     <RouterLink
-      className={variant === "button" ? clickableStyles.clickable : ""}
+      className={`${className} ${
+        variant === "button" ? clickableStyles.clickable : ""
+      }`}
+      viewTransition
       {...props}
     />
   );

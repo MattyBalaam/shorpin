@@ -18,7 +18,7 @@ export function Breadcrumbs() {
   const matches = useMatches();
   const location = useLocation();
 
-  const breadcrumbsFromRoutes: BreadcrumbItem[] = matches
+  const breadcrumbsFromRoutes = matches
     .filter((match): match is typeof match & { handle: BreadcrumbHandle } =>
       Boolean(match.handle?.breadcrumb),
     )
@@ -32,13 +32,13 @@ export function Breadcrumbs() {
       return {
         label,
         to: breadcrumb.to ?? match.pathname,
-      };
+      } satisfies BreadcrumbItem;
     });
 
   // If we're on the home page, only show "Home" as current page
   const isHomePage = location.pathname === "/";
 
-  const breadcrumbs: BreadcrumbItem[] = isHomePage
+  const breadcrumbs = isHomePage
     ? breadcrumbsFromRoutes
     : [
         { label: "Lists", to: "/" },

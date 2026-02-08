@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { supabase } from "~/lib/supabase.client";
 import * as styles from "./list.css";
 import { Button } from "~/components/button/button";
+import { Actions } from "~/components/actions/actions";
 
 export const handle = {
   breadcrumb: {
@@ -170,92 +171,92 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <Form
-      {...form.props}
-      validationErrors={form.fieldErrors}
-      method="POST"
-      className={styles.form}
-    >
-      {/* hidden submit button which will be used if a user presses enter or reorders */}
-      <button
-        ref={reorderSubmitRef}
-        type="submit"
-        value="new"
-        name="new-submit"
-        className={styles.hiddenSubmit}
+    <>
+      <Link
+        variant="button"
+        to="./confirm-delete"
+        relative="route"
+        className={styles.deleteLink}
       >
-        Submit
-      </button>
+        Delete list
+      </Link>
 
-      <input
-        name={fields.name.name}
-        id={fields.name.id}
-        defaultValue={fields.name.defaultValue}
-        type="hidden"
-      />
+      <Form
+        {...form.props}
+        validationErrors={form.fieldErrors}
+        method="POST"
+        className={styles.form}
+      >
+        {/* hidden submit button which will be used if a user presses enter or reorders */}
+        <button
+          ref={reorderSubmitRef}
+          type="submit"
+          value="new"
+          name="new-submit"
+          className={styles.hiddenSubmit}
+        >
+          Update
+        </button>
 
-      <div className={styles.items}>
-        <div className={styles.itemsScroll}>
-          <Items
-            fieldMetadata={fields.items}
-            edited={edited}
-            onReorder={(newOrder) => {
-              const itemRecord = Object.fromEntries(
-                defaultValue.items.map((item) => [item.id, item]),
-              );
+        <input
+          name={fields.name.name}
+          id={fields.name.id}
+          defaultValue={fields.name.defaultValue}
+          type="hidden"
+        />
 
-              intent.update({
-                name: fields.items.name,
-                value: newOrder.map((id) => itemRecord[id]),
-              });
-            }}
-            onReorderComplete={() => {
-              // Wait for React to flush the intent.update() before submitting
-              requestAnimationFrame(() => {
-                reorderSubmitRef.current?.click();
-              });
-            }}
-          />
+        <div className={styles.items}>
+          <div className={styles.itemsScroll}>
+            <Items
+              fieldMetadata={fields.items}
+              edited={edited}
+              onReorder={(newOrder) => {
+                const itemRecord = Object.fromEntries(
+                  defaultValue.items.map((item) => [item.id, item]),
+                );
+
+                intent.update({
+                  name: fields.items.name,
+                  value: newOrder.map((id) => itemRecord[id]),
+                });
+              }}
+              onReorderComplete={() => {
+                // Wait for React to flush the intent.update() before submitting
+                requestAnimationFrame(() => {
+                  reorderSubmitRef.current?.click();
+                });
+              }}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className={styles.actions}>
-        <div>
-          <label htmlFor={fields.name.id}>New</label>
-          <input name={fields.new.name} id={fields.new.id} autoFocus />
-          <Button
-            type="submit"
-            value="new"
-            name="new-submit"
-            className={styles.submitButton}
-          >
-            submit
-          </Button>
-        </div>
-
-        <div>
-          {lastDeleted ? (
-            <button
+        <Actions>
+          <div className={styles.actions}>
+            <label htmlFor={fields.name.id}>New</label>
+            <input name={fields.new.name} id={fields.new.id} autoFocus />
+            <Button
               type="submit"
-              name="__INTENT__"
-              value={`undelete-item-${lastDeleted.id}`}
-              className={styles.undoButton}
+              value="new"
+              name="new-submit"
+              className={styles.submitButton}
             >
-              {" "}
-              undo for: {lastDeleted.value}
-            </button>
-          ) : null}
+              Add item
+            </Button>
 
-          <Link
-            variant="button"
-            to="./confirm-delete"
-            relative="route"
-            className={styles.deleteLink}
-          >
-            Delete list
-          </Link>
-        </div>
-      </div>
-    </Form>
+            {lastDeleted ? (
+              <button
+                type="submit"
+                name="__INTENT__"
+                value={`undelete-item-${lastDeleted.id}`}
+                className={styles.undoButton}
+              >
+                {" "}
+                undo for: {lastDeleted.value}
+              </button>
+            ) : null}
+          </div>
+        </Actions>
+      </Form>
+    </>
   );
 }

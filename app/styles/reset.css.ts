@@ -33,7 +33,7 @@ globalStyle("*, *::before, *::after", {
   },
 });
 
-globalStyle("html, body, #legacySpaRoot", {
+globalStyle("html, body", {
   "@layer": {
     [reset]: {
       width: "100%",

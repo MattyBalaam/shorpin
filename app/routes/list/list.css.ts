@@ -1,18 +1,21 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "~/theme.css";
+import { vars } from "~/styles/theme.css";
 
 export const form = style({
   display: "grid",
+  gridColumn: "1 / -1",
   gridRow: "content / -1",
   gridTemplateRows: "subgrid",
+  gridTemplateColumns: "subgrid",
   overflow: "hidden",
 });
 
 export const items = style({
+  gridColumn: "1 / -1",
   gridRow: "content",
-  paddingInline: vars.spacing.appMargin,
   overflow: "hidden",
   display: "grid",
+  gridTemplateColumns: "subgrid",
   maskImage: `linear-gradient(to bottom,
     transparent,
     black 1.5rem,
@@ -22,9 +25,10 @@ export const items = style({
 });
 
 export const itemsScroll = style({
+  gridColumn: "1 / -1",
   paddingBlock: "1rem",
   display: "grid",
-  gridTemplateColumns: "[input] 1fr [drag] auto [done] auto",
+  gridTemplateColumns: "subgrid",
   alignItems: "start",
   overflow: "auto",
 });
@@ -41,20 +45,21 @@ export const submitButton = style({
 });
 
 export const undoButton = style({
-  appearance: "none",
   gridColumnStart: "input",
   gridColumnEnd: "done",
+  marginLeft: "auto",
 });
 
 export const actions = style({
-  gridRow: "actions",
-  display: "grid",
-  padding: vars.spacing.appMargin,
+  gridColumn: "content",
+  display: "flex",
+  // justifyContent: "space-",
   gap: "1em",
-  // gridTemplateColumns: "max-content max-content",
-  background: vars.palette.primary,
 });
 
 export const deleteLink = style({
   color: "red",
+  gridRow: "breadcrumbs",
+  gridColumn: "content",
+  justifySelf: "end",
 });

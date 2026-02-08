@@ -11,5 +11,11 @@
   },
   "editor.defaultFormatter": "oxc.oxc-vscode",
 
-  "cSpell.words": ["Reorderable", "Revalidator", "shorpin", "supabase"]
+  "cSpell.words": [
+    "Reorderable",
+    "Revalidator",
+    "shorpin",
+    "subgrid",
+    "supabase"
+  ]
 }

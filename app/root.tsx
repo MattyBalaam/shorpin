@@ -25,7 +25,7 @@ import { Link } from "./components/link/link";
 import { Breadcrumbs } from "./components/breadcrumbs/breadcrumbs";
 
 import * as styles from "./root.css";
-import { themeClass } from "./theme.css";
+import { themeClass } from "./styles/theme.css";
 
 export const middleware = [toastMiddleware()];
 
