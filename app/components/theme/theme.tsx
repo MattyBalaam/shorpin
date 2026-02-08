@@ -50,8 +50,13 @@ export function Theme({
     return null;
   });
 
-  function handleGenerateColors() {
+  function handleGenerateColors(e: React.MouseEvent<HTMLButtonElement>) {
+    const form = e.currentTarget.form;
     setColors(generateComplementaryColors());
+    // Submit the form to save the new colors
+    requestAnimationFrame(() => {
+      form?.requestSubmit();
+    });
   }
 
   const primaryVarName = extractVarName(vars.palette.primary);
