@@ -2,7 +2,7 @@ import {
   AnimatePresence,
   Reorder,
   stagger,
-  useDragControls,
+  useAnimate,
   Variants,
 } from "motion/react";
 import { Item } from "./item";
@@ -20,12 +20,44 @@ function ReorderableItem({
   item: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
 }) {
-  const dragControls = useDragControls();
-  const [isDragging, setIsDragging] = useState(false);
   const [swiped, setSwiped] = useState(false);
+  const [lockedAxis, setLockedAxis] = useState<"x" | "y" | null>(null);
+  const [scope, animate] = useAnimate();
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  async function handleDragEnd(
+    _e: PointerEvent,
+    info: { velocity: { x: number }; offset: { x: number } },
+  ) {
+    if (lockedAxis === "x") {
+      if (Math.abs(info.velocity.x) > 200 || Math.abs(info.offset.x) > 350) {
+        const direction = info.velocity.x > 0 || info.offset.x > 0 ? 1 : -1;
+        setSwiped(true);
+
+        animate(
+          scope.current,
+          {
+            x: direction * window.innerWidth,
+            height: 0,
+          },
+          {
+            type: "spring",
+            stiffness: 300,
+            damping: 30,
+            velocity: info.velocity.x,
+          },
+        );
+
+        deleteButtonRef.current?.click();
+      }
+    }
+
+    setLockedAxis(null);
+  }
 
   return (
     <Reorder.Item
+      ref={scope}
       as="li"
       value={itemId}
       className={styles.wrapper}
@@ -33,17 +65,23 @@ function ReorderableItem({
       animate={swiped ? "closed" : "open"}
       exit="closed"
       variants={variants.item}
-      dragControls={dragControls}
-      dragListener={false}
-      onDragStart={() => setIsDragging(true)}
-      onDragEnd={() => setIsDragging(false)}
+      drag
+      dragDirectionLock
+      dragConstraints={
+        lockedAxis === "x" ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined
+      }
+      dragElastic={
+        lockedAxis === "x"
+          ? { left: 1, right: 1, top: 0, bottom: 0 }
+          : undefined
+      }
+      onDirectionLock={(axis) => setLockedAxis(axis)}
+      onDragEnd={handleDragEnd}
     >
       <Item
         fieldsetMetadata={item}
         edited={edited}
-        reorderControls={dragControls}
-        isDragging={isDragging}
-        onSwipeDelete={() => setSwiped(true)}
+        deleteButtonRef={deleteButtonRef}
       />
     </Reorder.Item>
   );
