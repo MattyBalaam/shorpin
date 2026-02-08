@@ -8,7 +8,7 @@ import { supabase } from "~/lib/supabase.server";
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const { data, error } = await supabase
     .from("lists")
-    .select("id, name, slug, list_items(*)")
+    .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
     .eq("slug", list)
     .eq("state", "active")
     .order("sort_order", { referencedTable: "list_items", ascending: true })
@@ -38,8 +38,8 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     defaultValue: {
       name: data.name,
       items: items.filter(({ state }) => state === "active"),
-      themePrimary: undefined as string | undefined,
-      themeSecondary: undefined as string | undefined,
+      themePrimary: data.theme_primary ?? undefined,
+      themeSecondary: data.theme_secondary ?? undefined,
     },
     listId: data.id,
     lastDeleted: items.filter(({ state }) => state === "deleted").at(-1),

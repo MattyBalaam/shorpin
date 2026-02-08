@@ -91,3 +91,24 @@ vars.palette.secondary; // Secondary color
 - Grid layouts with template areas and named grid lines
 - Co-located styles using Vanilla Extract
 - Conform for form validation and state management
+
+### Database (Supabase)
+
+**Available Scripts:**
+
+- `pnpm db:push` - Push migrations to the database
+- `pnpm db:migrate` - Run pending migrations
+- `pnpm db:reset` - Reset database (destructive)
+
+**Type Generation:**
+
+No script configured. Generate types manually with:
+
+```bash
+npx supabase gen types typescript --local > app/lib/database.types.ts
+```
+
+**Schema:**
+
+- `lists` - Shopping lists with name, slug, state, theme colors
+- `list_items` - Items belonging to lists with value, state, sort_order
