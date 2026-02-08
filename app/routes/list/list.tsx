@@ -20,6 +20,7 @@ import { supabase } from "~/lib/supabase.client";
 import * as styles from "./list.css";
 import { Button } from "~/components/button/button";
 import { Actions } from "~/components/actions/actions";
+import { Theme } from "~/components/theme/theme";
 
 export const handle = {
   breadcrumb: {
@@ -203,6 +204,15 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           id={fields.name.id}
           defaultValue={fields.name.defaultValue}
           type="hidden"
+        />
+
+        <Theme
+          defaultPrimary={defaultValue.themePrimary}
+          defaultSecondary={defaultValue.themeSecondary}
+          fieldNames={{
+            primary: fields.themePrimary.name,
+            secondary: fields.themeSecondary.name,
+          }}
         />
 
         <div className={styles.items}>

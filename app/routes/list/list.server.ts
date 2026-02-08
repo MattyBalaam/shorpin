@@ -19,6 +19,8 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
       defaultValue: {
         name: list,
         items: [] as Items,
+        themePrimary: undefined,
+        themeSecondary: undefined,
       },
       error: "List does not exist",
     };
@@ -36,6 +38,8 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     defaultValue: {
       name: data.name,
       items: items.filter(({ state }) => state === "active"),
+      themePrimary: undefined as string | undefined,
+      themeSecondary: undefined as string | undefined,
     },
     listId: data.id,
     lastDeleted: items.filter(({ state }) => state === "deleted").at(-1),

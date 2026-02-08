@@ -28,6 +28,8 @@ export const zList = z.object({
   name: z.string(),
   new: z.string().optional(),
   items: z.array(zItem).default([]),
+  themePrimary: z.string().optional(),
+  themeSecondary: z.string().optional(),
 });
 
 type List = z.infer<typeof zList>;
