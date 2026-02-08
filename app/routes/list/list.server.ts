@@ -46,10 +46,6 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   };
 }
 
-const specialKeys = ["intent", "undelete", "list", "new-submit"] as const;
-
-type SpecialKey = (typeof specialKeys)[number];
-
 export async function action({ request, params: { list } }: Route.ActionArgs) {
   const updatedAt = Date.now();
 
@@ -118,8 +114,6 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
     );
     return maxOrder + 1;
   };
-
-  // console.log(existingMap);
 
   const newValue = formData.get("new");
 
@@ -228,6 +222,16 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
   }
 
   const allItems = zItems.parse(Object.values(existingMap));
+
+  // Broadcast change to other clients
+  const clientId = formData.get("clientId");
+  const channel = supabase.channel(`list-${listId}`);
+  await channel.send({
+    type: "broadcast",
+    event: "changed",
+    payload: { clientId },
+  });
+  supabase.removeChannel(channel);
 
   return {
     lastDeleted: sortData(

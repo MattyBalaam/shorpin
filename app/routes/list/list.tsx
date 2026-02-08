@@ -21,6 +21,7 @@ import * as styles from "./list.css";
 import { Button } from "~/components/button/button";
 import { Actions } from "~/components/actions/actions";
 import { Theme } from "~/components/theme/theme";
+import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export const handle = {
   breadcrumb: {
@@ -47,7 +48,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
   });
 
   const reorderSubmitRef = useRef<HTMLButtonElement>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Subscribe to broadcast for real-time updates
   useEffect(
@@ -64,28 +64,11 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         })
         .subscribe();
 
-      channelRef.current = channel;
-
       return () => {
-        channelRef.current = null;
         supabase.removeChannel(channel);
       };
     },
     [loaderData.listId, clientId, revalidate],
-  );
-
-  // Broadcast change to other clients after a successful action
-  useEffect(
-    function broadcastChange() {
-      if (!actionData || !channelRef.current) return;
-
-      channelRef.current.send({
-        type: "broadcast",
-        event: "changed",
-        payload: { clientId },
-      });
-    },
-    [actionData, clientId],
   );
 
   const { form, fields, intent } = useForm(zList, {
@@ -173,14 +156,25 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <Link
-        variant="button"
-        to="./confirm-delete"
-        relative="route"
-        className={styles.deleteLink}
-      >
-        Delete list
-      </Link>
+      <div className={styles.topActions}>
+        <Link
+          variant="button"
+          to="./confirm-delete"
+          relative="route"
+          className={styles.deleteLink}
+        >
+          Delete list
+        </Link>
+
+        <Theme
+          defaultPrimary={defaultValue.themePrimary}
+          defaultSecondary={defaultValue.themeSecondary}
+          fieldNames={{
+            primary: fields.themePrimary.name,
+            secondary: fields.themeSecondary.name,
+          }}
+        />
+      </div>
 
       <Form
         {...form.props}
@@ -205,6 +199,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           defaultValue={fields.name.defaultValue}
           type="hidden"
         />
+        <input name="clientId" value={clientId} type="hidden" />
 
         <div className={styles.items}>
           <div className={styles.itemsScroll}>
@@ -233,15 +228,9 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
         <Actions>
           <div className={styles.actions}>
-            <Theme
-              defaultPrimary={defaultValue.themePrimary}
-              defaultSecondary={defaultValue.themeSecondary}
-              fieldNames={{
-                primary: fields.themePrimary.name,
-                secondary: fields.themeSecondary.name,
-              }}
-            />
-            <label htmlFor={fields.name.id}>New</label>
+            <VisuallyHidden>
+              <label htmlFor={fields.name.id}>New item</label>
+            </VisuallyHidden>
             <input name={fields.new.name} id={fields.new.id} autoFocus />
             <Button
               type="submit"
@@ -249,7 +238,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               name="new-submit"
               className={styles.submitButton}
             >
-              Add item
+              Add
             </Button>
 
             {lastDeleted ? (
@@ -259,8 +248,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
                 value={`undelete-item-${lastDeleted.id}`}
                 className={styles.undoButton}
               >
-                {" "}
-                undo for: {lastDeleted.value}
+                Undo
               </button>
             ) : null}
           </div>
