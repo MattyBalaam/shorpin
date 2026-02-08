@@ -9,6 +9,7 @@ export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
   deleteButtonRef: RefObject<HTMLButtonElement | null>;
+  isDismissing: boolean;
 }
 
 // This is a row for an item in the list with an input and a delete button
@@ -16,13 +17,14 @@ export function Item({
   fieldsetMetadata,
   edited,
   deleteButtonRef,
+  isDismissing,
 }: ItemRenderProps) {
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
 
   return (
-    <div className={styles.itemContainer}>
+    <div className={styles.itemContainer} data-dismissing={isDismissing || undefined}>
       <div className={styles.item}>
         <input
           className={styles.input}

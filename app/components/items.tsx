@@ -82,6 +82,7 @@ function ReorderableItem({
         fieldsetMetadata={item}
         edited={edited}
         deleteButtonRef={deleteButtonRef}
+        isDismissing={lockedAxis === "x"}
       />
     </Reorder.Item>
   );

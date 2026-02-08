@@ -12,7 +12,7 @@ export const itemContainer = style({
     "&:has(input:focus)": {
       background: vars.palette.primary,
     },
-    "&:has(:active)": {
+    "&[data-dismissing]": {
       background: "red",
     },
   },
