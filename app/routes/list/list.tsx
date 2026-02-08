@@ -166,14 +166,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           Delete list
         </Link>
 
-        <Theme
-          defaultPrimary={defaultValue.themePrimary}
-          defaultSecondary={defaultValue.themeSecondary}
-          fieldNames={{
-            primary: fields.themePrimary.name,
-            secondary: fields.themeSecondary.name,
-          }}
-        />
       </div>
 
       <Form
@@ -200,6 +192,15 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           type="hidden"
         />
         <input name="clientId" value={clientId} type="hidden" />
+
+        <Theme
+          defaultPrimary={defaultValue.themePrimary}
+          defaultSecondary={defaultValue.themeSecondary}
+          fieldNames={{
+            primary: fields.themePrimary.name,
+            secondary: fields.themeSecondary.name,
+          }}
+        />
 
         <div className={styles.items}>
           <div className={styles.itemsScroll}>
