@@ -1,13 +1,20 @@
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { vars } from "~/styles/theme.css";
+import { Button } from "../button/button";
 
-interface ThemeProps {
-  defaultPrimary?: string;
-  defaultSecondary?: string;
-  fieldNames: {
-    primary: string;
-    secondary: string;
-  };
+interface ThemeContextValue {
+  colors: { primary: string; secondary: string } | null;
+  generateColors: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function useThemeContext() {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("Theme compound components must be used within Theme");
+  }
+  return context;
 }
 
 function generateComplementaryColors(): { primary: string; secondary: string } {
@@ -33,13 +40,17 @@ function extractVarName(varRef: string): string {
   return match ? match[1] : varRef;
 }
 
+interface ThemeProps {
+  defaultPrimary?: string;
+  defaultSecondary?: string;
+  children: React.ReactNode;
+}
+
 export function Theme({
   defaultPrimary,
   defaultSecondary,
-  fieldNames,
+  children,
 }: ThemeProps) {
-  // Only set colors if we have saved values from the database
-  // or if the user has clicked the button to generate new ones
   const [colors, setColors] = useState<{
     primary: string;
     secondary: string;
@@ -50,20 +61,16 @@ export function Theme({
     return null;
   });
 
-  function handleGenerateColors(e: React.MouseEvent<HTMLButtonElement>) {
-    const form = e.currentTarget.form;
-    setColors(generateComplementaryColors());
-    // Submit the form to save the new colors
-    requestAnimationFrame(() => {
-      form?.requestSubmit();
-    });
-  }
-
   const primaryVarName = extractVarName(vars.palette.primary);
   const secondaryVarName = extractVarName(vars.palette.secondary);
 
   return (
-    <>
+    <ThemeContext.Provider
+      value={{
+        colors,
+        generateColors: () => setColors(generateComplementaryColors()),
+      }}
+    >
       {colors && (
         <style>
           {`:root {
@@ -72,6 +79,23 @@ export function Theme({
           }`}
         </style>
       )}
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+interface FieldsProps {
+  fieldNames: {
+    primary: string;
+    secondary: string;
+  };
+}
+
+function Fields({ fieldNames }: FieldsProps) {
+  const { colors } = useThemeContext();
+
+  return (
+    <>
       <input
         type="hidden"
         name={fieldNames.primary}
@@ -82,9 +106,28 @@ export function Theme({
         name={fieldNames.secondary}
         value={colors?.secondary ?? ""}
       />
-      <button type="button" onClick={handleGenerateColors}>
-        🎨
-      </button>
     </>
   );
 }
+
+interface ThemeButtonProps {
+  formId: string;
+}
+
+function ThemeButton({ formId }: ThemeButtonProps) {
+  const { generateColors } = useThemeContext();
+
+  function handleClick() {
+    generateColors();
+    // Submit the form after state updates
+    requestAnimationFrame(() => {
+      const form = document.getElementById(formId) as HTMLFormElement | null;
+      form?.requestSubmit();
+    });
+  }
+
+  return <Button onClick={handleClick}>🎨</Button>;
+}
+
+Theme.Fields = Fields;
+Theme.Button = ThemeButton;

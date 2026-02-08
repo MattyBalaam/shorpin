@@ -155,7 +155,10 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <>
+    <Theme
+      defaultPrimary={defaultValue.themePrimary}
+      defaultSecondary={defaultValue.themeSecondary}
+    >
       <div className={styles.topActions}>
         <Link
           variant="button"
@@ -166,6 +169,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           Delete list
         </Link>
 
+        <Theme.Button formId={form.id} />
       </div>
 
       <Form
@@ -192,10 +196,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           type="hidden"
         />
         <input name="clientId" value={clientId} type="hidden" />
-
-        <Theme
-          defaultPrimary={defaultValue.themePrimary}
-          defaultSecondary={defaultValue.themeSecondary}
+        <Theme.Fields
           fieldNames={{
             primary: fields.themePrimary.name,
             secondary: fields.themeSecondary.name,
@@ -255,6 +256,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           </div>
         </Actions>
       </Form>
-    </>
+    </Theme>
   );
 }
