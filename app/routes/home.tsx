@@ -39,17 +39,20 @@ const zCreate = z.object({
   "new-list": z.string().min(1, "List name is required"),
 });
 
-export async function loader(args: Route.LoaderArgs) {
+async function getLists() {
+  const { data, error } = await supabase
+    .from("lists")
+    .select("id, name, slug")
+    .eq("state", "active")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function loader(_args: Route.LoaderArgs) {
   return {
-    lists: supabase
-      .from("lists")
-      .select("id, name, slug")
-      .eq("state", "active")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) throw error;
-        return data;
-      }),
+    lists: getLists(),
   };
 }
 
@@ -149,15 +152,10 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           {/* <Form method="POST" {...form.props} validationErrors={form.fieldErrors}> */}
 
           <div className={styles.newList}>
-            <div>
-              <label htmlFor={fields["new-list"].id}>New list</label>
-              <input
-                name={fields["new-list"].name}
-                id={fields["new-list"].id}
-              />
-            </div>
+            <label htmlFor={fields["new-list"].id}>New list</label>
+            <input name={fields["new-list"].name} id={fields["new-list"].id} />
 
-            <Button type="submit">Create new list</Button>
+            <Button type="submit">Create</Button>
           </div>
 
           {/* </Form> */}

@@ -1,4 +1,5 @@
 import { globalStyle, style } from "@vanilla-extract/css";
+import { vars } from "./styles/theme.css";
 
 export const main = style({
   margin: "0 auto",
@@ -6,6 +7,7 @@ export const main = style({
   // maxWidth: "60ch", // move to content
   width: "100%",
   height: "100lvh",
+  paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
   gridTemplateColumns:
     "[left] minmax(20px, auto) [content] minmax(auto, 60ch) [right] minmax(20px, auto)",

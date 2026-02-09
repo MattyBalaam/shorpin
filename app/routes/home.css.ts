@@ -8,6 +8,7 @@ export const listWrapper = style({
 // extract this out mate
 export const listLoader = style({
   gridColumn: "content",
+  gridRow: "content",
   outline: "1px sold red",
   paddingBlock: vars.spacing.baseline,
   ":before": {
@@ -70,5 +71,5 @@ export const actions = style({
 
 export const newList = style({
   display: "flex",
-  gap: vars.spacing.baseline,
+  gap: vars.spacing.md,
 });

@@ -57,9 +57,14 @@ export const actions = style({
   gap: "1em",
 });
 
-export const deleteLink = style({
-  color: "red",
+export const topActions = style({
   gridRow: "breadcrumbs",
   gridColumn: "content",
   justifySelf: "end",
+  display: "flex",
+  gap: vars.spacing.sm,
+});
+
+export const deleteLink = style({
+  color: "red",
 });

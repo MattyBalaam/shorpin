@@ -2,7 +2,6 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const nav = style({
-  paddingBlock: "0.5rem 0",
   gridRow: "breadcrumbs",
   gridColumn: "content",
 });
