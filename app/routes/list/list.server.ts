@@ -226,11 +226,7 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
   // Broadcast change to other clients
   const clientId = formData.get("clientId");
   const channel = supabase.channel(`list-${listId}`);
-  await channel.send({
-    type: "broadcast",
-    event: "changed",
-    payload: { clientId },
-  });
+  await channel.httpSend("changed", { clientId });
   supabase.removeChannel(channel);
 
   return {
