@@ -18,6 +18,32 @@ export { action, loader } from "./list.server";
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
 
+// Cache loader data for offline support
+let cachedLoaderData: Awaited<
+  ReturnType<typeof import("./list.server").loader>
+> | null = null;
+
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  if (!navigator.onLine && cachedLoaderData) {
+    return cachedLoaderData;
+  }
+
+  try {
+    const data = await serverLoader();
+    cachedLoaderData = data;
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      if (cachedLoaderData) {
+        return cachedLoaderData;
+      }
+    }
+    throw error;
+  }
+}
+
+clientLoader.hydrate = true as const;
+
 // Handle offline submissions - construct fake lastResult for Conform
 export async function clientAction({
   request,
