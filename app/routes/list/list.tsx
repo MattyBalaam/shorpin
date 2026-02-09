@@ -110,23 +110,18 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         // Handle adding new item while offline
         const newValue = formData.get("new")?.toString().trim();
         if (newValue) {
-          // Parse current items from form data
-          const currentItems = fields.items.getFieldList().map((field) => ({
-            id: formData.get(`${field.name}.id`)?.toString() ?? "",
-            value: formData.get(`${field.name}.value`)?.toString() ?? "",
-          }));
-
-          const newItem = {
-            id: crypto.randomUUID(),
-            value: newValue,
-          };
-          intent.update({
+          intent.insert({
             name: fields.items.name,
-            value: [...currentItems, newItem],
+            defaultValue: {
+              id: crypto.randomUUID(),
+              value: newValue,
+            },
           });
 
           // Clear the new input
-          const newInput = document.getElementById(fields.new.id) as HTMLInputElement;
+          const newInput = document.getElementById(
+            fields.new.id,
+          ) as HTMLInputElement;
           if (newInput) {
             newInput.value = "";
           }
