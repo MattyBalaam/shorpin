@@ -25,6 +25,10 @@ import "~/components/conform-input";
 
 import { Link } from "./components/link/link";
 import { Breadcrumbs } from "./components/breadcrumbs/breadcrumbs";
+import {
+  OnlineStatusIndicator,
+  OnlineStatusProvider,
+} from "./components/online-status/online-status";
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
@@ -81,15 +85,15 @@ export default function App({
   );
 
   return (
-    <>
-      {/* <Test /> */}
+    <OnlineStatusProvider>
+      <OnlineStatusIndicator />
       <main className={styles.main}>
         <Breadcrumbs />
         <Outlet />
       </main>
 
       <Toaster />
-    </>
+    </OnlineStatusProvider>
   );
 }
 
