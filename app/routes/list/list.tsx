@@ -44,6 +44,14 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 
 clientLoader.hydrate = true as const;
 
+// Prevent revalidation when offline
+export function shouldRevalidate() {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+  return true;
+}
+
 // Handle offline submissions - construct fake lastResult for Conform
 export async function clientAction({
   request,
