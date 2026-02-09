@@ -109,7 +109,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
         // Handle adding new item while offline
         const newValue = formData.get("new")?.toString().trim();
+
+        console.log({ newValue });
+
         if (newValue) {
+          console.log("insert");
+
           intent.insert({
             name: fields.items.name,
             defaultValue: {
@@ -153,6 +158,11 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   useEffect(
     function updateFormWithNewValues() {
+      // Don't overwrite local changes when offline
+      if (!isOnline) {
+        return;
+      }
+
       const actionDataJustChanged = prevActionDataRef.current !== actionData;
       prevActionDataRef.current = actionData;
 
@@ -176,6 +186,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       fields.items.name,
       defaultValue.items,
       form.id,
+      isOnline,
     ],
   );
 
