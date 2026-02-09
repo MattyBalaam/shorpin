@@ -7,7 +7,6 @@ export const itemContainer = style({
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
   background: vars.palette.secondary,
-  // borderRadius: "5px",
   selectors: {
     "&:has(input:focus)": {
       background: vars.palette.primary,
@@ -50,16 +49,14 @@ export const dragHandle = style({
   cursor: "grab",
   color: vars.palette.chrome,
   display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
   position: "relative",
-  ":active": {
-    outline: "2px solid red",
-    color: "cyan",
-  },
   ":hover": {
     color: "black",
   },
+  ":active": {
+    color: "cyan",
+  },
+
   ":before": {
     content: '""',
     position: "absolute",

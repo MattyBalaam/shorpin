@@ -2,12 +2,14 @@ import { AnimatePresence, motion, stagger, Variants } from "motion/react";
 
 import {
   href,
+  isRouteErrorResponse,
   Links,
   type LinksFunction,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteError,
 } from "react-router";
 import { getToast, setToast, toastMiddleware } from "remix-toast/middleware";
 import type { Route } from "./+types/root";
@@ -66,15 +68,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-const navVariants = {
-  open: {
-    transition: { delayChildren: stagger(0.07, { startDelay: 0.2 }) },
-  },
-  closed: {
-    transition: { delayChildren: stagger(0.05, { from: "last" }) },
-  },
-};
-
 export default function App({
   loaderData: { toast: notification },
 }: Route.ComponentProps) {
@@ -97,5 +90,29 @@ export default function App({
 
       <Toaster />
     </>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    const message =
+      typeof error.data === "string" ? error.data : error.data?.message;
+
+    return (
+      <main className={styles.main}>
+        <h1>{error.status}</h1>
+        <p>{message}</p>
+        <Link to={href("/")}>Back to home</Link>
+      </main>
+    );
+  }
+
+  return (
+    <main className={styles.main}>
+      <h1>Something went wrong</h1>
+      <p>{error instanceof Error ? error.message : "Unknown error"}</p>
+    </main>
   );
 }

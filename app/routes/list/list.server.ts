@@ -1,9 +1,12 @@
 import type { Route } from "./+types/list";
 
+import { dataWithError, redirectWithError } from "remix-toast";
+
 import { type Items, sortData, zItems, zList } from "./data";
 
 import { parseSubmission, report } from "@conform-to/react/future";
 import { supabase } from "~/lib/supabase.server";
+import { href } from "react-router";
 
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const { data, error } = await supabase
@@ -14,16 +17,16 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     .order("sort_order", { referencedTable: "list_items", ascending: true })
     .single();
 
+  console.log(data, error);
+
   if (error || !data) {
-    return {
-      defaultValue: {
-        name: list,
-        items: [] as Items,
-        themePrimary: undefined,
-        themeSecondary: undefined,
-      },
-      error: "List does not exist",
-    };
+    console.log("error");
+
+    throw await dataWithError(
+      { message: "List does not exist" },
+      "List does not exist",
+      { status: 404 },
+    );
   }
 
   const items = data.list_items.map((item) => ({

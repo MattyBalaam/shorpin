@@ -144,16 +144,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         .map(({ id }) => id);
     }) || [];
 
-  if (loaderData.error) {
-    return (
-      <div>
-        <h1>{defaultValue.name}</h1>
-        <p>{loaderData.error}</p>
-        <Link to="/">back to dir</Link>
-      </div>
-    );
-  }
-
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -234,12 +224,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               <label htmlFor={fields.name.id}>New item</label>
             </VisuallyHidden>
             <input name={fields.new.name} id={fields.new.id} autoFocus />
-            <Button
-              type="submit"
-              value="new"
-              name="new-submit"
-              className={styles.submitButton}
-            >
+            <Button type="submit" value="new" name="new-submit">
               Add
             </Button>
 
