@@ -16,6 +16,54 @@ import { Form } from "~/react-aria/Form";
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
+import { report } from "@conform-to/react/future";
+
+// Handle offline submissions - construct fake lastResult for Conform
+export async function clientAction({
+  request,
+  serverAction,
+}: Route.ClientActionArgs) {
+  if (!navigator.onLine) {
+    const formData = await request.formData();
+    const submission = parseSubmission(formData);
+    const newValue = formData.get("new")?.toString().trim();
+
+    // Get current items from form
+    const currentItems: Array<{ id: string; value: string }> = [];
+    let i = 0;
+    while (formData.has(`items[${i}].id`)) {
+      currentItems.push({
+        id: formData.get(`items[${i}].id`)?.toString() ?? "",
+        value: formData.get(`items[${i}].value`)?.toString() ?? "",
+      });
+      i++;
+    }
+
+    // Add new item if present
+    if (newValue) {
+      currentItems.push({
+        id: crypto.randomUUID(),
+        value: newValue,
+      });
+    }
+
+    toast.info("You're offline - changes saved locally");
+
+    return {
+      lastDeleted: undefined,
+      lastResult: report(submission, {
+        reset: Boolean(newValue),
+        value: {
+          ...submission.payload,
+          new: "",
+          items: currentItems,
+        },
+      }),
+    };
+  }
+  return serverAction();
+}
+
 import { supabase } from "~/lib/supabase.client";
 import { useIsOnline } from "~/components/online-status/online-status";
 import * as styles from "./list.css";
@@ -103,38 +151,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
-    onSubmit: (event, { formData }) => {
-      if (!navigator.onLine) {
-        event.preventDefault();
-
-        // Handle adding new item while offline
-        const newValue = formData.get("new")?.toString().trim();
-
-        console.log({ newValue });
-
-        if (newValue) {
-          console.log("insert");
-
-          intent.insert({
-            name: fields.items.name,
-            defaultValue: {
-              id: crypto.randomUUID(),
-              value: newValue,
-            },
-          });
-
-          // Clear the new input
-          const newInput = document.getElementById(
-            fields.new.id,
-          ) as HTMLInputElement;
-          if (newInput) {
-            newInput.value = "";
-          }
-        }
-
-        toast.info("You're offline - changes saved locally");
-      }
-    },
     onValidate: (ctx) => {
       if (
         // we want to skip validation when deleting or undeleting items
