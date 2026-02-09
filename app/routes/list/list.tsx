@@ -16,24 +16,6 @@ import { Form } from "~/react-aria/Form";
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
-
-export async function clientAction({ serverAction }: Route.ClientActionArgs) {
-  if (!navigator.onLine) {
-    toast.info("You're offline - changes saved locally");
-    return;
-  }
-
-  try {
-    return await serverAction();
-  } catch (error) {
-    // Network error - likely still offline despite navigator.onLine
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      toast.info("You're offline - changes saved locally");
-      return;
-    }
-    throw error;
-  }
-}
 import { supabase } from "~/lib/supabase.client";
 import { useIsOnline } from "~/components/online-status/online-status";
 import * as styles from "./list.css";
@@ -121,6 +103,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
+    onSubmit: (event) => {
+      if (!navigator.onLine) {
+        event.preventDefault();
+        toast.info("You're offline - changes saved locally");
+      }
+    },
     onValidate: (ctx) => {
       if (
         // we want to skip validation when deleting or undeleting items
