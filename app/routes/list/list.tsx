@@ -103,9 +103,35 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
-    onSubmit: (event) => {
+    onSubmit: (event, { formData }) => {
       if (!navigator.onLine) {
         event.preventDefault();
+
+        // Handle adding new item while offline
+        const newValue = formData.get("new")?.toString().trim();
+        if (newValue) {
+          // Parse current items from form data
+          const currentItems = fields.items.getFieldList().map((field) => ({
+            id: formData.get(`${field.name}.id`)?.toString() ?? "",
+            value: formData.get(`${field.name}.value`)?.toString() ?? "",
+          }));
+
+          const newItem = {
+            id: crypto.randomUUID(),
+            value: newValue,
+          };
+          intent.update({
+            name: fields.items.name,
+            value: [...currentItems, newItem],
+          });
+
+          // Clear the new input
+          const newInput = document.getElementById(fields.new.id) as HTMLInputElement;
+          if (newInput) {
+            newInput.value = "";
+          }
+        }
+
         toast.info("You're offline - changes saved locally");
       }
     },
