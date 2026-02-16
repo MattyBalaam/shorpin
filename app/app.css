@@ -1,0 +1,13 @@
+html,
+body {
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* Prevent iOS Safari from zooming on input focus */
+input {
+  font-size: 16px;
+}

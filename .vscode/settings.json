@@ -1,0 +1,21 @@
+{
+  "editor.formatOnSave": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.experimental.useTsgo": true,
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "oxc.fmt.experimental": true,
+  "oxc.enabled": true,
+  "mdx.server.enabled": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always"
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+
+  "cSpell.words": [
+    "Reorderable",
+    "Revalidator",
+    "shorpin",
+    "subgrid",
+    "supabase"
+  ]
+}
