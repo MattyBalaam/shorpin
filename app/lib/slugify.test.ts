@@ -44,23 +44,23 @@ describe("resolveSlug", () => {
     expect(resolveSlug("shopping", ["groceries", "todo"])).toBe("shopping");
   });
 
-  test("appends -2 on first collision", () => {
-    expect(resolveSlug("shopping", ["shopping"])).toBe("shopping-2");
+  test("appends -1 on first collision", () => {
+    expect(resolveSlug("shopping", ["shopping"])).toBe("shopping-1");
   });
 
-  test("appends -3 when -2 is also taken", () => {
-    expect(resolveSlug("shopping", ["shopping", "shopping-2"])).toBe(
-      "shopping-3",
+  test("appends -2 when -1 is also taken", () => {
+    expect(resolveSlug("shopping", ["shopping", "shopping-1"])).toBe(
+      "shopping-2",
     );
   });
 
   test("finds next available suffix with gaps", () => {
     expect(
-      resolveSlug("shopping", ["shopping", "shopping-2", "shopping-3"]),
-    ).toBe("shopping-4");
+      resolveSlug("shopping", ["shopping", "shopping-1", "shopping-2"]),
+    ).toBe("shopping-3");
   });
 
   test("ignores unrelated slugs with same prefix", () => {
-    expect(resolveSlug("shop", ["shop", "shopping"])).toBe("shop-2");
+    expect(resolveSlug("shop", ["shop", "shopping"])).toBe("shop-1");
   });
 });

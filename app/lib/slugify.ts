@@ -14,7 +14,7 @@ export function resolveSlug(
   const slugSet = new Set(existingSlugs);
   if (!slugSet.has(baseSlug)) return baseSlug;
 
-  let suffix = 2;
+  let suffix = 1;
   while (slugSet.has(`${baseSlug}-${suffix}`)) {
     suffix++;
   }
