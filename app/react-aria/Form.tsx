@@ -1,20 +1,22 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { Form as RouterForm } from "react-router";
+
+type RouterFormProps = ComponentProps<typeof RouterForm>;
 
 export function Form({
   validationErrors,
   children,
   method,
   ...props
-}: Omit<FormProps, "method" | "action"> & { method?: "GET" | "POST" }) {
+}: Omit<RouterFormProps, "method" | "action"> & {
+  method?: "GET" | "POST";
+  validationErrors?: Record<string, string | string[]>;
+}) {
   return (
     <RouterForm method={method} {...props}>
-      {/* <FormContext.Provider value={{ ...props, validationBehavior: "native" }}>
-        <FormValidationContext.Provider value={validationErrors ?? {}}> */}
       {children}
-      {/* </FormValidationContext.Provider>
-      </FormContext.Provider>*/}
     </RouterForm>
   );
 }
