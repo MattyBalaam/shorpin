@@ -17,21 +17,13 @@ export function OnlineStatusProvider({ children }: OnlineStatusProviderProps) {
   useEffect(function trackOnlineStatus() {
     setIsOnline(navigator.onLine);
 
-    function handleOnline() {
-      setIsOnline(true);
-    }
+    const controller = new AbortController();
+    const { signal } = controller;
 
-    function handleOffline() {
-      setIsOnline(false);
-    }
+    window.addEventListener("online", () => setIsOnline(true), { signal });
+    window.addEventListener("offline", () => setIsOnline(false), { signal });
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
+    return () => controller.abort();
   }, []);
 
   return (
