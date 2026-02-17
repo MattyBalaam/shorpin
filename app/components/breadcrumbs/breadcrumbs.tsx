@@ -2,11 +2,9 @@ import { useMatches, useLocation } from "react-router";
 import { Link } from "~/components/link/link";
 import * as styles from "./breadcrumbs.css";
 
-interface BreadcrumbHandle {
-  breadcrumb: {
-    label: string | ((data: any) => string);
-    to?: string;
-  };
+interface BreadcrumbDef {
+  label: string | ((data: any) => string);
+  to?: string | ((data: any, pathname: string) => string);
 }
 
 interface BreadcrumbItem {
@@ -14,25 +12,32 @@ interface BreadcrumbItem {
   to: string;
 }
 
+function resolveBreadcrumb(def: BreadcrumbDef, data: any, pathname: string) {
+  return {
+    label: typeof def.label === "function" ? def.label(data) : def.label,
+    to: typeof def.to === "function" ? def.to(data, pathname) : (def.to ?? pathname),
+  } satisfies BreadcrumbItem;
+}
+
 export function Breadcrumbs() {
   const matches = useMatches();
   const location = useLocation();
 
   const breadcrumbsFromRoutes = matches
-    .filter((match): match is typeof match & { handle: BreadcrumbHandle } =>
-      Boolean(match.handle?.breadcrumb),
-    )
-    .map((match) => {
-      const { breadcrumb } = match.handle;
-      const label =
-        typeof breadcrumb.label === "function"
-          ? breadcrumb.label(match.data)
-          : breadcrumb.label;
+    .filter((match) => {
+      const handle = match.handle as Record<string, unknown> | undefined;
+      return Boolean(handle?.breadcrumb || handle?.breadcrumbs);
+    })
+    .flatMap((match) => {
+      const handle = match.handle as { breadcrumb?: BreadcrumbDef; breadcrumbs?: BreadcrumbDef[] };
 
-      return {
-        label,
-        to: breadcrumb.to ?? match.pathname,
-      } satisfies BreadcrumbItem;
+      if (handle.breadcrumbs) {
+        return handle.breadcrumbs.map((def) =>
+          resolveBreadcrumb(def, match.data, match.pathname),
+        );
+      }
+
+      return resolveBreadcrumb(handle.breadcrumb!, match.data, match.pathname);
     });
 
   // If we're on the home page, only show "Home" as current page
