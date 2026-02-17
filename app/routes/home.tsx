@@ -72,32 +72,44 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   const listName = result.data["new-list"];
-  const slug = slugify(listName);
+  const baseSlug = slugify(listName);
 
   if (listName) {
-    const { data: existing } = await supabase
+    // Find existing slugs that match or have a numeric suffix
+    const { data: matches } = await supabase
       .from("lists")
-      .select("id")
-      .eq("slug", slug)
-      .single();
+      .select("slug")
+      .like("slug", `${baseSlug}%`)
+      .eq("state", "active");
 
-    if (!existing) {
-      const { error } = await supabase.from("lists").insert({
-        name: listName,
-        slug,
-      });
+    const existingSlugs = new Set(matches?.map((m) => m.slug));
+    let slug = baseSlug;
 
-      if (error) {
-        console.error("Error creating list:", error);
-        return report(submission);
+    if (existingSlugs.has(slug)) {
+      let suffix = 2;
+      while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
+        suffix++;
       }
+      slug = `${baseSlug}-${suffix}`;
     }
+
+    const { error } = await supabase.from("lists").insert({
+      name: listName,
+      slug,
+    });
+
+    if (error) {
+      console.error("Error creating list:", error);
+      return report(submission);
+    }
+
+    return redirectWithSuccess(
+      `/lists/${slug}`,
+      `List "${listName}" created successfully!`,
+    );
   }
 
-  return redirectWithSuccess(
-    `/lists/${slug}`,
-    `List "${listName}" created successfully!`,
-  );
+  return report(submission);
 }
 
 function Lists({
