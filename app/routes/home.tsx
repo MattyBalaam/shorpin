@@ -82,10 +82,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       .like("slug", `${baseSlug}%`)
       .eq("state", "active");
 
-    const slug = resolveSlug(
-      baseSlug,
-      matches?.map((m) => m.slug) ?? [],
-    );
+    const slug = resolveSlug(baseSlug, matches?.map((m) => m.slug) ?? []);
 
     const { error } = await supabase.from("lists").insert({
       name: listName,
@@ -163,7 +160,11 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
           <div className={styles.newList}>
             <label htmlFor={fields["new-list"].id}>New list</label>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} />
+            <input
+              name={fields["new-list"].name}
+              id={fields["new-list"].id}
+              autoComplete="off"
+            />
 
             <Button type="submit">Create</Button>
           </div>
