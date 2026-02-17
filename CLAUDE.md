@@ -21,6 +21,22 @@ useEffect(() => {
 }, [deps]);
 ```
 
+### Event Listeners
+
+Use `AbortController` for event listener cleanup instead of manual `removeEventListener`:
+
+```tsx
+useEffect(function trackOnlineStatus() {
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  window.addEventListener("online", () => setIsOnline(true), { signal });
+  window.addEventListener("offline", () => setIsOnline(false), { signal });
+
+  return () => controller.abort();
+}, []);
+```
+
 ### Agent behaviour
 
 - Add any existing architectural decisions and overall app structure to the README.md file.
