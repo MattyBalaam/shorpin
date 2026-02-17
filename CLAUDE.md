@@ -1,43 +1,8 @@
 # Claude Code Guidelines
 
-## React Patterns
+Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### useEffect
-
-Always use named functions in useEffect callbacks to describe intent:
-
-```tsx
-// Good
-useEffect(
-  function subscribeToSSE() {
-    // ...
-  },
-  [deps],
-);
-
-// Avoid
-useEffect(() => {
-  // ...
-}, [deps]);
-```
-
-### Event Listeners
-
-Use `AbortController` for event listener cleanup instead of manual `removeEventListener`:
-
-```tsx
-useEffect(function trackOnlineStatus() {
-  const controller = new AbortController();
-  const { signal } = controller;
-
-  window.addEventListener("online", () => setIsOnline(true), { signal });
-  window.addEventListener("offline", () => setIsOnline(false), { signal });
-
-  return () => controller.abort();
-}, []);
-```
-
-### Agent behaviour
+## Agent behaviour
 
 - Add any existing architectural decisions and overall app structure to the README.md file.
 - Commit changes to git after every instruction with brief commit notes consisting of brief overview title and maximum of 8 bullet points.
