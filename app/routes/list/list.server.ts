@@ -17,13 +17,17 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     .order("sort_order", { referencedTable: "list_items", ascending: true })
     .single();
 
-  console.log(data, error);
-
   if (error || !data) {
-    console.log("error");
+    console.log("error", error);
 
     throw await dataWithError(
-      { message: "List does not exist" },
+      {
+        message: error
+          ? error.code === "PGRST116"
+            ? "List does not exist"
+            : error.message
+          : "unknown error",
+      },
       "List does not exist",
       { status: 404 },
     );
@@ -121,13 +125,13 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
   const newValue = formData.get("new");
 
   // Handle new item
-  if (newValue) {
+  if (result.data.new) {
     const newId = crypto.randomUUID();
     const newSortOrder = getNextSortOrder();
     const { error: insertError } = await supabase.from("list_items").insert({
       id: newId,
       list_id: listId,
-      value: newValue.toString(),
+      value: result.data.new,
       state: "active",
       updated_at: updatedAt,
       sort_order: newSortOrder,
@@ -136,7 +140,7 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
     if (!insertError) {
       existingMap[newId] = {
         id: newId,
-        value: newValue.toString(),
+        value: result.data.new,
         updatedAt,
         state: "active",
         sortOrder: newSortOrder,

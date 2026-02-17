@@ -6,3 +6,17 @@ export function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+export function resolveSlug(
+  baseSlug: string,
+  existingSlugs: string[],
+): string {
+  const slugSet = new Set(existingSlugs);
+  if (!slugSet.has(baseSlug)) return baseSlug;
+
+  let suffix = 2;
+  while (slugSet.has(`${baseSlug}-${suffix}`)) {
+    suffix++;
+  }
+  return `${baseSlug}-${suffix}`;
+}

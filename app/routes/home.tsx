@@ -16,7 +16,7 @@ import { supabase } from "~/lib/supabase.server";
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
-import { slugify } from "~/lib/slugify";
+import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
@@ -82,16 +82,10 @@ export async function action({ request, context }: Route.ActionArgs) {
       .like("slug", `${baseSlug}%`)
       .eq("state", "active");
 
-    const existingSlugs = new Set(matches?.map((m) => m.slug));
-    let slug = baseSlug;
-
-    if (existingSlugs.has(slug)) {
-      let suffix = 2;
-      while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
-        suffix++;
-      }
-      slug = `${baseSlug}-${suffix}`;
-    }
+    const slug = resolveSlug(
+      baseSlug,
+      matches?.map((m) => m.slug) ?? [],
+    );
 
     const { error } = await supabase.from("lists").insert({
       name: listName,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { slugify } from "./slugify";
+import { slugify, resolveSlug } from "./slugify";
 
 describe("slugify", () => {
   test("converts spaces and slashes to hyphens", () => {
@@ -32,5 +32,35 @@ describe("slugify", () => {
 
   test("handles only special characters", () => {
     expect(slugify("@#$%")).toBe("");
+  });
+});
+
+describe("resolveSlug", () => {
+  test("returns base slug when no collisions", () => {
+    expect(resolveSlug("shopping", [])).toBe("shopping");
+  });
+
+  test("returns base slug when existing slugs don't match", () => {
+    expect(resolveSlug("shopping", ["groceries", "todo"])).toBe("shopping");
+  });
+
+  test("appends -2 on first collision", () => {
+    expect(resolveSlug("shopping", ["shopping"])).toBe("shopping-2");
+  });
+
+  test("appends -3 when -2 is also taken", () => {
+    expect(resolveSlug("shopping", ["shopping", "shopping-2"])).toBe(
+      "shopping-3",
+    );
+  });
+
+  test("finds next available suffix with gaps", () => {
+    expect(
+      resolveSlug("shopping", ["shopping", "shopping-2", "shopping-3"]),
+    ).toBe("shopping-4");
+  });
+
+  test("ignores unrelated slugs with same prefix", () => {
+    expect(resolveSlug("shop", ["shop", "shopping"])).toBe("shop-2");
   });
 });

@@ -32,6 +32,7 @@ export const input = style({
   marginLeft: `calc(0px - ${vars.spacing.md})`,
   borderRadius: "3px",
   background: "transparent",
+  color: "currentColor",
   ":focus": {
     outline: "0 none",
     background: "white",

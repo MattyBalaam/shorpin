@@ -60,24 +60,21 @@ export async function clientAction({
   if (!navigator.onLine) {
     const formData = await request.formData();
     const submission = parseSubmission(formData);
-    const newValue = formData.get("new")?.toString().trim();
 
-    // Get current items from form
-    const currentItems: Array<{ id: string; value: string }> = [];
-    let i = 0;
-    while (formData.has(`items[${i}].id`)) {
-      currentItems.push({
-        id: formData.get(`items[${i}].id`)?.toString() ?? "",
-        value: formData.get(`items[${i}].value`)?.toString() ?? "",
-      });
-      i++;
+    const result = zList.safeParse(submission.payload);
+
+    if (!result.success) {
+      throw new Error("fix me");
     }
 
+    // Get current items from form
+    const currentItems = result.data.items;
+
     // Add new item if present
-    if (newValue) {
+    if (result.data.new) {
       currentItems.push({
         id: crypto.randomUUID(),
-        value: newValue,
+        value: result.data.new,
       });
     }
 
@@ -86,7 +83,7 @@ export async function clientAction({
     return {
       lastDeleted: undefined,
       lastResult: report(submission, {
-        reset: Boolean(newValue),
+        reset: Boolean(result.data.new),
         value: {
           ...submission.payload,
           new: "",
