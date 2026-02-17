@@ -1,30 +1,12 @@
 # Claude Code Guidelines
 
-## React Patterns
+Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### useEffect
-
-Always use named functions in useEffect callbacks to describe intent:
-
-```tsx
-// Good
-useEffect(
-  function subscribeToSSE() {
-    // ...
-  },
-  [deps],
-);
-
-// Avoid
-useEffect(() => {
-  // ...
-}, [deps]);
-```
-
-### Agent behaviour
+## Agent behaviour
 
 - Add any existing architectural decisions and overall app structure to the README.md file.
 - Commit changes to git after every instruction with brief commit notes consisting of brief overview title and maximum of 8 bullet points.
+- Before committing run `pnpm typecheck` and make sure there are no type issues.
 
 ## Scripts
 

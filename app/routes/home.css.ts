@@ -49,6 +49,11 @@ export const itemWrapper = style({
   color: vars.palette.textOnChrome,
   position: "relative",
   // zIndex: 1,
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      color: vars.palette.textOnChromeDarkMode,
+    },
+  },
 });
 
 export const itemLink = style({

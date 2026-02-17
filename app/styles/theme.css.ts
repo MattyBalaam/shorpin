@@ -20,6 +20,7 @@ export const [themeClass, vars] = createTheme({
     chromeLight: "lightGrey",
     text: "black",
     textOnChrome: "white",
+    textOnChromeDarkMode: "black",
   },
   font: {
     // System font stack for optimal performance and native feel

@@ -1,7 +1,7 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useRevalidator } from "react-router";
+import { useNavigation, useRevalidator } from "react-router";
 
 import { Items } from "~/components/items";
 
@@ -16,7 +16,87 @@ import { Form } from "~/react-aria/Form";
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
+import { report } from "@conform-to/react/future";
+
+// Cache loader data for offline support
+let cachedLoaderData: Awaited<
+  ReturnType<typeof import("./list.server").loader>
+> | null = null;
+
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  if (!navigator.onLine && cachedLoaderData) {
+    return cachedLoaderData;
+  }
+
+  try {
+    const data = await serverLoader();
+    cachedLoaderData = data;
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      if (cachedLoaderData) {
+        return cachedLoaderData;
+      }
+    }
+    throw error;
+  }
+}
+
+clientLoader.hydrate = true as const;
+
+// Prevent revalidation when offline
+export function shouldRevalidate() {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+  return true;
+}
+
+// Handle offline submissions - construct fake lastResult for Conform
+export async function clientAction({
+  request,
+  serverAction,
+}: Route.ClientActionArgs) {
+  if (!navigator.onLine) {
+    const formData = await request.formData();
+    const submission = parseSubmission(formData);
+
+    const result = zList.safeParse(submission.payload);
+
+    if (!result.success) {
+      throw new Error("fix me");
+    }
+
+    // Get current items from form
+    const currentItems = result.data.items;
+
+    // Add new item if present
+    if (result.data.new) {
+      currentItems.push({
+        id: crypto.randomUUID(),
+        value: result.data.new,
+      });
+    }
+
+    toast.info("You're offline - changes saved locally");
+
+    return {
+      lastDeleted: undefined,
+      lastResult: report(submission, {
+        reset: Boolean(result.data.new),
+        value: {
+          ...submission.payload,
+          new: "",
+          items: currentItems,
+        },
+      }),
+    };
+  }
+  return serverAction();
+}
+
 import { supabase } from "~/lib/supabase.client";
+import { useIsOnline } from "~/components/online-status/online-status";
 import * as styles from "./list.css";
 import { Button } from "~/components/button/button";
 import { Actions } from "~/components/actions/actions";
@@ -32,6 +112,9 @@ export const handle = {
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;
+
+  const { state } = useNavigation();
+
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
@@ -48,6 +131,9 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
   });
 
   const reorderSubmitRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const isOnline = useIsOnline();
+  const wasOfflineRef = useRef(false);
 
   // Subscribe to broadcast for real-time updates
   useEffect(
@@ -69,6 +155,30 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       };
     },
     [loaderData.listId, clientId, revalidate],
+  );
+
+  // Show toast when going offline
+  useEffect(
+    function notifyOfflineStatus() {
+      if (!isOnline) {
+        wasOfflineRef.current = true;
+        toast.info("You're offline - changes saved locally");
+      }
+    },
+    [isOnline],
+  );
+
+  // Auto-submit when back online if there were changes made offline
+  useEffect(
+    function submitOnReconnect() {
+      if (isOnline && wasOfflineRef.current) {
+        wasOfflineRef.current = false;
+        // Submit the form to sync any changes made while offline
+        formRef.current?.requestSubmit();
+        toast.success("Back online - syncing changes");
+      }
+    },
+    [isOnline],
   );
 
   const { form, fields, intent } = useForm(zList, {
@@ -98,6 +208,11 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   useEffect(
     function updateFormWithNewValues() {
+      // Don't overwrite local changes when offline
+      if (!isOnline) {
+        return;
+      }
+
       const actionDataJustChanged = prevActionDataRef.current !== actionData;
       prevActionDataRef.current = actionData;
 
@@ -121,6 +236,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       fields.items.name,
       defaultValue.items,
       form.id,
+      isOnline,
     ],
   );
 
@@ -144,16 +260,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         .map(({ id }) => id);
     }) || [];
 
-  if (loaderData.error) {
-    return (
-      <div>
-        <h1>{defaultValue.name}</h1>
-        <p>{loaderData.error}</p>
-        <Link to="/">back to dir</Link>
-      </div>
-    );
-  }
-
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -174,6 +280,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
       <Form
         {...form.props}
+        ref={formRef}
         validationErrors={form.fieldErrors}
         method="POST"
         className={styles.form}
@@ -238,7 +345,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               type="submit"
               value="new"
               name="new-submit"
-              className={styles.submitButton}
+              isSubmitting={state === "submitting"}
             >
               Add
             </Button>

@@ -1,9 +1,12 @@
 import type { Route } from "./+types/list";
 
+import { dataWithError, redirectWithError } from "remix-toast";
+
 import { type Items, sortData, zItems, zList } from "./data";
 
 import { parseSubmission, report } from "@conform-to/react/future";
 import { supabase } from "~/lib/supabase.server";
+import { href } from "react-router";
 
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const { data, error } = await supabase
@@ -15,15 +18,19 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     .single();
 
   if (error || !data) {
-    return {
-      defaultValue: {
-        name: list,
-        items: [] as Items,
-        themePrimary: undefined,
-        themeSecondary: undefined,
+    console.log("error", error);
+
+    throw await dataWithError(
+      {
+        message: error
+          ? error.code === "PGRST116"
+            ? "List does not exist"
+            : error.message
+          : "unknown error",
       },
-      error: "List does not exist",
-    };
+      "List does not exist",
+      { status: 404 },
+    );
   }
 
   const items = data.list_items.map((item) => ({
@@ -118,13 +125,13 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
   const newValue = formData.get("new");
 
   // Handle new item
-  if (newValue) {
+  if (result.data.new) {
     const newId = crypto.randomUUID();
     const newSortOrder = getNextSortOrder();
     const { error: insertError } = await supabase.from("list_items").insert({
       id: newId,
       list_id: listId,
-      value: newValue.toString(),
+      value: result.data.new,
       state: "active",
       updated_at: updatedAt,
       sort_order: newSortOrder,
@@ -133,7 +140,7 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
     if (!insertError) {
       existingMap[newId] = {
         id: newId,
-        value: newValue.toString(),
+        value: result.data.new,
         updatedAt,
         state: "active",
         sortOrder: newSortOrder,
@@ -226,11 +233,7 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
   // Broadcast change to other clients
   const clientId = formData.get("clientId");
   const channel = supabase.channel(`list-${listId}`);
-  await channel.send({
-    type: "broadcast",
-    event: "changed",
-    payload: { clientId },
-  });
+  await channel.httpSend("changed", { clientId });
   supabase.removeChannel(channel);
 
   return {

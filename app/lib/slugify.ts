@@ -1,0 +1,22 @@
+export function slugify(input: string) {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function resolveSlug(
+  baseSlug: string,
+  existingSlugs: string[],
+) {
+  const slugSet = new Set(existingSlugs);
+  if (!slugSet.has(baseSlug)) return baseSlug;
+
+  let suffix = 1;
+  while (slugSet.has(`${baseSlug}-${suffix}`)) {
+    suffix++;
+  }
+  return `${baseSlug}-${suffix}`;
+}

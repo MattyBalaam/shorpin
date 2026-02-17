@@ -1,34 +1,48 @@
-import { Form, useLocation, useNavigate, useNavigation } from "react-router";
+import {
+  Form,
+  href,
+  useLocation,
+  useNavigate,
+  useNavigation,
+} from "react-router";
 import { Link } from "~/components/link/link";
 import type { Route } from "./+types/delete";
 import * as styles from "./delete.css";
 import { Button } from "~/components/button/button";
 
-export { action } from "./delete.server";
+export { action, loader } from "./delete.server";
 
 export const handle = {
-  breadcrumb: {
-    label: "Delete",
-  },
+  breadcrumbs: [
+    {
+      label: (data: any) => data?.listName || "List",
+      to: (_data: any, pathname: string) =>
+        pathname.replace("/confirm-delete", ""),
+    },
+    {
+      label: "Delete",
+    },
+  ],
 };
 
-export default function Delete() {
-  const location = useLocation();
-  const from = location.state?.from;
-
+export default function Delete({ loaderData }: Route.ComponentProps) {
   return (
-    <Form method="POST">
-      <h1>Are you sure you want to delete?</h1>
+    <Form method="POST" className={styles.form}>
+      <h1>Delete?</h1>
 
-      <Button type="submit" className={styles.deleteButton}>
-        Yes
-      </Button>
+      <p>Are you sure?</p>
 
-      {from || "nope"}
+      <div className={styles.actions}>
+        <Button type="submit" className={styles.deleteButton}>
+          Yes
+        </Button>
 
-      {/* <Link variant="outline" to={navigation.state}
-				No
-			</Button> */}
+        <Link variant="button" to={loaderData.returnTo}>
+          I do not
+        </Link>
+      </div>
+
+      {loaderData.returnTo}
     </Form>
   );
 }

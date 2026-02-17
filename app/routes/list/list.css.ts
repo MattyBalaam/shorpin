@@ -29,19 +29,11 @@ export const itemsScroll = style({
   paddingBlock: "1rem",
   display: "grid",
   gridTemplateColumns: "subgrid",
-  alignItems: "start",
   overflow: "auto",
 });
 
 export const hiddenSubmit = style({
   display: "none",
-});
-
-export const submitButton = style({
-  // gridColumn: "1",
-  // marginTop: "2em",
-  // alignSelf: "start",
-  // minWidth: 0,
 });
 
 export const undoButton = style({

@@ -6,7 +6,7 @@ export const main = style({
   display: "grid",
   // maxWidth: "60ch", // move to content
   width: "100%",
-  height: "100lvh",
+  height: "100dvh",
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
   gridTemplateColumns:

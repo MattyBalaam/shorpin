@@ -13,7 +13,8 @@
     "db:push": "supabase db push",
     "db:migrate": "supabase migration up",
     "db:reset": "supabase db reset",
-    "knip": "knip"
+    "knip": "knip",
+    "test": "vitest"
   },
   "dependencies": {
     "@netlify/vite-plugin": "2.8.0",
@@ -46,6 +47,7 @@
     "vite": "7.3.1",
     "vite-plugin-devtools-json": "^1.0.0",
     "vite-tsconfig-paths": "6.0.5",
+    "vitest": "^4.0.18",
     "zod": "4.3.6"
   },
   "browserslist": [

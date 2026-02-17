@@ -2,12 +2,14 @@ import { AnimatePresence, motion, stagger, Variants } from "motion/react";
 
 import {
   href,
+  isRouteErrorResponse,
   Links,
   type LinksFunction,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteError,
 } from "react-router";
 import { getToast, setToast, toastMiddleware } from "remix-toast/middleware";
 import type { Route } from "./+types/root";
@@ -23,6 +25,10 @@ import "~/components/conform-input";
 
 import { Link } from "./components/link/link";
 import { Breadcrumbs } from "./components/breadcrumbs/breadcrumbs";
+import {
+  OnlineStatusIndicator,
+  OnlineStatusProvider,
+} from "./components/online-status/online-status";
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
@@ -53,7 +59,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" className={themeClass}>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <meta name="theme-color" content="#A9CBB7" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Shorpin" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <Meta />
         <Links />
       </head>
@@ -65,15 +80,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </html>
   );
 }
-
-const navVariants = {
-  open: {
-    transition: { delayChildren: stagger(0.07, { startDelay: 0.2 }) },
-  },
-  closed: {
-    transition: { delayChildren: stagger(0.05, { from: "last" }) },
-  },
-};
 
 export default function App({
   loaderData: { toast: notification },
@@ -88,14 +94,38 @@ export default function App({
   );
 
   return (
-    <>
-      {/* <Test /> */}
+    <OnlineStatusProvider>
+      <OnlineStatusIndicator />
       <main className={styles.main}>
         <Breadcrumbs />
         <Outlet />
       </main>
 
-      <Toaster />
-    </>
+      <Toaster position="top-right" />
+    </OnlineStatusProvider>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    const message =
+      typeof error.data === "string" ? error.data : error.data?.message;
+
+    return (
+      <main className={styles.main}>
+        <h1>{error.status}</h1>
+        <p>{message}</p>
+        <Link to={href("/")}>Back to home</Link>
+      </main>
+    );
+  }
+
+  return (
+    <main className={styles.main}>
+      <h1>Something went wrong</h1>
+      <p>{error instanceof Error ? error.message : "Unknown error"}</p>
+    </main>
   );
 }

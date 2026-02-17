@@ -4,6 +4,7 @@ import {
   href,
   Form as RouterForm,
   ShouldRevalidateFunction,
+  useNavigation,
   type MetaFunction,
 } from "react-router";
 import { useForm, useField } from "@conform-to/react/future";
@@ -16,6 +17,7 @@ import { supabase } from "~/lib/supabase.server";
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
+import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
@@ -47,6 +49,9 @@ async function getLists() {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
+
+  console.log(data);
+
   return data;
 }
 
@@ -68,32 +73,35 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   const listName = result.data["new-list"];
-  const slug = listName.normalize("NFD");
+  const baseSlug = slugify(listName);
 
   if (listName) {
-    const { data: existing } = await supabase
+    // Find existing slugs that match or have a numeric suffix
+    const { data: matches } = await supabase
       .from("lists")
-      .select("id")
-      .eq("slug", slug)
-      .single();
+      .select("slug")
+      .like("slug", `${baseSlug}%`)
+      .eq("state", "active");
 
-    if (!existing) {
-      const { error } = await supabase.from("lists").insert({
-        name: listName,
-        slug,
-      });
+    const slug = resolveSlug(baseSlug, matches?.map((m) => m.slug) ?? []);
 
-      if (error) {
-        console.error("Error creating list:", error);
-        return report(submission);
-      }
+    const { error } = await supabase.from("lists").insert({
+      name: listName,
+      slug,
+    });
+
+    if (error) {
+      console.error("Error creating list:", error);
+      return report(submission);
     }
+
+    return redirectWithSuccess(
+      `/lists/${slug}`,
+      `List "${listName}" created successfully!`,
+    );
   }
 
-  return redirectWithSuccess(
-    `/lists/${slug}`,
-    `List "${listName}" created successfully!`,
-  );
+  return report(submission);
 }
 
 function Lists({
@@ -136,6 +144,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
     shouldRevalidate: "onInput",
   });
 
+  const { state } = useNavigation();
+
   return (
     <>
       <nav className={styles.listWrapper}>
@@ -153,9 +163,15 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
           <div className={styles.newList}>
             <label htmlFor={fields["new-list"].id}>New list</label>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} />
+            <input
+              name={fields["new-list"].name}
+              id={fields["new-list"].id}
+              autoComplete="off"
+            />
 
-            <Button type="submit">Create</Button>
+            <Button type="submit" isSubmitting={state === "submitting"}>
+              Create
+            </Button>
           </div>
 
           {/* </Form> */}

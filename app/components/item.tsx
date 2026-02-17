@@ -24,7 +24,10 @@ export function Item({
   const fieldset = fieldsetMetadata.getFieldset();
 
   return (
-    <div className={styles.itemContainer} data-dismissing={isDismissing || undefined}>
+    <div
+      className={styles.itemContainer}
+      data-dismissing={isDismissing || undefined}
+    >
       <div className={styles.item}>
         <input
           className={styles.input}
