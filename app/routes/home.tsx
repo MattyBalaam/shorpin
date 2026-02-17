@@ -16,6 +16,7 @@ import { supabase } from "~/lib/supabase.server";
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
+import { slugify } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
@@ -47,6 +48,9 @@ async function getLists() {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
+
+  console.log(data);
+
   return data;
 }
 
@@ -68,7 +72,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   const listName = result.data["new-list"];
-  const slug = listName.normalize("NFD");
+  const slug = slugify(listName);
 
   if (listName) {
     const { data: existing } = await supabase
