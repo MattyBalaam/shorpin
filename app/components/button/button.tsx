@@ -2,11 +2,10 @@ import type { ButtonHTMLAttributes } from "react";
 import * as clickableStyles from "~/components/shared/clickable-element.css";
 import * as styles from "./button.css";
 
-interface ButtonProps
-  extends React.DetailedHTMLProps<
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    HTMLButtonElement
-  > {
+interface ButtonProps extends React.DetailedHTMLProps<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  HTMLButtonElement
+> {
   isSubmitting?: boolean;
 }
 
@@ -22,7 +21,8 @@ export function Button({
     <button
       className={[clickableStyles.clickable, className].join(" ")}
       type={type}
-      disabled={disabled || isSubmitting}
+      // test if we need to disable here, I think react router might handle this
+      // disabled={disabled || isSubmitting}
       {...props}
     >
       {isSubmitting ? <span className={styles.spinner} /> : children}

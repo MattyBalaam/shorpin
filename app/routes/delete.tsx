@@ -25,21 +25,24 @@ export const handle = {
   ],
 };
 
-export default function Delete(_args: Route.ComponentProps) {
-  const location = useLocation();
-  const from = location.state?.from;
-
+export default function Delete({ loaderData }: Route.ComponentProps) {
   return (
-    <Form method="POST">
-      <h1>Are you sure you want to delete?</h1>
+    <Form method="POST" className={styles.form}>
+      <h1>Delete?</h1>
 
-      <Button type="submit" className={styles.deleteButton}>
-        Yes
-      </Button>
+      <p>Are you sure?</p>
 
-      <Link variant="button" to={from || href("/")}>
-        I do not
-      </Link>
+      <div className={styles.actions}>
+        <Button type="submit" className={styles.deleteButton}>
+          Yes
+        </Button>
+
+        <Link variant="button" to={loaderData.returnTo}>
+          I do not
+        </Link>
+      </div>
+
+      {loaderData.returnTo}
     </Form>
   );
 }

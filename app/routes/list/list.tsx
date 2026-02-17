@@ -1,7 +1,7 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useRevalidator } from "react-router";
+import { useNavigation, useRevalidator } from "react-router";
 
 import { Items } from "~/components/items";
 
@@ -112,6 +112,9 @@ export const handle = {
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;
+
+  const { state } = useNavigation();
+
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
@@ -338,7 +341,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               <label htmlFor={fields.name.id}>New item</label>
             </VisuallyHidden>
             <input name={fields.new.name} id={fields.new.id} autoFocus />
-            <Button type="submit" value="new" name="new-submit">
+            <Button
+              type="submit"
+              value="new"
+              name="new-submit"
+              isSubmitting={state === "submitting"}
+            >
               Add
             </Button>
 

@@ -4,6 +4,7 @@ import {
   href,
   Form as RouterForm,
   ShouldRevalidateFunction,
+  useNavigation,
   type MetaFunction,
 } from "react-router";
 import { useForm, useField } from "@conform-to/react/future";
@@ -143,6 +144,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
     shouldRevalidate: "onInput",
   });
 
+  const { state } = useNavigation();
+
   return (
     <>
       <nav className={styles.listWrapper}>
@@ -166,7 +169,9 @@ export default function Index({ loaderData }: Route.ComponentProps) {
               autoComplete="off"
             />
 
-            <Button type="submit">Create</Button>
+            <Button type="submit" isSubmitting={state === "submitting"}>
+              Create
+            </Button>
           </div>
 
           {/* </Form> */}
