@@ -1,4 +1,4 @@
-export function slugify(input: string): string {
+export function slugify(input: string) {
   return input
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -10,7 +10,7 @@ export function slugify(input: string): string {
 export function resolveSlug(
   baseSlug: string,
   existingSlugs: string[],
-): string {
+) {
   const slugSet = new Set(existingSlugs);
   if (!slugSet.has(baseSlug)) return baseSlug;
 
