@@ -87,10 +87,48 @@ vars.palette.secondary; // Secondary color
 
 **Patterns to Follow:**
 
-- Named functions in useEffect callbacks (see [CLAUDE.md](CLAUDE.md))
+- Named functions in useEffect callbacks (see [CONTRIBUTING.md](CONTRIBUTING.md))
 - Grid layouts with template areas and named grid lines
 - Co-located styles using Vanilla Extract
 - Conform for form validation and state management
+
+### Authentication (Supabase)
+
+The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:
+
+- `type=recovery` or `type=invite` → `/set-password` (user sets a password)
+- All other types (e.g. `signup`) → `/`
+
+**Required Supabase dashboard configuration:**
+
+In **Authentication → Email Templates**, update the link href for each template:
+
+**Reset Password:**
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset Password</a>
+```
+
+**Invite User:**
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite">Accept Invite</a>
+```
+
+**Confirm Signup** (if email confirmation is enabled):
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">Confirm your email</a>
+```
+
+In **Authentication → URL Configuration**, add to **Redirect URLs**:
+
+```
+https://shorpin.matthewbalaam.co.uk/auth/confirm
+https://shorpin.matthewbalaam.co.uk/set-password
+```
+
+Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`).
 
 ### Database (Supabase)
 
