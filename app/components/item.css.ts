@@ -21,26 +21,39 @@ export const item = style({
   display: "grid",
   gridColumn: "content",
   gridTemplateColumns: "[input] 1fr [state] auto [drag] auto [done] auto",
-  gap: vars.spacing.baseline,
+  gap: vars.spacing.md,
   alignItems: "baseline",
 });
 
 export const input = style({
   border: "1px solid transparent",
-  gridColumn: "input",
+  gridRow: 1,
+  gridColumn: "input / span 2",
   padding: `${vars.spacing.sm} ${vars.spacing.md}`,
   marginLeft: `calc(0px - ${vars.spacing.md})`,
   borderRadius: "3px",
   background: "transparent",
   color: "currentColor",
+  textOverflow: "ellipsis",
   ":focus": {
     outline: "0 none",
     background: "white",
+    color: "black",
+  },
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      ":focus": {
+        background: "black",
+        color: "white",
+      },
+    },
   },
 });
 
 export const state = style({
+  gridRow: 1,
   gridColumn: "state",
+  paddingInlineEnd: vars.spacing.md,
 });
 
 export const dragHandle = style({
@@ -57,8 +70,7 @@ export const dragHandle = style({
   ":active": {
     color: "cyan",
   },
-
-  ":before": {
+  "::before": {
     content: '""',
     position: "absolute",
     inset: "-1em",
@@ -100,10 +112,10 @@ const spin = keyframes({
 
 export const saving = style({
   content: "",
-  ":before": {
+  "::before": {
+    content: "",
     display: "inline-block",
     verticalAlign: "baseline",
-    content: "",
     width: "1em",
     height: "1em",
     border: "3px solid green",

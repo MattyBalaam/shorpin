@@ -170,8 +170,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
       <Actions>
         <RouterForm method="POST" {...form.props} className={styles.actions}>
-          {/* <Form method="POST" {...form.props} validationErrors={form.fieldErrors}> */}
-
           <div className={styles.newList}>
             <label htmlFor={fields["new-list"].id}>New list</label>
             <input
@@ -184,8 +182,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
               Create
             </Button>
           </div>
-
-          {/* </Form> */}
         </RouterForm>
       </Actions>
     </>
