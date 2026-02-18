@@ -73,7 +73,9 @@ export async function action({ request }: Route.ActionArgs) {
     const headers = new Headers();
     const supabase = createSupabaseClient(request, headers);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { data: matches } = await supabase
       .from("lists")
@@ -126,6 +128,7 @@ function Lists({
                 {name}
               </Link>
               <Link
+                className={styles.itemConfig}
                 variant="button"
                 to={href("/lists/:list/config", { list: slug })}
               >

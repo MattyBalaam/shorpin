@@ -1,5 +1,7 @@
+import { redirectWithSuccess } from "remix-toast";
 import type { Route } from "./+types/config";
 import { createSupabaseClient } from "~/lib/supabase.server";
+import { href } from "react-router";
 
 export async function loader({ params: { list }, request }: Route.LoaderArgs) {
   const headers = new Headers();
@@ -78,9 +80,9 @@ export async function action({ params: { list }, request }: Route.ActionArgs) {
   // Add newly checked users
   const toAdd = [...submittedIds].filter((id) => !currentIds.has(id));
   if (toAdd.length > 0) {
-    await supabase.from("list_members").insert(
-      toAdd.map((user_id) => ({ list_id: listData.id, user_id })),
-    );
+    await supabase
+      .from("list_members")
+      .insert(toAdd.map((user_id) => ({ list_id: listData.id, user_id })));
   }
 
   // Remove unchecked users
@@ -93,5 +95,5 @@ export async function action({ params: { list }, request }: Route.ActionArgs) {
       .in("user_id", toRemove);
   }
 
-  return null;
+  return redirectWithSuccess(href("/"), "changed collaborators");
 }
