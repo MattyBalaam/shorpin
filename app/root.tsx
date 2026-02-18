@@ -1,18 +1,21 @@
 import { AnimatePresence, motion, stagger, Variants } from "motion/react";
 
 import {
+  data,
+  Form,
   href,
   isRouteErrorResponse,
   Links,
-  type LinksFunction,
   Meta,
   Outlet,
+  redirect,
   Scripts,
   ScrollRestoration,
   useRouteError,
 } from "react-router";
-import { getToast, setToast, toastMiddleware } from "remix-toast/middleware";
+import { getToast, toastMiddleware } from "remix-toast/middleware";
 import type { Route } from "./+types/root";
+import { createSupabaseClient } from "~/lib/supabase.server";
 import { useEffect } from "react";
 import "~/styles/reset.css";
 
@@ -48,8 +51,24 @@ export const middleware = [toastMiddleware()];
 //   },
 // ];
 
-export const loader = async ({ context }: Route.LoaderArgs) => {
+export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const toast = getToast(context);
+  const url = new URL(request.url);
+
+  const publicRoutes = ["/login", "/reset-password"];
+  if (!publicRoutes.includes(url.pathname)) {
+    const responseHeaders = new Headers();
+    const supabase = createSupabaseClient(request, responseHeaders);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw redirect("/login", { headers: responseHeaders });
+    }
+
+    return data({ toast }, { headers: responseHeaders });
+  }
 
   return { toast };
 };
@@ -100,7 +119,9 @@ export default function App({
         <Breadcrumbs />
         <Outlet />
       </main>
-
+      <Form method="POST" action="/logout">
+        <button type="submit">Sign out</button>
+      </Form>
       <Toaster position="top-right" />
     </OnlineStatusProvider>
   );

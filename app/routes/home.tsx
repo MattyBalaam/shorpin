@@ -3,16 +3,15 @@ import type { Route } from "./+types/home";
 import {
   href,
   Form as RouterForm,
-  ShouldRevalidateFunction,
   useNavigation,
   type MetaFunction,
 } from "react-router";
-import { useForm, useField } from "@conform-to/react/future";
+import { useForm } from "@conform-to/react/future";
 import { z } from "zod/v4";
 
 import { Link } from "~/components/link/link";
 
-import { supabase } from "~/lib/supabase.server";
+import { createSupabaseClient } from "~/lib/supabase.server";
 
 import { parseSubmission, report } from "@conform-to/react/future";
 
@@ -21,7 +20,7 @@ import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
 
 export const meta: MetaFunction = () => {
@@ -41,7 +40,10 @@ const zCreate = z.object({
   "new-list": z.string().min(1, "List name is required"),
 });
 
-async function getLists() {
+export async function loader({ request }: Route.LoaderArgs) {
+  const headers = new Headers();
+  const supabase = createSupabaseClient(request, headers);
+
   const { data, error } = await supabase
     .from("lists")
     .select("id, name, slug")
@@ -50,18 +52,10 @@ async function getLists() {
 
   if (error) throw error;
 
-  console.log(data);
-
-  return data;
+  return { lists: data };
 }
 
-export async function loader(_args: Route.LoaderArgs) {
-  return {
-    lists: getLists(),
-  };
-}
-
-export async function action({ request, context }: Route.ActionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
 
   const submission = parseSubmission(formData);
@@ -76,18 +70,28 @@ export async function action({ request, context }: Route.ActionArgs) {
   const baseSlug = slugify(listName);
 
   if (listName) {
-    // Find existing slugs that match or have a numeric suffix
+    const headers = new Headers();
+    const supabase = createSupabaseClient(request, headers);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { data: matches } = await supabase
       .from("lists")
       .select("slug")
       .like("slug", `${baseSlug}%`)
       .eq("state", "active");
 
-    const slug = resolveSlug(baseSlug, matches?.map((m) => m.slug) ?? []);
+    const slug = resolveSlug(
+      baseSlug,
+      matches?.map((m: { slug: string }) => m.slug) ?? [],
+    );
 
     const { error } = await supabase.from("lists").insert({
       name: listName,
       slug,
+      user_id: user!.id,
     });
 
     if (error) {
@@ -107,9 +111,9 @@ export async function action({ request, context }: Route.ActionArgs) {
 function Lists({
   data,
 }: {
-  data: Promise<Array<{ id: string; name: string; slug: string }>>;
+  data: Array<{ id: string; name: string; slug: string }>;
 }) {
-  const lists = use(data);
+  const lists = data;
 
   return (
     <ul className={styles.list}>
@@ -122,6 +126,13 @@ function Lists({
                 to={href("/lists/:list", { list: slug })}
               >
                 {name}
+              </Link>
+              <Link
+                className={styles.itemConfig}
+                variant="button"
+                to={href("/lists/:list/config", { list: slug })}
+              >
+                settings
               </Link>
               <Link
                 className={styles.itemDelete}

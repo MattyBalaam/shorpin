@@ -70,6 +70,10 @@ export const itemDelete = style({
   zIndex: 1,
 });
 
+export const itemConfig = style({
+  zIndex: 1,
+});
+
 export const actions = style({
   gridColumn: "content",
 });

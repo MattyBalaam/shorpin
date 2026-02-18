@@ -75,6 +75,32 @@ export type Database = {
           },
         ]
       }
+      list_members: {
+        Row: {
+          created_at: string | null
+          list_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          list_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_members_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lists: {
         Row: {
           created_at: string | null
@@ -85,6 +111,7 @@ export type Database = {
           theme_primary: string | null
           theme_secondary: string | null
           updated_at: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -95,6 +122,7 @@ export type Database = {
           theme_primary?: string | null
           theme_secondary?: string | null
           updated_at?: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -105,6 +133,22 @@ export type Database = {
           theme_primary?: string | null
           theme_secondary?: string | null
           updated_at?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          email: string
+          id: string
+        }
+        Insert: {
+          email: string
+          id: string
+        }
+        Update: {
+          email?: string
+          id?: string
         }
         Relationships: []
       }
@@ -113,7 +157,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_list_access: {
+        Args: { p_list_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       list_item_state: "active" | "deleted"

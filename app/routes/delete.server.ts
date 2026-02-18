@@ -2,9 +2,12 @@ import { href } from "react-router";
 import type { Route } from "./+types/delete";
 
 import { redirectWithSuccess } from "remix-toast";
-import { supabase } from "~/lib/supabase.server";
+import { createSupabaseClient } from "~/lib/supabase.server";
 
 export async function loader({ params: { list }, request }: Route.LoaderArgs) {
+  const headers = new Headers();
+  const supabase = createSupabaseClient(request, headers);
+
   const { data } = await supabase
     .from("lists")
     .select("name")
@@ -22,7 +25,10 @@ export async function loader({ params: { list }, request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ params: { list } }: Route.ActionArgs) {
+export async function action({ params: { list }, request }: Route.ActionArgs) {
+  const headers = new Headers();
+  const supabase = createSupabaseClient(request, headers);
+
   const { error } = await supabase
     .from("lists")
     .update({ state: "deleted", updated_at: Date.now() })
