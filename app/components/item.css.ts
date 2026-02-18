@@ -14,6 +14,10 @@ export const itemContainer = style({
     "&[data-dismissing]": {
       background: "red",
     },
+    "&[data-deleting]": {
+      opacity: 0.4,
+      transition: "opacity 0.15s ease",
+    },
   },
 });
 
