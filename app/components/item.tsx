@@ -42,9 +42,9 @@ export function Item({
           }}
         />
 
-        <span className={styles.state}>
-          {edited ? (
-            navigation.state === "idle" ? (
+        {edited ? (
+          <span className={styles.state}>
+            {navigation.state === "idle" ? (
               <>
                 <VisuallyHidden> edited</VisuallyHidden>
                 <span aria-hidden>✏️</span>
@@ -54,14 +54,9 @@ export function Item({
                 <VisuallyHidden>saving</VisuallyHidden>
                 <span aria-hidden className={styles.saving}></span>
               </>
-            )
-          ) : (
-            <>
-              <VisuallyHidden>saved</VisuallyHidden>
-              <span aria-hidden>✔️</span>
-            </>
-          )}
-        </span>
+            )}
+          </span>
+        ) : null}
 
         <span className={styles.dragHandle}>
           <VisuallyHidden>drag to reorder</VisuallyHidden>
@@ -76,7 +71,7 @@ export function Item({
             value={`delete-item-${fieldset.id.defaultValue}`}
             ref={deleteButtonRef}
           >
-            <VisuallyHidden>delete item</VisuallyHidden>🗑️
+            <VisuallyHidden>delete item</VisuallyHidden>☑️
           </button>
         </span>
 

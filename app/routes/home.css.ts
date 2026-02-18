@@ -32,12 +32,6 @@ export const list = style({
   alignSelf: "start" /** prevents items from stretching vertically */,
 });
 
-export const item = style({
-  display: "flex",
-  gridColumn: "content",
-  justifyContent: "space-between",
-});
-
 export const itemWrapper = style({
   display: "grid",
   gridColumn: "1 / -1",
@@ -48,7 +42,6 @@ export const itemWrapper = style({
   borderBottom: `1px solid ${vars.palette.chromeLight}`,
   color: vars.palette.textOnChrome,
   position: "relative",
-  // zIndex: 1,
   "@media": {
     "(prefers-color-scheme: dark)": {
       color: vars.palette.textOnChromeDarkMode,
@@ -56,7 +49,15 @@ export const itemWrapper = style({
   },
 });
 
+export const item = style({
+  display: "flex",
+  gridColumn: "content",
+  justifyContent: "space-between",
+  gap: vars.spacing.lg,
+});
+
 export const itemLink = style({
+  marginRight: "auto",
   ":before": {
     content: "",
     position: "absolute",

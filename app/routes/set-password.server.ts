@@ -2,6 +2,13 @@ import type { Route } from "./+types/set-password";
 import { createSupabaseClient } from "~/lib/supabase.server";
 import { redirectWithSuccess } from "remix-toast";
 
+export async function loader({ request }: Route.LoaderArgs) {
+  const headers = new Headers();
+  const supabase = createSupabaseClient(request, headers);
+  const { data: { user } } = await supabase.auth.getUser();
+  return { email: user?.email ?? "" };
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const password = formData.get("password") as string;

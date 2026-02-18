@@ -4,6 +4,7 @@ import { index, route } from "@react-router/dev/routes";
 export default [
   route("login", "routes/login.tsx"),
   route("logout", "routes/logout.tsx"),
+  route("forgot-password", "routes/forgot-password.tsx"),
   route("auth/confirm", "routes/auth/confirm.tsx"),
   route("set-password", "routes/set-password.tsx"),
   index("routes/home.tsx"),

@@ -1,5 +1,3 @@
-import { AnimatePresence, motion, stagger, Variants } from "motion/react";
-
 import {
   data,
   Form,
@@ -35,6 +33,7 @@ import {
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
+import { Button } from "./components/button/button";
 
 export const middleware = [toastMiddleware()];
 
@@ -55,7 +54,12 @@ export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const toast = getToast(context);
   const url = new URL(request.url);
 
-  const publicRoutes = ["/login", "/auth/confirm", "/set-password"];
+  const publicRoutes = [
+    "/login",
+    "/forgot-password",
+    "/auth/confirm",
+    "/set-password",
+  ];
   if (!publicRoutes.includes(url.pathname)) {
     const responseHeaders = new Headers();
     const supabase = createSupabaseClient(request, responseHeaders);
@@ -117,11 +121,12 @@ export default function App({
       <OnlineStatusIndicator />
       <main className={styles.main}>
         <Breadcrumbs />
+        <Form method="POST" action="/logout" className={styles.logOut}>
+          <Button type="submit">Sign out</Button>
+        </Form>
         <Outlet />
       </main>
-      <Form method="POST" action="/logout">
-        <button type="submit">Sign out</button>
-      </Form>
+
       <Toaster position="top-right" />
     </OnlineStatusProvider>
   );

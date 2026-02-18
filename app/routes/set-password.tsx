@@ -2,15 +2,16 @@ import { Form, useNavigation } from "react-router";
 import type { Route } from "./+types/set-password";
 import { Button } from "~/components/button/button";
 
-export { action } from "./set-password.server";
+export { loader, action } from "./set-password.server";
 
-export default function SetPassword({ actionData }: Route.ComponentProps) {
+export default function SetPassword({ loaderData, actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
 
   return (
     <main>
       <h1>Set new password</h1>
       <Form method="POST">
+        <input type="hidden" autoComplete="username" value={loaderData.email} readOnly />
         <label>
           New password
           <input
