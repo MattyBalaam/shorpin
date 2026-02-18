@@ -11,8 +11,12 @@ export const itemContainer = style({
     "&:has(input:focus)": {
       background: vars.palette.primary,
     },
-    "&[data-dismissing]": {
+    "&[data-dismissing=true]": {
       background: "red",
+    },
+    "&[data-deleting=true]": {
+      opacity: 0.4,
+      transition: "opacity 0.15s ease",
     },
   },
 });

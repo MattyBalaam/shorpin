@@ -23,10 +23,16 @@ export function Item({
 
   const fieldset = fieldsetMetadata.getFieldset();
 
+  const isDeleting =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("__INTENT__") ===
+      `delete-item-${fieldset.id.defaultValue}`;
+
   return (
     <div
       className={styles.itemContainer}
-      data-dismissing={isDismissing || undefined}
+      data-dismissing={isDismissing}
+      data-deleting={isDeleting}
     >
       <div className={styles.item}>
         <input

@@ -20,7 +20,7 @@ import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
 import * as styles from "./home.css";
-import { Suspense } from "react";
+import { use, Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
 
 export const meta: MetaFunction = () => {
@@ -44,15 +44,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const headers = new Headers();
   const supabase = createSupabaseClient(request, headers);
 
-  const { data, error } = await supabase
-    .from("lists")
-    .select("id, name, slug")
-    .eq("state", "active")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return { lists: data };
+  return {
+    lists: supabase
+      .from("lists")
+      .select("id, name, slug")
+      .eq("state", "active")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return data ?? [];
+      }),
+  };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -108,12 +110,22 @@ export async function action({ request }: Route.ActionArgs) {
   return report(submission);
 }
 
-function Lists({
-  data,
-}: {
-  data: Array<{ id: string; name: string; slug: string }>;
-}) {
-  const lists = data;
+type ListItem = { id: string; name: string; slug: string };
+
+function ListsSkeleton() {
+  return (
+    <ul className={styles.list}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <li key={i} className={styles.skeletonRow}>
+          <div className={styles.skeletonBar} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
+  const lists = use(listsPromise);
 
   return (
     <ul className={styles.list}>
@@ -160,10 +172,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <nav className={styles.listWrapper}>
-        <Suspense
-          fallback={<p className={styles.listLoader}>We are loading…</p>}
-        >
-          <Lists data={loaderData.lists} />
+        <Suspense fallback={<ListsSkeleton />}>
+          <Lists listsPromise={loaderData.lists as unknown as Promise<ListItem[]>} />
         </Suspense>
       </nav>
       <hr />

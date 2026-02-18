@@ -68,7 +68,9 @@ function ReorderableItem({
       drag
       dragDirectionLock
       dragConstraints={
-        lockedAxis === "x" ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined
+        lockedAxis === "x"
+          ? { top: 0, bottom: 0, left: 0, right: 0 }
+          : undefined
       }
       dragElastic={
         lockedAxis === "x"
@@ -91,6 +93,7 @@ function ReorderableItem({
 interface ItemsProps {
   fieldMetadata: FieldMetadata<Array<{ id: string; value: string }>>;
   edited: Array<string>;
+  pendingItem?: string | null;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: () => void;
 }
@@ -123,6 +126,7 @@ const variants = {
 export function Items({
   fieldMetadata,
   edited,
+  pendingItem,
   onReorder,
   onReorderComplete,
 }: ItemsProps) {
@@ -182,6 +186,15 @@ export function Items({
             />
           ))}
       </AnimatePresence>
+      {pendingItem && (
+        <li className={styles.skeletonItem}>
+          <div className={styles.skeletonContent}>
+            <div className={styles.skeletonBar} />
+            <div className={styles.skeletonBar} />
+            <div className={styles.skeletonBar} />
+          </div>
+        </li>
+      )}
     </Reorder.Group>
   );
 }
