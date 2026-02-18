@@ -1,4 +1,4 @@
-import { Form } from "react-router";
+import { Form, Link } from "react-router";
 import type { Route } from "./+types/login";
 import { Button } from "~/components/button/button";
 import { useNavigation } from "react-router";
@@ -30,6 +30,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
           Sign in
         </Button>
       </Form>
+      <Link to="/forgot-password">Forgot password?</Link>
     </main>
   );
 }

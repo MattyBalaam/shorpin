@@ -1,5 +1,3 @@
-import { AnimatePresence, motion, stagger, Variants } from "motion/react";
-
 import {
   data,
   Form,
@@ -55,7 +53,7 @@ export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const toast = getToast(context);
   const url = new URL(request.url);
 
-  const publicRoutes = ["/login", "/auth/confirm", "/set-password"];
+  const publicRoutes = ["/login", "/forgot-password", "/auth/confirm", "/set-password"];
   if (!publicRoutes.includes(url.pathname)) {
     const responseHeaders = new Headers();
     const supabase = createSupabaseClient(request, responseHeaders);
