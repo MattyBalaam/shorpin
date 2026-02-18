@@ -126,6 +126,12 @@ function Lists({
                 {name}
               </Link>
               <Link
+                variant="button"
+                to={href("/lists/:list/config", { list: slug })}
+              >
+                settings
+              </Link>
+              <Link
                 className={styles.itemDelete}
                 variant="button"
                 to={href("/lists/:list/confirm-delete", { list: slug })}

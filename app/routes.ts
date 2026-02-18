@@ -6,5 +6,6 @@ export default [
   route("logout", "routes/logout.tsx"),
   index("routes/home.tsx"),
   route("lists/:list", "routes/list/list.tsx"),
+  route("lists/:list/config", "routes/list/config.tsx"),
   route("lists/:list/confirm-delete", "routes/delete.tsx"),
 ] satisfies RouteConfig;
