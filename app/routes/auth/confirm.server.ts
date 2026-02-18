@@ -24,7 +24,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const destination = PASSWORD_SETUP_TYPES.includes(type)
-    ? "/reset-password"
+    ? "/set-password"
     : "/";
 
   throw redirect(destination, { headers });

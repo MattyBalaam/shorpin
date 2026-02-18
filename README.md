@@ -95,7 +95,8 @@ vars.palette.secondary; // Secondary color
 ### Authentication (Supabase)
 
 The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:
-- `type=recovery` or `type=invite` → `/reset-password` (user sets a password)
+
+- `type=recovery` or `type=invite` → `/set-password` (user sets a password)
 - All other types (e.g. `signup`) → `/`
 
 **Required Supabase dashboard configuration:**
@@ -103,16 +104,19 @@ The `/auth/confirm` route handles all Supabase email verification links. It exch
 In **Authentication → Email Templates**, update the link href for each template:
 
 **Reset Password:**
+
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset Password</a>
 ```
 
 **Invite User:**
+
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite">Accept Invite</a>
 ```
 
 **Confirm Signup** (if email confirmation is enabled):
+
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">Confirm your email</a>
 ```
@@ -121,9 +125,7 @@ In **Authentication → URL Configuration**, add to **Redirect URLs**:
 
 ```
 https://shorpin.matthewbalaam.co.uk/auth/confirm
-https://shorpin.matthewbalaam.co.uk/reset-password
-http://localhost:5173/auth/confirm
-http://localhost:5173/reset-password
+https://shorpin.matthewbalaam.co.uk/set-password
 ```
 
 Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`).

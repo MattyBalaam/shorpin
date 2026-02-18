@@ -1,4 +1,4 @@
-import type { Route } from "./+types/reset-password";
+import type { Route } from "./+types/set-password";
 import { createSupabaseClient } from "~/lib/supabase.server";
 import { redirectWithSuccess } from "remix-toast";
 
