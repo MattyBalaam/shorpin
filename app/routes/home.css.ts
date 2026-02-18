@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { style, keyframes } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const listWrapper = style({
@@ -73,6 +73,34 @@ export const itemDelete = style({
 
 export const itemConfig = style({
   zIndex: 1,
+});
+
+const shimmer = keyframes({
+  "0%, 100%": { opacity: 1 },
+  "50%": { opacity: 0.4 },
+});
+
+export const skeletonRow = style({
+  display: "grid",
+  gridColumn: "1 / -1",
+  gridTemplateColumns: "subgrid",
+  paddingBlock: vars.spacing.md,
+  background: vars.palette.chrome,
+  borderBottom: `1px solid ${vars.palette.chromeLight}`,
+});
+
+export const skeletonBar = style({
+  gridColumn: "content",
+  height: "1em",
+  borderRadius: "3px",
+  background: vars.palette.primary,
+  opacity: 0.3,
+  animation: `1.5s ease-in-out infinite ${shimmer}`,
+  selectors: {
+    "&:nth-child(1)": { maxWidth: "55%" },
+    "&:nth-child(2)": { maxWidth: "75%" },
+    "&:nth-child(3)": { maxWidth: "40%" },
+  },
 });
 
 export const actions = style({
