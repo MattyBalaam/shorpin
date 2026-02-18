@@ -1,19 +1,17 @@
 import {
-  data,
   Form,
   href,
   isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
-  redirect,
   Scripts,
   ScrollRestoration,
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
 import type { Route } from "./+types/root";
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import { useEffect } from "react";
 import "~/styles/reset.css";
 
@@ -35,7 +33,7 @@ import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
 import { Button } from "./components/button/button";
 
-export const middleware = [toastMiddleware()];
+export const middleware = [toastMiddleware(), supabaseMiddleware];
 
 // export const links: LinksFunction = () => [
 //   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -50,30 +48,8 @@ export const middleware = [toastMiddleware()];
 //   },
 // ];
 
-export const loader = async ({ request, context }: Route.LoaderArgs) => {
+export const loader = async ({ context }: Route.LoaderArgs) => {
   const toast = getToast(context);
-  const url = new URL(request.url);
-
-  const publicRoutes = [
-    "/login",
-    "/forgot-password",
-    "/auth/confirm",
-    "/set-password",
-  ];
-  if (!publicRoutes.includes(url.pathname)) {
-    const responseHeaders = new Headers();
-    const supabase = createSupabaseClient(request, responseHeaders);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      throw redirect("/login", { headers: responseHeaders });
-    }
-
-    return data({ toast }, { headers: responseHeaders });
-  }
-
   return { toast };
 };
 

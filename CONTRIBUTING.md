@@ -18,6 +18,24 @@ export function parseResult(input: string): Result<User, ValidationError> {
 }
 ```
 
+## React Router Patterns
+
+### Type-safe routing
+
+Always use React Router's `href()` function for route paths instead of string literals. This provides compile-time safety when routes are renamed or restructured.
+
+```ts
+import { href, redirect } from "react-router";
+
+// Good
+throw redirect(href("/login"));
+throw redirect(href("/lists/:list", { list: slug }));
+
+// Avoid
+throw redirect("/login");
+throw redirect(`/lists/${slug}`);
+```
+
 ## React Patterns
 
 ### useEffect

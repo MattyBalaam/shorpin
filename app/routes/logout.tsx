@@ -1,12 +1,9 @@
-import { redirect } from "react-router";
+import { redirect, href } from "react-router";
 import type { Route } from "./+types/logout";
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
-export async function action({ request }: Route.ActionArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
-
+export async function action({ context }: Route.ActionArgs) {
+  const supabase = context.get(supabaseContext);
   await supabase.auth.signOut();
-
-  throw redirect("/login", { headers });
+  throw redirect(href("/login"));
 }

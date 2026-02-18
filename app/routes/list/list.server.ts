@@ -5,11 +5,10 @@ import { dataWithError } from "remix-toast";
 import { type Items, sortData, zItems, zList } from "./data";
 
 import { parseSubmission, report } from "@conform-to/react/future";
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
-export async function loader({ params: { list }, request }: Route.LoaderArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function loader({ params: { list }, context }: Route.LoaderArgs) {
+  const supabase = context.get(supabaseContext);
 
   const { data, error } = await supabase
     .from("lists")
@@ -55,7 +54,7 @@ export async function loader({ params: { list }, request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ request, params: { list } }: Route.ActionArgs) {
+export async function action({ request, params: { list }, context }: Route.ActionArgs) {
   const updatedAt = Date.now();
 
   const formData = await request.formData();
@@ -74,8 +73,7 @@ export async function action({ request, params: { list } }: Route.ActionArgs) {
     };
   }
 
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+  const supabase = context.get(supabaseContext);
 
   const toDelete = submission.intent?.startsWith("delete-item-")
     ? submission.intent.replace("delete-item-", "")

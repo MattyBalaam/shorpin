@@ -1,11 +1,10 @@
 import { redirectWithSuccess } from "remix-toast";
 import type { Route } from "./+types/config";
-import { createSupabaseClient } from "~/lib/supabase.server";
 import { href } from "react-router";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
-export async function loader({ params: { list }, request }: Route.LoaderArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function loader({ params: { list }, context }: Route.LoaderArgs) {
+  const supabase = context.get(supabaseContext);
 
   const {
     data: { user },
@@ -47,9 +46,8 @@ export async function loader({ params: { list }, request }: Route.LoaderArgs) {
   return { listName: data.name, listId: data.id, isOwner, users };
 }
 
-export async function action({ params: { list }, request }: Route.ActionArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function action({ params: { list }, request, context }: Route.ActionArgs) {
+  const supabase = context.get(supabaseContext);
 
   const {
     data: { user },

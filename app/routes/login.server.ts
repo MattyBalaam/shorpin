@@ -1,14 +1,13 @@
-import { redirect } from "react-router";
+import { redirect, href } from "react-router";
 import type { Route } from "./+types/login";
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+  const supabase = context.get(supabaseContext);
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -19,5 +18,5 @@ export async function action({ request }: Route.ActionArgs) {
     return { error: error.message };
   }
 
-  throw redirect("/", { headers });
+  throw redirect(href("/"));
 }

@@ -1,12 +1,10 @@
 import { href } from "react-router";
 import type { Route } from "./+types/delete";
-
 import { redirectWithSuccess } from "remix-toast";
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
-export async function loader({ params: { list }, request }: Route.LoaderArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function loader({ params: { list }, request, context }: Route.LoaderArgs) {
+  const supabase = context.get(supabaseContext);
 
   const { data } = await supabase
     .from("lists")
@@ -25,9 +23,8 @@ export async function loader({ params: { list }, request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ params: { list }, request }: Route.ActionArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function action({ params: { list }, context }: Route.ActionArgs) {
+  const supabase = context.get(supabaseContext);
 
   const { error } = await supabase
     .from("lists")
@@ -38,5 +35,5 @@ export async function action({ params: { list }, request }: Route.ActionArgs) {
     console.error("Error deleting list:", error);
   }
 
-  return redirectWithSuccess("/", "List " + list + " deleted successfully");
+  return redirectWithSuccess(href("/"), "List " + list + " deleted successfully");
 }
