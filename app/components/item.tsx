@@ -31,8 +31,8 @@ export function Item({
   return (
     <div
       className={styles.itemContainer}
-      data-dismissing={isDismissing || undefined}
-      data-deleting={isDeleting || undefined}
+      data-dismissing={isDismissing}
+      data-deleting={isDeleting}
     >
       <div className={styles.item}>
         <input
