@@ -87,10 +87,36 @@ vars.palette.secondary; // Secondary color
 
 **Patterns to Follow:**
 
-- Named functions in useEffect callbacks (see [CLAUDE.md](CLAUDE.md))
+- Named functions in useEffect callbacks (see [CONTRIBUTING.md](CONTRIBUTING.md))
 - Grid layouts with template areas and named grid lines
 - Co-located styles using Vanilla Extract
 - Conform for form validation and state management
+
+### Authentication (Supabase)
+
+**Password Reset Setup:**
+
+The password reset flow uses a two-step route pattern:
+
+1. `/auth/confirm` — exchanges the OTP token from the email link and redirects to `/reset-password`
+2. `/reset-password` — renders the new password form; action calls `supabase.auth.updateUser()`
+
+**Required Supabase dashboard configuration:**
+
+In **Authentication → Email Templates → Reset Password**, update the link href from the default `{{ .ConfirmationURL }}` to:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset Password</a>
+```
+
+In **Authentication → URL Configuration**, add the following to **Redirect URLs**:
+
+```
+https://<your-domain>/auth/confirm
+https://<your-domain>/reset-password
+```
+
+Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`). For local development, also add `http://localhost:5173` to Redirect URLs.
 
 ### Database (Supabase)
 

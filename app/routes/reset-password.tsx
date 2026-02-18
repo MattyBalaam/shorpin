@@ -2,7 +2,7 @@ import { Form, useNavigation } from "react-router";
 import type { Route } from "./+types/reset-password";
 import { Button } from "~/components/button/button";
 
-export { loader, action } from "./reset-password.server";
+export { action } from "./reset-password.server";
 
 export default function ResetPassword({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();

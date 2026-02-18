@@ -55,7 +55,7 @@ export const loader = async ({ request, context }: Route.LoaderArgs) => {
   const toast = getToast(context);
   const url = new URL(request.url);
 
-  const publicRoutes = ["/login", "/reset-password"];
+  const publicRoutes = ["/login", "/auth/confirm", "/reset-password"];
   if (!publicRoutes.includes(url.pathname)) {
     const responseHeaders = new Headers();
     const supabase = createSupabaseClient(request, responseHeaders);
