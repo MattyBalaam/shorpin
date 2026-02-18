@@ -113,7 +113,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;
 
-  const { state } = useNavigation();
+  const { state, formData } = useNavigation();
 
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
@@ -315,6 +315,11 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <Items
               fieldMetadata={fields.items}
               edited={edited}
+              pendingItem={
+                state === "submitting" && formData?.get("new-submit") === "new"
+                  ? (formData.get(fields.new.name) as string)
+                  : null
+              }
               onReorder={(newOrder) => {
                 const itemRecord = Object.fromEntries(
                   defaultValue.items.map((item) => [item.id, item]),
@@ -340,7 +345,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <VisuallyHidden>
               <label htmlFor={fields.name.id}>New item</label>
             </VisuallyHidden>
-            <input name={fields.new.name} id={fields.new.id} autoFocus />
+            <input
+              name={fields.new.name}
+              id={fields.new.id}
+              autoFocus
+              autoComplete="off"
+            />
             <Button
               type="submit"
               value="new"

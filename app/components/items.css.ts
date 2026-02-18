@@ -26,3 +26,11 @@ export const items = style({
   padding: 0,
   alignContent: "start",
 });
+
+export const pendingItem = style({
+  gridColumn: "content",
+  paddingBlock: vars.spacing.sm,
+  paddingInline: vars.spacing.md,
+  opacity: 0.4,
+  background: vars.palette.secondary,
+});

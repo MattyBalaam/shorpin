@@ -91,6 +91,7 @@ function ReorderableItem({
 interface ItemsProps {
   fieldMetadata: FieldMetadata<Array<{ id: string; value: string }>>;
   edited: Array<string>;
+  pendingItem?: string | null;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: () => void;
 }
@@ -123,6 +124,7 @@ const variants = {
 export function Items({
   fieldMetadata,
   edited,
+  pendingItem,
   onReorder,
   onReorderComplete,
 }: ItemsProps) {
@@ -182,6 +184,9 @@ export function Items({
             />
           ))}
       </AnimatePresence>
+      {pendingItem && (
+        <li className={styles.pendingItem}>{pendingItem}</li>
+      )}
     </Reorder.Group>
   );
 }
