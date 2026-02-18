@@ -14,8 +14,8 @@ export const handle = {
   ],
 };
 
-export default function Config({ loaderData, actionData }: Route.ComponentProps) {
-  const { isOwner, members } = loaderData;
+export default function Config({ loaderData }: Route.ComponentProps) {
+  const { isOwner, users } = loaderData;
   const { state } = useNavigation();
 
   if (!isOwner) {
@@ -26,31 +26,29 @@ export default function Config({ loaderData, actionData }: Route.ComponentProps)
     <>
       <h2>Collaborators</h2>
 
-      {members.length > 0 ? (
-        <ul>
-          {members.map(({ email }) => (
-            <li key={email}>{email}</li>
-          ))}
-        </ul>
+      {users.length === 0 ? (
+        <p>No other users yet.</p>
       ) : (
-        <p>No collaborators yet.</p>
+        <Form method="POST">
+          <fieldset>
+            <legend>Select collaborators</legend>
+            {users.map(({ id, email, isMember }) => (
+              <label key={id}>
+                <input
+                  type="checkbox"
+                  name="member-ids"
+                  value={id}
+                  defaultChecked={isMember}
+                />
+                {email}
+              </label>
+            ))}
+          </fieldset>
+          <Button type="submit" isSubmitting={state === "submitting"}>
+            Save
+          </Button>
+        </Form>
       )}
-
-      <Form method="POST">
-        <label htmlFor="member-email">Add by email</label>
-        <input
-          id="member-email"
-          type="email"
-          name="member-email"
-          placeholder="collaborator@example.com"
-          autoComplete="off"
-          required
-        />
-        {actionData?.error && <p>{actionData.error}</p>}
-        <Button type="submit" isSubmitting={state === "submitting"}>
-          Add collaborator
-        </Button>
-      </Form>
     </>
   );
 }

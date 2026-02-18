@@ -22,25 +22,27 @@ export async function loader({ params: { list }, request }: Route.LoaderArgs) {
 
   const isOwner = data.user_id === user?.id;
 
-  // Fetch current members
+  // All users except the owner
+  const { data: allProfiles } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .neq("id", data.user_id ?? "");
+
+  // Current member ids
   const { data: memberRows } = await supabase
     .from("list_members")
     .select("user_id")
     .eq("list_id", data.id);
 
-  const memberUserIds = memberRows?.map((m) => m.user_id) ?? [];
+  const memberIds = new Set(memberRows?.map((m) => m.user_id) ?? []);
 
-  const members: { email: string }[] =
-    memberUserIds.length > 0
-      ? (
-          await supabase
-            .from("profiles")
-            .select("email")
-            .in("id", memberUserIds)
-        ).data ?? []
-      : [];
+  const users = (allProfiles ?? []).map((p) => ({
+    id: p.id,
+    email: p.email,
+    isMember: memberIds.has(p.id),
+  }));
 
-  return { listName: data.name, listId: data.id, isOwner, members };
+  return { listName: data.name, listId: data.id, isOwner, users };
 }
 
 export async function action({ params: { list }, request }: Route.ActionArgs) {
@@ -63,39 +65,33 @@ export async function action({ params: { list }, request }: Route.ActionArgs) {
   }
 
   const formData = await request.formData();
-  const email = (formData.get("member-email") as string | null)
-    ?.trim()
-    .toLowerCase();
+  const submittedIds = new Set(formData.getAll("member-ids") as string[]);
 
-  if (!email) {
-    return { error: "Email is required" };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .single();
-
-  if (!profile) {
-    return { error: "No user found with that email" };
-  }
-
-  if (profile.id === listData.user_id) {
-    return { error: "You are already the owner of this list" };
-  }
-
-  const { error: insertError } = await supabase
+  // Fetch current members
+  const { data: currentRows } = await supabase
     .from("list_members")
-    .insert({ list_id: listData.id, user_id: profile.id });
+    .select("user_id")
+    .eq("list_id", listData.id);
 
-  if (insertError) {
-    const message =
-      insertError.code === "23505"
-        ? "This user is already a collaborator"
-        : insertError.message;
-    return { error: message };
+  const currentIds = new Set(currentRows?.map((m) => m.user_id) ?? []);
+
+  // Add newly checked users
+  const toAdd = [...submittedIds].filter((id) => !currentIds.has(id));
+  if (toAdd.length > 0) {
+    await supabase.from("list_members").insert(
+      toAdd.map((user_id) => ({ list_id: listData.id, user_id })),
+    );
   }
 
-  return { error: null };
+  // Remove unchecked users
+  const toRemove = [...currentIds].filter((id) => !submittedIds.has(id));
+  if (toRemove.length > 0) {
+    await supabase
+      .from("list_members")
+      .delete()
+      .eq("list_id", listData.id)
+      .in("user_id", toRemove);
+  }
+
+  return null;
 }
