@@ -94,29 +94,39 @@ vars.palette.secondary; // Secondary color
 
 ### Authentication (Supabase)
 
-**Password Reset Setup:**
-
-The password reset flow uses a two-step route pattern:
-
-1. `/auth/confirm` — exchanges the OTP token from the email link and redirects to `/reset-password`
-2. `/reset-password` — renders the new password form; action calls `supabase.auth.updateUser()`
+The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:
+- `type=recovery` or `type=invite` → `/reset-password` (user sets a password)
+- All other types (e.g. `signup`) → `/`
 
 **Required Supabase dashboard configuration:**
 
-In **Authentication → Email Templates → Reset Password**, update the link href from the default `{{ .ConfirmationURL }}` to:
+In **Authentication → Email Templates**, update the link href for each template:
 
+**Reset Password:**
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset Password</a>
 ```
 
-In **Authentication → URL Configuration**, add the following to **Redirect URLs**:
-
-```
-https://<your-domain>/auth/confirm
-https://<your-domain>/reset-password
+**Invite User:**
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite">Accept Invite</a>
 ```
 
-Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`). For local development, also add `http://localhost:5173` to Redirect URLs.
+**Confirm Signup** (if email confirmation is enabled):
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">Confirm your email</a>
+```
+
+In **Authentication → URL Configuration**, add to **Redirect URLs**:
+
+```
+https://shorpin.matthewbalaam.co.uk/auth/confirm
+https://shorpin.matthewbalaam.co.uk/reset-password
+http://localhost:5173/auth/confirm
+http://localhost:5173/reset-password
+```
+
+Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`).
 
 ### Database (Supabase)
 
