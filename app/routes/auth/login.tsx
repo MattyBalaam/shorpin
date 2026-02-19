@@ -1,10 +1,11 @@
-import { Form, Link, href, useNavigation } from "react-router";
+import { Form, href, useNavigation } from "react-router";
 import type { Route } from "./+types/login";
 import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
 import { zLogin } from "./schemas";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
+import { Link } from "~/components/link/link";
 
 export { action } from "./login.server";
 
