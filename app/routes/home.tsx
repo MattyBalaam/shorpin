@@ -3,11 +3,12 @@ import type { Route } from "./+types/home";
 import {
   href,
   Form as RouterForm,
+  Outlet,
   useNavigation,
   type MetaFunction,
 } from "react-router";
 import { useForm } from "@conform-to/react/future";
-import { z } from "zod/v4";
+import * as v from "valibot";
 
 import { Link } from "~/components/link/link";
 
@@ -22,11 +23,13 @@ import { Button } from "~/components/button/button";
 import * as styles from "./home.css";
 import { use, Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
+import { ScrollArea } from "~/components/scroll-area/scroll-area";
+import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export const meta: MetaFunction = () => {
   return [
     { title: "Shorpin" },
-    { name: "description", content: "Loadsalists" },
+    { name: "description", content: "We got lists, they’re multiplying" },
   ];
 };
 
@@ -36,8 +39,8 @@ export const handle = {
   },
 };
 
-const zCreate = z.object({
-  "new-list": z.string().min(1, "List name is required"),
+const zCreate = v.object({
+  "new-list": v.pipe(v.string(), v.minLength(1, "List name is required")),
 });
 
 export async function loader({ context }: Route.LoaderArgs) {
@@ -53,6 +56,10 @@ export async function loader({ context }: Route.LoaderArgs) {
         if (error) throw error;
         return data ?? [];
       }),
+    waitlistCount: supabase
+      .from("waitlist")
+      .select("*", { count: "exact", head: true })
+      .then(({ count }) => count ?? 0),
   };
 }
 
@@ -61,13 +68,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const submission = parseSubmission(formData);
 
-  const result = zCreate.safeParse(submission.payload);
+  const result = v.safeParse(zCreate, submission.payload);
 
   if (!result.success) {
     return report(submission);
   }
 
-  const listName = result.data["new-list"];
+  const listName = result.output["new-list"];
   const baseSlug = slugify(listName);
 
   if (listName) {
@@ -122,6 +129,16 @@ function ListsSkeleton() {
   );
 }
 
+function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
+  const count = use(countPromise);
+  if (count === 0) return null;
+  return (
+    <Link to={href("/sign-ups")}>
+      {count} <span className={styles.signUpsLabel}>pending</span>
+    </Link>
+  );
+}
+
 function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
   const lists = use(listsPromise);
 
@@ -139,17 +156,10 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
               </Link>
               <Link
                 className={styles.itemConfig}
-                variant="button"
-                to={href("/lists/:list/config", { list: slug })}
+                variant="outline"
+                to={href("/config/:list", { list: slug })}
               >
-                settings
-              </Link>
-              <Link
-                className={styles.itemDelete}
-                variant="button"
-                to={href("/lists/:list/confirm-delete", { list: slug })}
-              >
-                delete
+                admin
               </Link>
             </span>
           </li>
@@ -166,20 +176,31 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   });
 
   const { state } = useNavigation();
+  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
   return (
     <>
-      <nav className={styles.listWrapper}>
-        <Suspense fallback={<ListsSkeleton />}>
-          <Lists listsPromise={loaderData.lists as unknown as Promise<ListItem[]>} />
+      <div className={styles.pendingSignUps}>
+        <Suspense fallback={null}>
+          <PendingSignUps countPromise={pendingCount} />
         </Suspense>
-      </nav>
-      <hr />
+      </div>
+      <ScrollArea>
+        <nav className={styles.listWrapper}>
+          <Suspense fallback={<ListsSkeleton />}>
+            <Lists
+              listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+            />
+          </Suspense>
+        </nav>
+      </ScrollArea>
 
       <Actions>
         <RouterForm method="POST" {...form.props} className={styles.actions}>
           <div className={styles.newList}>
-            <label htmlFor={fields["new-list"].id}>New list</label>
+            <VisuallyHidden>
+              <label htmlFor={fields["new-list"].id}>New list</label>
+            </VisuallyHidden>
             <input
               name={fields["new-list"].name}
               id={fields["new-list"].id}
@@ -187,11 +208,12 @@ export default function Index({ loaderData }: Route.ComponentProps) {
             />
 
             <Button type="submit" isSubmitting={state === "submitting"}>
-              Create
+              Add
             </Button>
           </div>
         </RouterForm>
       </Actions>
+      <Outlet />
     </>
   );
 }

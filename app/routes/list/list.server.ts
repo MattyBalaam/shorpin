@@ -5,6 +5,7 @@ import { dataWithError } from "remix-toast";
 import { type Items, sortData, zItems, zList } from "./data";
 
 import { parseSubmission, report } from "@conform-to/react/future";
+import * as v from "valibot";
 import { supabaseContext } from "~/lib/supabase.middleware";
 
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
@@ -61,13 +62,13 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const submission = parseSubmission(formData);
 
-  const result = zList.safeParse(submission.payload);
+  const result = v.safeParse(zList, submission.payload);
 
   if (!result.success) {
     return {
       result: report(submission, {
         error: {
-          issues: result.error.issues,
+          issues: result.issues,
         },
       }),
     };
@@ -128,13 +129,13 @@ export async function action({ request, params: { list }, context }: Route.Actio
   const newValue = formData.get("new");
 
   // Handle new item
-  if (result.data.new) {
+  if (result.output.new) {
     const newId = crypto.randomUUID();
     const newSortOrder = getNextSortOrder();
     const { error: insertError } = await supabase.from("list_items").insert({
       id: newId,
       list_id: listId,
-      value: result.data.new,
+      value: result.output.new,
       state: "active",
       updated_at: updatedAt,
       sort_order: newSortOrder,
@@ -143,7 +144,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     if (!insertError) {
       existingMap[newId] = {
         id: newId,
-        value: result.data.new,
+        value: result.output.new,
         updatedAt,
         state: "active",
         sortOrder: newSortOrder,
@@ -152,7 +153,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
   }
 
   // Handle updates to existing items and sort order changes
-  for (const [index, { id, value }] of result.data.items.entries()) {
+  for (const [index, { id, value }] of result.output.items.entries()) {
     if (!existingMap[id]) continue;
 
     const valueChanged = existingMap[id].value !== value;
@@ -221,17 +222,17 @@ export async function action({ request, params: { list }, context }: Route.Actio
   }
 
   // Update theme colors if provided
-  if (result.data.themePrimary && result.data.themeSecondary) {
+  if (result.output.themePrimary && result.output.themeSecondary) {
     await supabase
       .from("lists")
       .update({
-        theme_primary: result.data.themePrimary,
-        theme_secondary: result.data.themeSecondary,
+        theme_primary: result.output.themePrimary,
+        theme_secondary: result.output.themeSecondary,
       })
       .eq("id", listId);
   }
 
-  const allItems = zItems.parse(Object.values(existingMap));
+  const allItems = v.parse(zItems, Object.values(existingMap));
 
   // Broadcast change to other clients
   const clientId = formData.get("clientId");
@@ -246,8 +247,8 @@ export async function action({ request, params: { list }, context }: Route.Actio
     lastResult: report(submission, {
       reset: Boolean(newValue),
       value: {
-        ...result.data,
-        new: Boolean(newValue) ? "" : (result.data.new ?? ""),
+        ...result.output,
+        new: Boolean(newValue) ? "" : (result.output.new ?? ""),
         items: sortData(allItems.filter(({ state }) => state === "active")).map(
           (item) => ({
             id: item.id,

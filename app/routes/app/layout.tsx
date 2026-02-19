@@ -13,7 +13,12 @@ export default function AppLayout() {
       <OnlineStatusIndicator />
       <Breadcrumbs />
       <Form method="POST" action={href("/logout")} className={styles.logOut}>
-        <Button type="submit">Sign out</Button>
+        <Button type="submit" aria-label="Sign out">
+          <span className={styles.logOutLabel}>Sign out</span>
+          <span aria-hidden="true" className={styles.logOutIcon}>
+            ⏻
+          </span>
+        </Button>
       </Form>
       <Outlet />
     </OnlineStatusProvider>

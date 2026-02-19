@@ -10,6 +10,7 @@ import {
   useForm,
   useFormData,
 } from "@conform-to/react/future";
+import * as v from "valibot";
 import { zList } from "./data";
 import { Link } from "~/components/link/link";
 import { Form } from "~/react-aria/Form";
@@ -61,20 +62,20 @@ export async function clientAction({
     const formData = await request.formData();
     const submission = parseSubmission(formData);
 
-    const result = zList.safeParse(submission.payload);
+    const result = v.safeParse(zList, submission.payload);
 
     if (!result.success) {
       throw new Error("fix me");
     }
 
     // Get current items from form
-    const currentItems = result.data.items;
+    const currentItems = result.output.items;
 
     // Add new item if present
-    if (result.data.new) {
+    if (result.output.new) {
       currentItems.push({
         id: crypto.randomUUID(),
-        value: result.data.new,
+        value: result.output.new,
       });
     }
 
@@ -83,7 +84,7 @@ export async function clientAction({
     return {
       lastDeleted: undefined,
       lastResult: report(submission, {
-        reset: Boolean(result.data.new),
+        reset: Boolean(result.output.new),
         value: {
           ...submission.payload,
           new: "",
@@ -97,6 +98,7 @@ export async function clientAction({
 
 import { supabase } from "~/lib/supabase.client";
 import { useIsOnline } from "~/components/online-status/online-status";
+import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import * as styles from "./list.css";
 import * as itemsStyles from "~/components/items.css";
 import { Button } from "~/components/button/button";
@@ -106,21 +108,19 @@ import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export function HydrateFallback() {
   return (
-    <div className={styles.items}>
-      <div className={styles.itemsScroll}>
-        <ul className={itemsStyles.items}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className={itemsStyles.skeletonItem}>
-              <div className={itemsStyles.skeletonContent}>
-                <div className={itemsStyles.skeletonBar} />
-                <div className={itemsStyles.skeletonBar} />
-                <div className={itemsStyles.skeletonBar} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+    <ScrollArea>
+      <ul className={itemsStyles.items}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <li key={i} className={itemsStyles.skeletonItem}>
+            <div className={itemsStyles.skeletonContent}>
+              <div className={itemsStyles.skeletonBar} />
+              <div className={itemsStyles.skeletonBar} />
+              <div className={itemsStyles.skeletonBar} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </ScrollArea>
   );
 }
 
@@ -267,7 +267,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     useFormData(form.id, (formData) => {
       const submission = parseSubmission(formData);
 
-      const result = zList.safeParse(submission.payload);
+      const result = v.safeParse(zList, submission.payload);
 
       if (!result.success) {
         return [];
@@ -276,7 +276,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       return defaultValue.items
         .filter(
           ({ value, id }) =>
-            result.data.items?.find((item) => item?.id === id)?.value !== value,
+            result.output.items?.find((item) => item?.id === id)?.value !==
+            value,
         )
         .map(({ id }) => id);
     }) || [];
@@ -288,7 +289,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     >
       <div className={styles.topActions}>
         <Link
-          variant="button"
+          variant="outline"
           to="./confirm-delete"
           relative="route"
           className={styles.deleteLink}
@@ -331,35 +332,33 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           }}
         />
 
-        <div className={styles.items}>
-          <div className={styles.itemsScroll}>
-            <Items
-              fieldMetadata={fields.items}
-              edited={edited}
-              pendingItem={
-                state === "submitting" && formData?.get("new-submit") === "new"
-                  ? (formData.get(fields.new.name) as string)
-                  : null
-              }
-              onReorder={(newOrder) => {
-                const itemRecord = Object.fromEntries(
-                  defaultValue.items.map((item) => [item.id, item]),
-                );
+        <ScrollArea>
+          <Items
+            fieldMetadata={fields.items}
+            edited={edited}
+            pendingItem={
+              state === "submitting" && formData?.get("new-submit") === "new"
+                ? (formData.get(fields.new.name) as string)
+                : null
+            }
+            onReorder={(newOrder) => {
+              const itemRecord = Object.fromEntries(
+                defaultValue.items.map((item) => [item.id, item]),
+              );
 
-                intent.update({
-                  name: fields.items.name,
-                  value: newOrder.map((id) => itemRecord[id]),
-                });
-              }}
-              onReorderComplete={() => {
-                // Wait for React to flush the intent.update() before submitting
-                requestAnimationFrame(() => {
-                  reorderSubmitRef.current?.click();
-                });
-              }}
-            />
-          </div>
-        </div>
+              intent.update({
+                name: fields.items.name,
+                value: newOrder.map((id) => itemRecord[id]),
+              });
+            }}
+            onReorderComplete={() => {
+              // Wait for React to flush the intent.update() before submitting
+              requestAnimationFrame(() => {
+                reorderSubmitRef.current?.click();
+              });
+            }}
+          />
+        </ScrollArea>
 
         <Actions>
           <div className={styles.actions}>

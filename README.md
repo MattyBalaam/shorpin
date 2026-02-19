@@ -1,4 +1,6 @@
-A todo style app running on Netlify built with React Router SSR Framework mode
+A todo style app running on Netlify built with React Router SSR Framework mode.
+
+This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
 - **Framework**: React Router v7 (SSR)
 - **Language**: TypeScript

@@ -1,4 +1,4 @@
-import { redirectWithSuccess } from "remix-toast";
+import { redirectWithError, redirectWithSuccess } from "remix-toast";
 import type { Route } from "./+types/config";
 import { href } from "react-router";
 import { supabaseContext } from "~/lib/supabase.middleware";
@@ -21,29 +21,23 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     throw new Response("List not found", { status: 404 });
   }
 
-  const isOwner = data.user_id === user?.id;
+  if (data.user_id !== user?.id) {
+    throw redirectWithError(href("/"), "Only the list owner can manage settings.");
+  }
 
-  // All users except the owner
-  const { data: allProfiles } = await supabase
-    .from("profiles")
-    .select("id, email")
-    .neq("id", data.user_id ?? "");
+  const users = Promise.all([
+    supabase.from("profiles").select("id, email").neq("id", data.user_id ?? ""),
+    supabase.from("list_members").select("user_id").eq("list_id", data.id),
+  ]).then(([{ data: allProfiles }, { data: memberRows }]) => {
+    const memberIds = new Set(memberRows?.map((m) => m.user_id) ?? []);
+    return (allProfiles ?? []).map((p) => ({
+      id: p.id,
+      email: p.email,
+      isMember: memberIds.has(p.id),
+    }));
+  });
 
-  // Current member ids
-  const { data: memberRows } = await supabase
-    .from("list_members")
-    .select("user_id")
-    .eq("list_id", data.id);
-
-  const memberIds = new Set(memberRows?.map((m) => m.user_id) ?? []);
-
-  const users = (allProfiles ?? []).map((p) => ({
-    id: p.id,
-    email: p.email,
-    isMember: memberIds.has(p.id),
-  }));
-
-  return { listName: data.name, listId: data.id, isOwner, users };
+  return { listName: data.name, users };
 }
 
 export async function action({ params: { list }, request, context }: Route.ActionArgs) {

@@ -1,38 +1,39 @@
-import { z } from "zod/v4";
+import * as v from "valibot";
 
-const zItem = z.object({
-  id: z.uuid(),
-  value: z.string(),
+const zItem = v.object({
+  id: v.pipe(v.string(), v.uuid()),
+  value: v.string(),
 });
 
-const zData = zItem.extend({
-  state: z.enum(["deleted", "active"] as const),
-  updatedAt: z.number(),
-  sortOrder: z.number(),
+const zData = v.object({
+  ...zItem.entries,
+  state: v.picklist(["deleted", "active"] as const),
+  updatedAt: v.number(),
+  sortOrder: v.number(),
 });
 
-type Data = z.infer<typeof zData>;
+type Data = v.InferOutput<typeof zData>;
 
-export const zItems = z.array(zData);
+export const zItems = v.array(zData);
 
-export type Items = z.infer<typeof zItems>;
+export type Items = v.InferOutput<typeof zItems>;
 
-const zListData = z.object({
-  name: z.string(),
+const zListData = v.object({
+  name: v.string(),
   items: zItems,
 });
 
-type ListData = z.infer<typeof zListData>;
+type ListData = v.InferOutput<typeof zListData>;
 
-export const zList = z.object({
-  name: z.string(),
-  new: z.string().optional(),
-  items: z.array(zItem).default([]),
-  themePrimary: z.string().optional(),
-  themeSecondary: z.string().optional(),
+export const zList = v.object({
+  name: v.string(),
+  new: v.optional(v.string()),
+  items: v.fallback(v.array(zItem), []),
+  themePrimary: v.optional(v.string()),
+  themeSecondary: v.optional(v.string()),
 });
 
-type List = z.infer<typeof zList>;
+type List = v.InferOutput<typeof zList>;
 
 export const sortData = (items: Items) =>
   items.sort((a, b) => a.sortOrder - b.sortOrder);

@@ -6,6 +6,7 @@ export const actionsWrapper = style({
   gridRow: "actions",
   gridColumn: "1 / -1",
   gridTemplateColumns: "subgrid",
-  paddingBlock: vars.spacing.md,
+  paddingBlockStart: vars.spacing.md,
+  paddingBlockEnd: `max(env(safe-area-inset-bottom), ${vars.spacing.md})`,
   background: vars.palette.primary,
 });

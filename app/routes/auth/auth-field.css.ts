@@ -12,3 +12,8 @@ export const field = style({
   flexDirection: "column",
   gap: vars.spacing.xs,
 });
+
+export const links = style({
+  display: "flex",
+  gap: vars.spacing.lg,
+});

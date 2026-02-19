@@ -1,54 +1,69 @@
-import { Form, useNavigation } from "react-router";
+import { Form, href, useParams } from "react-router";
 import type { Route } from "./+types/config";
-import { Button } from "~/components/button/button";
+import { Modal } from "~/components/modal/modal";
+import { Link } from "~/components/link/link";
+import { CheckboxField } from "~/components/checkbox-field/checkbox-field";
+import { use, Suspense } from "react";
+
+import * as styles from "./config.css";
 
 export { loader, action } from "./config.server";
 
-export const handle = {
-  breadcrumbs: [
-    {
-      label: (data: any) => data?.listName || "List",
-      to: (_data: unknown, pathname: string) => pathname.replace("/config", ""),
-    },
-    { label: "Settings" },
-  ],
-};
+const formId = "config-form";
 
-export default function Config({ loaderData }: Route.ComponentProps) {
-  const { isOwner, users } = loaderData;
-  const { state } = useNavigation();
+type User = { id: string; email: string; isMember: boolean };
 
-  if (!isOwner) {
-    return <p>Only the list owner can manage settings.</p>;
+function UsersList({ usersPromise }: { usersPromise: Promise<User[]> }) {
+  const users = use(usersPromise);
+
+  if (users.length === 0) {
+    return <p>No other users yet.</p>;
   }
 
   return (
-    <>
-      <h2>Collaborators</h2>
+    <Form id={formId} method="POST">
+      <fieldset>
+        <legend>Select collaborators</legend>
+        {users.map(({ id, email, isMember }) => (
+          <CheckboxField
+            key={id}
+            id={id}
+            name="member-ids"
+            value={id}
+            defaultChecked={isMember}
+          >
+            {email}
+          </CheckboxField>
+        ))}
+      </fieldset>
+    </Form>
+  );
+}
 
-      {users.length === 0 ? (
-        <p>No other users yet.</p>
-      ) : (
-        <Form method="POST">
-          <fieldset>
-            <legend>Select collaborators</legend>
-            {users.map(({ id, email, isMember }) => (
-              <label key={id}>
-                <input
-                  type="checkbox"
-                  name="member-ids"
-                  value={id}
-                  defaultChecked={isMember}
-                />
-                {email}
-              </label>
-            ))}
-          </fieldset>
-          <Button type="submit" isSubmitting={state === "submitting"}>
-            Save
-          </Button>
-        </Form>
-      )}
-    </>
+export default function Config({
+  loaderData: { users, listName },
+}: Route.ComponentProps) {
+  const { list } = useParams<{ list: string }>();
+
+  return (
+    <Modal urlOnClose={href("/")}>
+      <h2>{listName} — Admin</h2>
+
+      <Suspense fallback={null}>
+        <UsersList usersPromise={users} />
+      </Suspense>
+
+      <Modal.Actions>
+        <Link
+          variant="destructive"
+          to={href("/lists/:list/confirm-delete", { list: list! })}
+          className={styles.deleteList}
+        >
+          Delete list
+        </Link>
+        <Modal.Close>Close</Modal.Close>
+        <Modal.Submit formId={formId}>Save</Modal.Submit>
+      </Modal.Actions>
+    </Modal>
   );
 }

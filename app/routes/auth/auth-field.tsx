@@ -7,6 +7,7 @@ type AuthFieldProps = {
 } & (
   | { type: "email"; autoComplete: "email" }
   | { type: "password"; autoComplete: "current-password" | "new-password" }
+  | { type: "text"; autoComplete: "given-name" | "family-name" | "off" }
 );
 
 export function AuthField({ meta, label, type, autoComplete }: AuthFieldProps) {

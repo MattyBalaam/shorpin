@@ -13,7 +13,3 @@ export const actions = style({
   display: "flex",
   gap: vars.spacing.lg,
 });
-
-export const deleteButton = style({
-  color: "red",
-});

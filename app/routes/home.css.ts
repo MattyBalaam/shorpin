@@ -26,7 +26,6 @@ export const list = style({
   listStyle: "none",
   padding: 0,
   gridColumn: "1 / -1",
-  gridRow: "content",
   display: "grid",
   gridTemplateColumns: "subgrid",
   alignSelf: "start" /** prevents items from stretching vertically */,
@@ -67,10 +66,6 @@ export const itemLink = style({
   },
 });
 
-export const itemDelete = style({
-  zIndex: 1,
-});
-
 export const itemConfig = style({
   zIndex: 1,
 });
@@ -105,6 +100,25 @@ export const skeletonBar = style({
 
 export const actions = style({
   gridColumn: "content",
+});
+
+export const pendingSignUps = style({
+  gridRow: "breadcrumbs",
+  gridColumn: "left",
+  containerType: "inline-size",
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "center",
+  paddingInlineStart: vars.spacing.md,
+});
+
+export const signUpsLabel = style({
+  display: "none",
+  "@container": {
+    "(min-width: 10ch)": {
+      display: "inline",
+    },
+  },
 });
 
 export const newList = style({
