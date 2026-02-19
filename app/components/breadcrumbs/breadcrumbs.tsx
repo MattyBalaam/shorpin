@@ -3,8 +3,11 @@ import { Link } from "~/components/link/link";
 import * as styles from "./breadcrumbs.css";
 
 interface BreadcrumbDef {
-  label: string | ((data: any) => string);
-  to?: string | ((data: any, pathname: string) => string);
+  // data is unknown here — each route passes its own loader data shape.
+  // Route handles that need to access properties should use `data: any` in
+  // their callbacks (pragmatic for polymorphic data) or cast to their Route type.
+  label: string | ((data: unknown) => string);
+  to?: string | ((data: unknown, pathname: string) => string);
 }
 
 interface BreadcrumbItem {
@@ -12,7 +15,7 @@ interface BreadcrumbItem {
   to: string;
 }
 
-function resolveBreadcrumb(def: BreadcrumbDef, data: any, pathname: string) {
+function resolveBreadcrumb(def: BreadcrumbDef, data: unknown, pathname: string) {
   return {
     label: typeof def.label === "function" ? def.label(data) : def.label,
     to: typeof def.to === "function" ? def.to(data, pathname) : (def.to ?? pathname),

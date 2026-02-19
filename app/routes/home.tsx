@@ -11,7 +11,7 @@ import { z } from "zod/v4";
 
 import { Link } from "~/components/link/link";
 
-import { createSupabaseClient } from "~/lib/supabase.server";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
 import { parseSubmission, report } from "@conform-to/react/future";
 
@@ -40,9 +40,8 @@ const zCreate = z.object({
   "new-list": z.string().min(1, "List name is required"),
 });
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
+export async function loader({ context }: Route.LoaderArgs) {
+  const supabase = context.get(supabaseContext);
 
   return {
     lists: supabase
@@ -57,7 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
 
   const submission = parseSubmission(formData);
@@ -72,8 +71,7 @@ export async function action({ request }: Route.ActionArgs) {
   const baseSlug = slugify(listName);
 
   if (listName) {
-    const headers = new Headers();
-    const supabase = createSupabaseClient(request, headers);
+    const supabase = context.get(supabaseContext);
 
     const {
       data: { user },
@@ -102,7 +100,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     return redirectWithSuccess(
-      `/lists/${slug}`,
+      href("/lists/:list", { list: slug }),
       `List "${listName}" created successfully!`,
     );
   }

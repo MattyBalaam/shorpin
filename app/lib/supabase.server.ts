@@ -14,11 +14,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export function createSupabaseClient(
-  request: Request,
-  responseHeaders: Headers,
-) {
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+export function createSupabaseClient(request: Request) {
+  const cookieHeaders = new Headers();
+
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return parseCookieHeader(request.headers.get("Cookie") ?? "").filter(
@@ -27,7 +26,7 @@ export function createSupabaseClient(
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) =>
-          responseHeaders.append(
+          cookieHeaders.append(
             "Set-Cookie",
             serializeCookieHeader(name, value, options),
           ),
@@ -35,4 +34,6 @@ export function createSupabaseClient(
       },
     },
   });
+
+  return { supabase, cookieHeaders };
 }

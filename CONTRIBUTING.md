@@ -2,6 +2,60 @@
 
 ## TypeScript
 
+Apply the guidelines below with pragmatism. A one-off internal helper does not need the same rigour as a public component API. The goal is to catch real mistakes at compile time, not to over-engineer simple code.
+
+### String unions over `string`
+
+Prefer a string union over a bare `string` type when only a finite set of values is valid:
+
+```ts
+// Good
+type Variant = "default" | "button";
+
+// Avoid
+type Variant = string;
+```
+
+For coupled props, use a discriminated union so invalid combinations are impossible at compile time:
+
+```ts
+// Good — type and autoComplete are enforced together
+type AuthFieldProps = {
+  meta: FieldMetadata<string>;
+  label: string;
+} & (
+  | { type: "email"; autoComplete: "email" }
+  | { type: "password"; autoComplete: "current-password" | "new-password" }
+);
+```
+
+### Derive types from config objects
+
+When a type would duplicate the keys of a constant object, derive it with `keyof typeof` so the object is the single source of truth:
+
+```ts
+// Good — type is derived, object is the source of truth
+const routes = { home: "/", login: "/login" } as const;
+type RouteName = keyof typeof routes; // "home" | "login"
+
+// Avoid — type and object maintained separately
+type RouteName = "home" | "login";
+const routes: Record<RouteName, string> = { home: "/", login: "/login" };
+```
+
+### Advanced type patterns
+
+Look for opportunities to use discriminated unions and generics where they genuinely reduce mistakes or remove duplication — but only when the added complexity pays for itself.
+
+Good candidates:
+- **Discriminated unions** — when two or more props are semantically coupled and certain combinations are invalid (e.g. `type`/`autoComplete`, `status`/`errorMessage`)
+- **Generics** — when the same logic applies to multiple types and the type parameter carries meaningful information to the caller (e.g. a typed `fetchJson<T>` helper or a `report<Schema>` function)
+
+Skip them when:
+- The code is used in one place and the type is obvious from context
+- The union would have only one member (just use a plain type)
+- A generic parameter would be `any` or `unknown` in practice
+
 ### Return types
 
 Omit explicit return types when TypeScript can trivially infer them. Only annotate return types when the inferred type would be complex, ambiguous, or wider than intended (e.g. unions, generics, overloads).
@@ -16,6 +70,24 @@ export function slugify(input: string) {
 export function parseResult(input: string): Result<User, ValidationError> {
   // ...
 }
+```
+
+## React Router Patterns
+
+### Type-safe routing
+
+Always use React Router's `href()` function for route paths instead of string literals. This provides compile-time safety when routes are renamed or restructured.
+
+```ts
+import { href, redirect } from "react-router";
+
+// Good
+throw redirect(href("/login"));
+throw redirect(href("/lists/:list", { list: slug }));
+
+// Avoid
+throw redirect("/login");
+throw redirect(`/lists/${slug}`);
 ```
 
 ## React Patterns

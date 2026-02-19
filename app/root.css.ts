@@ -4,8 +4,6 @@ import { vars } from "./styles/theme.css";
 export const main = style({
   margin: "0 auto",
   display: "grid",
-  // maxWidth: "60ch", // move to content
-  width: "100%",
   height: "100dvh",
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
@@ -17,7 +15,3 @@ globalStyle("body, h1", {
   margin: 0,
 });
 
-export const logOut = style({
-  gridRow: "breadcrumbs",
-  gridColumn: "right",
-});

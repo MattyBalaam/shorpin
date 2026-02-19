@@ -1,11 +1,11 @@
-import { redirect } from "react-router";
+import { redirect, href } from "react-router";
 import type { Route } from "./+types/confirm";
-import { createSupabaseClient } from "~/lib/supabase.server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { supabaseContext } from "~/lib/supabase.middleware";
 
 const PASSWORD_SETUP_TYPES: EmailOtpType[] = ["recovery", "invite"];
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const token_hash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
@@ -14,9 +14,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw new Response("Missing token", { status: 400 });
   }
 
-  const headers = new Headers();
-  const supabase = createSupabaseClient(request, headers);
-
+  const supabase = context.get(supabaseContext);
   const { error } = await supabase.auth.verifyOtp({ token_hash, type });
 
   if (error) {
@@ -24,8 +22,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const destination = PASSWORD_SETUP_TYPES.includes(type)
-    ? "/set-password"
-    : "/";
+    ? href("/set-password")
+    : href("/");
 
-  throw redirect(destination, { headers });
+  throw redirect(destination);
 }
