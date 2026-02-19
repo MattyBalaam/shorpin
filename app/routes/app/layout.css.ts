@@ -4,23 +4,26 @@ import { vars } from "~/styles/theme.css";
 export const logOut = style({
   gridRow: "breadcrumbs",
   gridColumn: "right",
-  marginInlineStart: "auto",
-  marginRight: vars.spacing.md,
+  containerType: "inline-size",
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  paddingInlineEnd: vars.spacing.md,
 });
 
 export const logOutLabel = style({
+  display: "none",
   "@container": {
-    "(max-width: 200px)": {
-      display: "none",
+    "(min-width: 100px)": {
+      display: "inline",
     },
   },
 });
 
 export const logOutIcon = style({
-  display: "none",
   "@container": {
-    "(max-width: 200px)": {
-      display: "inline",
+    "(min-width: 100px)": {
+      display: "none",
     },
   },
 });

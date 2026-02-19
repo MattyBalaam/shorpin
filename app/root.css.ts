@@ -8,7 +8,7 @@ export const main = style({
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
   gridTemplateColumns:
-    "[left] minmax(20px, auto) [content] minmax(auto, 60ch) [right] minmax(20px, auto)",
+    "[left] minmax(20px, auto) [content] minmax(auto, 60ch) [right] minmax(48px, 1fr)",
 });
 
 globalStyle("body, h1", {
