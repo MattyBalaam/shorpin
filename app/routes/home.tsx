@@ -46,10 +46,15 @@ const zCreate = v.object({
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return {
+    userId: user?.id,
     lists: supabase
       .from("lists")
-      .select("id, name, slug")
+      .select("id, name, slug, user_id")
       .eq("state", "active")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -115,7 +120,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   return report(submission);
 }
 
-type ListItem = { id: string; name: string; slug: string };
+type ListItem = { id: string; name: string; slug: string; user_id: string };
 
 function ListsSkeleton() {
   return (
@@ -139,12 +144,19 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   );
 }
 
-function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
+function Lists({
+  listsPromise,
+  userId,
+}: {
+  listsPromise: Promise<ListItem[]>;
+  userId: string | undefined;
+}) {
   const lists = use(listsPromise);
 
   return (
     <ul className={styles.list}>
-      {lists.map(({ id, name, slug }) => {
+      {lists.map(({ id, name, slug, user_id }) => {
+        const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
             <span className={styles.item}>
@@ -154,13 +166,15 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
               >
                 {name}
               </Link>
-              <Link
-                className={styles.itemConfig}
-                variant="outline"
-                to={href("/config/:list", { list: slug })}
-              >
-                admin
-              </Link>
+              {isOwner && (
+                <Link
+                  className={styles.itemConfig}
+                  variant="outline"
+                  to={href("/config/:list", { list: slug })}
+                >
+                  admin
+                </Link>
+              )}
             </span>
           </li>
         );
@@ -190,6 +204,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           <Suspense fallback={<ListsSkeleton />}>
             <Lists
               listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+              userId={loaderData.userId}
             />
           </Suspense>
         </nav>
