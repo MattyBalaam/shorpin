@@ -5,9 +5,9 @@ export const dialog = style({
   padding: 0,
   border: "none",
   borderRadius: vars.spacing.sm,
+  margin: "auto",
   maxWidth: "32rem",
   width: `calc(100% - ${vars.spacing.xxl})`,
-
   "::backdrop": {
     backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
@@ -18,4 +18,18 @@ export const content = style({
   display: "flex",
   flexDirection: "column",
   gap: vars.spacing.lg,
+});
+
+export const closeForm = style({
+  display: "flex",
+  justifyContent: "flex-end",
+});
+
+export const close = style({
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  fontSize: vars.fontSize.lg,
+  lineHeight: 1,
+  padding: 0,
 });
