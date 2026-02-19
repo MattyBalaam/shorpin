@@ -30,7 +30,7 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>
-        <Modal.Submit form="sign-ups-form">Mark as handled</Modal.Submit>
+        <Modal.Submit formId="sign-ups-form">Mark as handled</Modal.Submit>
       </Modal.Actions>
     </Modal>
   );

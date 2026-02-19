@@ -4,19 +4,19 @@ import { Modal } from "~/components/modal/modal";
 
 export { loader, action } from "./config.server";
 
-export default function Config({ loaderData }: Route.ComponentProps) {
-  const { isOwner, users, listName } = loaderData;
+const formId = "config-form";
 
+export default function Config({
+  loaderData: { users, listName },
+}: Route.ComponentProps) {
   return (
     <Modal>
       <h2>{listName} — Settings</h2>
 
-      {!isOwner ? (
-        <p>Only the list owner can manage settings.</p>
-      ) : users.length === 0 ? (
+      {users.length === 0 ? (
         <p>No other users yet.</p>
       ) : (
-        <Form id="config-form" method="POST">
+        <Form id={formId} method="POST">
           <fieldset>
             <legend>Select collaborators</legend>
             {users.map(({ id, email, isMember }) => (
@@ -36,7 +36,7 @@ export default function Config({ loaderData }: Route.ComponentProps) {
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>
-        <Modal.Submit form="config-form">Save</Modal.Submit>
+        <Modal.Submit formId={formId}>Save</Modal.Submit>
       </Modal.Actions>
     </Modal>
   );
