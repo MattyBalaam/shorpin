@@ -3,6 +3,8 @@ import type { Route } from "./+types/set-password";
 import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
 import { zSetPassword } from "./schemas";
+import { AuthField } from "./auth-field";
+import * as styles from "./auth-field.css";
 
 export { loader, action } from "./set-password.server";
 
@@ -17,29 +19,31 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
   return (
     <>
       <h1>Set new password</h1>
-      <Form method="POST" {...form.props}>
+      <Form method="POST" {...form.props} className={styles.form}>
         <input type="hidden" autoComplete="username" value={loaderData.email} readOnly />
-        {form.errors?.map((error, i) => <p key={i}>{error}</p>)}
-        <label htmlFor={fields.password.id}>New password</label>
-        <input
+        {form.errors?.map((error, i) => (
+          <p key={i}>{error}</p>
+        ))}
+        <AuthField
+          label="New password"
           type="password"
-          name={fields.password.name}
           id={fields.password.id}
+          name={fields.password.name}
+          autoComplete="new-password"
           required
           minLength={8}
-          autoComplete="new-password"
+          errors={fields.password.errors}
         />
-        {fields.password.errors?.map((error, i) => <p key={i}>{error}</p>)}
-        <label htmlFor={fields["confirm-password"].id}>Confirm password</label>
-        <input
+        <AuthField
+          label="Confirm password"
           type="password"
-          name={fields["confirm-password"].name}
           id={fields["confirm-password"].id}
+          name={fields["confirm-password"].name}
+          autoComplete="new-password"
           required
           minLength={8}
-          autoComplete="new-password"
+          errors={fields["confirm-password"].errors}
         />
-        {fields["confirm-password"].errors?.map((error, i) => <p key={i}>{error}</p>)}
         <Button type="submit" isSubmitting={state === "submitting"}>
           Update password
         </Button>

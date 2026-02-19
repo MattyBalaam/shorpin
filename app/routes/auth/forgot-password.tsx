@@ -3,6 +3,8 @@ import type { Route } from "./+types/forgot-password";
 import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
 import { zForgotPassword } from "./schemas";
+import { AuthField } from "./auth-field";
+import * as styles from "./auth-field.css";
 
 export { action } from "./forgot-password.server";
 
@@ -27,17 +29,19 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
   return (
     <>
       <h1>Forgot password</h1>
-      <Form method="POST" {...form.props}>
-        {form.errors?.map((error, i) => <p key={i}>{error}</p>)}
-        <label htmlFor={fields.email.id}>Email</label>
-        <input
+      <Form method="POST" {...form.props} className={styles.form}>
+        {form.errors?.map((error, i) => (
+          <p key={i}>{error}</p>
+        ))}
+        <AuthField
+          label="Email"
           type="email"
-          name={fields.email.name}
           id={fields.email.id}
-          required
+          name={fields.email.name}
           autoComplete="email"
+          required
+          errors={fields.email.errors}
         />
-        {fields.email.errors?.map((error, i) => <p key={i}>{error}</p>)}
         <Button type="submit" isSubmitting={state === "submitting"}>
           Send reset link
         </Button>
