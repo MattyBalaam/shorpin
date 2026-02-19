@@ -5,6 +5,7 @@ import { Button } from "../button/button";
 
 // Must be used as a sibling to React Router's <Form>, never nested inside it.
 // The native <form method="dialog"> is not intercepted by React Router.
+// Use Modal.Submit with a form="<id>" prop to associate it with the RR Form by id.
 function ModalActions({ children }: { children: ReactNode }) {
   return <form method="dialog">{children}</form>;
 }
@@ -13,11 +14,17 @@ function ModalClose({ children }: { children: ReactNode }) {
   return <Button type="submit">{children}</Button>;
 }
 
-function ModalSubmit({ children }: { children: ReactNode }) {
+function ModalSubmit({
+  children,
+  form,
+}: {
+  children: ReactNode;
+  form?: string;
+}) {
   const { state } = useNavigation();
 
   return (
-    <Button type="submit" isSubmitting={state === "submitting"}>
+    <Button type="submit" form={form} isSubmitting={state === "submitting"}>
       {children}
     </Button>
   );

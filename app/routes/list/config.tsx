@@ -16,7 +16,7 @@ export default function Config({ loaderData }: Route.ComponentProps) {
       ) : users.length === 0 ? (
         <p>No other users yet.</p>
       ) : (
-        <Form method="POST">
+        <Form id="config-form" method="POST">
           <fieldset>
             <legend>Select collaborators</legend>
             {users.map(({ id, email, isMember }) => (
@@ -31,12 +31,12 @@ export default function Config({ loaderData }: Route.ComponentProps) {
               </label>
             ))}
           </fieldset>
-          <Modal.Submit>Save</Modal.Submit>
         </Form>
       )}
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>
+        <Modal.Submit form="config-form">Save</Modal.Submit>
       </Modal.Actions>
     </Modal>
   );

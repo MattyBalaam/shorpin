@@ -14,7 +14,7 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
       {signUps.length === 0 ? (
         <p>No pending sign-ups.</p>
       ) : (
-        <Form method="POST">
+        <Form id="sign-ups-form" method="POST">
           {signUps.map(({ id, email, first_name, last_name, created_at }) => (
             <div key={id}>
               <input type="checkbox" name="ids" value={id} />
@@ -25,13 +25,12 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
               </label>
             </div>
           ))}
-
-          <Modal.Submit>Mark as handled</Modal.Submit>
         </Form>
       )}
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>
+        <Modal.Submit form="sign-ups-form">Mark as handled</Modal.Submit>
       </Modal.Actions>
     </Modal>
   );
