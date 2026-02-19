@@ -26,7 +26,6 @@ export const list = style({
   listStyle: "none",
   padding: 0,
   gridColumn: "1 / -1",
-  gridRow: "content",
   display: "grid",
   gridTemplateColumns: "subgrid",
   alignSelf: "start" /** prevents items from stretching vertically */,
@@ -116,16 +115,8 @@ export const pendingSignUps = style({
 export const signUpsLabel = style({
   display: "none",
   "@container": {
-    "(min-width: 100px)": {
+    "(min-width: 10ch)": {
       display: "inline",
-    },
-  },
-});
-
-export const signUpsCount = style({
-  "@container": {
-    "(min-width: 100px)": {
-      display: "none",
     },
   },
 });

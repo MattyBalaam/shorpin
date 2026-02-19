@@ -23,6 +23,7 @@ import { Button } from "~/components/button/button";
 import * as styles from "./home.css";
 import { use, Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
+import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export const meta: MetaFunction = () => {
@@ -133,12 +134,7 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   if (count === 0) return null;
   return (
     <Link to={href("/sign-ups")}>
-      <span className={styles.signUpsLabel}>
-        {count} pending sign-up{count !== 1 ? "s" : ""}
-      </span>
-      <span aria-hidden="true" className={styles.signUpsCount}>
-        {count}
-      </span>
+      {count} <span className={styles.signUpsLabel}>pending</span>
     </Link>
   );
 }
@@ -189,13 +185,15 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           <PendingSignUps countPromise={pendingCount} />
         </Suspense>
       </div>
-      <nav className={styles.listWrapper}>
-        <Suspense fallback={<ListsSkeleton />}>
-          <Lists
-            listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
-          />
-        </Suspense>
-      </nav>
+      <ScrollArea>
+        <nav className={styles.listWrapper}>
+          <Suspense fallback={<ListsSkeleton />}>
+            <Lists
+              listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+            />
+          </Suspense>
+        </nav>
+      </ScrollArea>
 
       <Actions>
         <RouterForm method="POST" {...form.props} className={styles.actions}>

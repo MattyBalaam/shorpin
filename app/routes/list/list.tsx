@@ -98,6 +98,7 @@ export async function clientAction({
 
 import { supabase } from "~/lib/supabase.client";
 import { useIsOnline } from "~/components/online-status/online-status";
+import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import * as styles from "./list.css";
 import * as itemsStyles from "~/components/items.css";
 import { Button } from "~/components/button/button";
@@ -107,21 +108,19 @@ import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export function HydrateFallback() {
   return (
-    <div className={styles.items}>
-      <div className={styles.itemsScroll}>
-        <ul className={itemsStyles.items}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className={itemsStyles.skeletonItem}>
-              <div className={itemsStyles.skeletonContent}>
-                <div className={itemsStyles.skeletonBar} />
-                <div className={itemsStyles.skeletonBar} />
-                <div className={itemsStyles.skeletonBar} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+    <ScrollArea>
+      <ul className={itemsStyles.items}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <li key={i} className={itemsStyles.skeletonItem}>
+            <div className={itemsStyles.skeletonContent}>
+              <div className={itemsStyles.skeletonBar} />
+              <div className={itemsStyles.skeletonBar} />
+              <div className={itemsStyles.skeletonBar} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </ScrollArea>
   );
 }
 
@@ -332,9 +331,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           }}
         />
 
-        <div className={styles.items}>
-          <div className={styles.itemsScroll}>
-            <Items
+        <ScrollArea>
+          <Items
               fieldMetadata={fields.items}
               edited={edited}
               pendingItem={
@@ -359,8 +357,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
                 });
               }}
             />
-          </div>
-        </div>
+        </ScrollArea>
 
         <Actions>
           <div className={styles.actions}>
