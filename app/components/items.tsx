@@ -121,7 +121,7 @@ const variants = {
       overflow: "hidden",
     },
   },
-} satisfies Record<string, Variants>;
+} satisfies Record<"container" | "item", Variants>;
 
 export function Items({
   fieldMetadata,

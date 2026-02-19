@@ -2,6 +2,45 @@
 
 ## TypeScript
 
+### String unions over `string`
+
+Prefer a string union over a bare `string` type when only a finite set of values is valid:
+
+```ts
+// Good
+type Variant = "default" | "button";
+
+// Avoid
+type Variant = string;
+```
+
+For coupled props, use a discriminated union so invalid combinations are impossible at compile time:
+
+```ts
+// Good — type and autoComplete are enforced together
+type AuthFieldProps = {
+  meta: FieldMetadata<string>;
+  label: string;
+} & (
+  | { type: "email"; autoComplete: "email" }
+  | { type: "password"; autoComplete: "current-password" | "new-password" }
+);
+```
+
+### Derive types from config objects
+
+When a type would duplicate the keys of a constant object, derive it with `keyof typeof` so the object is the single source of truth:
+
+```ts
+// Good — type is derived, object is the source of truth
+const routes = { home: "/", login: "/login" } as const;
+type RouteName = keyof typeof routes; // "home" | "login"
+
+// Avoid — type and object maintained separately
+type RouteName = "home" | "login";
+const routes: Record<RouteName, string> = { home: "/", login: "/login" };
+```
+
 ### Return types
 
 Omit explicit return types when TypeScript can trivially infer them. Only annotate return types when the inferred type would be complex, ambiguous, or wider than intended (e.g. unions, generics, overloads).
