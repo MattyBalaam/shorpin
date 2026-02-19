@@ -1,4 +1,4 @@
-import { redirect, createContext } from "react-router";
+import { redirect, createContext, href } from "react-router";
 import type { MiddlewareFunction } from "react-router";
 import { createSupabaseClient } from "./supabase.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -7,18 +7,17 @@ import type { Database } from "./database.types";
 export const supabaseContext = createContext<SupabaseClient<Database>>();
 
 const publicRoutes = [
-  "/login",
-  "/forgot-password",
-  "/auth/confirm",
-  "/set-password",
+  href("/login"),
+  href("/forgot-password"),
+  href("/auth/confirm"),
+  href("/set-password"),
 ];
 
 export const supabaseMiddleware: MiddlewareFunction<Response> = async (
   { request, context },
   next,
 ) => {
-  const responseHeaders = new Headers();
-  const supabase = createSupabaseClient(request, responseHeaders);
+  const { supabase, cookieHeaders } = createSupabaseClient(request);
 
   context.set(supabaseContext, supabase);
 
@@ -29,14 +28,14 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
     } = await supabase.auth.getUser();
 
     if (!user) {
-      throw redirect("/login", { headers: responseHeaders });
+      throw redirect(href("/login"), { headers: cookieHeaders });
     }
   }
 
   const response = await next();
 
   // Apply token refresh (and login/logout) cookie changes to the response
-  for (const [key, value] of responseHeaders.entries()) {
+  for (const [key, value] of cookieHeaders.entries()) {
     response.headers.append(key, value);
   }
 
