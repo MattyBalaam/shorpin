@@ -9,8 +9,10 @@ export default [
     route("auth/confirm", "routes/auth/confirm.tsx"),
     route("set-password", "routes/auth/set-password.tsx"),
   ]),
-  index("routes/home.tsx"),
-  route("lists/:list", "routes/list/list.tsx"),
-  route("lists/:list/config", "routes/list/config.tsx"),
-  route("lists/:list/confirm-delete", "routes/delete.tsx"),
+  layout("routes/app/layout.tsx", [
+    index("routes/home.tsx"),
+    route("lists/:list", "routes/list/list.tsx"),
+    route("lists/:list/config", "routes/list/config.tsx"),
+    route("lists/:list/confirm-delete", "routes/delete.tsx"),
+  ]),
 ] satisfies RouteConfig;

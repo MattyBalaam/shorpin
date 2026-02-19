@@ -1,5 +1,4 @@
 import {
-  Form,
   href,
   isRouteErrorResponse,
   Links,
@@ -23,15 +22,9 @@ import "~/styles/typography.css";
 import "~/components/conform-input";
 
 import { Link } from "./components/link/link";
-import { Breadcrumbs } from "./components/breadcrumbs/breadcrumbs";
-import {
-  OnlineStatusIndicator,
-  OnlineStatusProvider,
-} from "./components/online-status/online-status";
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
-import { Button } from "./components/button/button";
 
 export const middleware = [toastMiddleware(), supabaseMiddleware];
 
@@ -93,18 +86,12 @@ export default function App({
   );
 
   return (
-    <OnlineStatusProvider>
-      <OnlineStatusIndicator />
+    <>
       <main className={styles.main}>
-        <Breadcrumbs />
-        <Form method="POST" action="/logout" className={styles.logOut}>
-          <Button type="submit">Sign out</Button>
-        </Form>
         <Outlet />
       </main>
-
       <Toaster position="top-right" />
-    </OnlineStatusProvider>
+    </>
   );
 }
 

@@ -15,7 +15,3 @@ globalStyle("body, h1", {
   margin: 0,
 });
 
-export const logOut = style({
-  gridRow: "breadcrumbs",
-  gridColumn: "right",
-});
