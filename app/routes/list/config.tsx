@@ -1,13 +1,11 @@
-import { Form, useNavigation } from "react-router";
+import { Form } from "react-router";
 import type { Route } from "./+types/config";
-import { Button } from "~/components/button/button";
 import { Modal } from "~/components/modal/modal";
 
 export { loader, action } from "./config.server";
 
 export default function Config({ loaderData }: Route.ComponentProps) {
   const { isOwner, users, listName } = loaderData;
-  const { state } = useNavigation();
 
   return (
     <Modal>
@@ -33,12 +31,13 @@ export default function Config({ loaderData }: Route.ComponentProps) {
               </label>
             ))}
           </fieldset>
-          <Button type="submit" isSubmitting={state === "submitting"}>
-            Save
-          </Button>
-          <Button type="submit" formMethod="dialog">Close</Button>
+          <Modal.Submit>Save</Modal.Submit>
         </Form>
       )}
+
+      <Modal.Actions>
+        <Modal.Close>Close</Modal.Close>
+      </Modal.Actions>
     </Modal>
   );
 }

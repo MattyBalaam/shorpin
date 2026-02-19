@@ -1,6 +1,5 @@
 import { Form } from "react-router";
 import type { Route } from "./+types/sign-ups";
-import { Button } from "~/components/button/button";
 import { Modal } from "~/components/modal/modal";
 
 export { loader, action } from "./sign-ups.server";
@@ -27,10 +26,13 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
             </div>
           ))}
 
-          <Button type="submit">Mark as handled</Button>
-          <Button type="submit" formMethod="dialog">Close</Button>
+          <Modal.Submit>Mark as handled</Modal.Submit>
         </Form>
       )}
+
+      <Modal.Actions>
+        <Modal.Close>Close</Modal.Close>
+      </Modal.Actions>
     </Modal>
   );
 }
