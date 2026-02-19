@@ -153,8 +153,15 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   const reorderSubmitRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const isOnline = useIsOnline();
-  const wasOfflineRef = useRef(false);
+  const isOnline = useIsOnline({
+    onOffline: () => {
+      toast.info("You're offline - changes saved locally");
+    },
+    onOnline: () => {
+      formRef.current?.requestSubmit();
+      toast.success("Back online - syncing changes");
+    },
+  });
 
   // Subscribe to broadcast for real-time updates
   useEffect(
@@ -178,29 +185,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     [loaderData.listId, clientId, revalidate],
   );
 
-  // Show toast when going offline
-  useEffect(
-    function notifyOfflineStatus() {
-      if (!isOnline) {
-        wasOfflineRef.current = true;
-        toast.info("You're offline - changes saved locally");
-      }
-    },
-    [isOnline],
-  );
-
-  // Auto-submit when back online if there were changes made offline
-  useEffect(
-    function submitOnReconnect() {
-      if (isOnline && wasOfflineRef.current) {
-        wasOfflineRef.current = false;
-        // Submit the form to sync any changes made while offline
-        formRef.current?.requestSubmit();
-        toast.success("Back online - syncing changes");
-      }
-    },
-    [isOnline],
-  );
 
   const { form, fields, intent } = useForm(zList, {
     defaultValue,
