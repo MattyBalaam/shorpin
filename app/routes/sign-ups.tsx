@@ -4,6 +4,8 @@ import { Modal } from "~/components/modal/modal";
 
 export { loader, action } from "./sign-ups.server";
 
+const formId = "sign-ups-form";
+
 export default function SignUps({ loaderData }: Route.ComponentProps) {
   const { signUps } = loaderData;
 
@@ -14,14 +16,16 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
       {signUps.length === 0 ? (
         <p>No pending sign-ups.</p>
       ) : (
-        <Form id="sign-ups-form" method="POST">
+        <Form id={formId} method="POST">
           {signUps.map(({ id, email, first_name, last_name, created_at }) => (
             <div key={id}>
               <input type="checkbox" name="ids" value={id} />
 
               <label htmlFor={id}>
                 {first_name} {last_name} — {email}{" "}
-                <small>{new Date(created_at).toLocaleDateString()}</small>
+                <time dateTime={created_at}>
+                  {new Date(created_at).toLocaleDateString()}
+                </time>
               </label>
             </div>
           ))}
@@ -30,7 +34,7 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>
-        <Modal.Submit formId="sign-ups-form">Mark as handled</Modal.Submit>
+        <Modal.Submit formId={formId}>Mark as handled</Modal.Submit>
       </Modal.Actions>
     </Modal>
   );
