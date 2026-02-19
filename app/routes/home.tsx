@@ -158,14 +158,7 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
                 variant="button"
                 to={href("/config/:list", { list: slug })}
               >
-                settings
-              </Link>
-              <Link
-                className={styles.itemDelete}
-                variant="button"
-                to={href("/lists/:list/confirm-delete", { list: slug })}
-              >
-                delete
+                admin
               </Link>
             </span>
           </li>

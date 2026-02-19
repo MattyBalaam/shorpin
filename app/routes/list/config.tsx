@@ -1,6 +1,7 @@
-import { Form } from "react-router";
+import { Form, href, useParams } from "react-router";
 import type { Route } from "./+types/config";
 import { Modal } from "~/components/modal/modal";
+import { Link } from "~/components/link/link";
 import { use, Suspense } from "react";
 
 export { loader, action } from "./config.server";
@@ -39,15 +40,20 @@ function UsersList({ usersPromise }: { usersPromise: Promise<User[]> }) {
 export default function Config({
   loaderData: { users, listName },
 }: Route.ComponentProps) {
+  const { list } = useParams<{ list: string }>();
+
   return (
     <Modal>
-      <h2>{listName} — Settings</h2>
+      <h2>{listName} — Admin</h2>
 
       <Suspense fallback={null}>
         <UsersList usersPromise={users} />
       </Suspense>
 
       <Modal.Actions>
+        <Link variant="destructive" to={href("/lists/:list/confirm-delete", { list: list! })}>
+          Delete list
+        </Link>
         <Modal.Close>Close</Modal.Close>
         <Modal.Submit formId={formId}>Save</Modal.Submit>
       </Modal.Actions>

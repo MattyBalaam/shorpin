@@ -34,9 +34,23 @@ function ModalSubmit({
   );
 }
 
-export function Modal({ children }: { children: ReactNode }) {
+export function Modal({
+  children,
+  to,
+}: {
+  children: ReactNode;
+  to?: string | number;
+}) {
   const navigate = useNavigate();
   const navigation = useNavigation();
+
+  function dismiss() {
+    if (typeof to === "string") {
+      navigate(to);
+    } else {
+      navigate(to ?? -1);
+    }
+  }
 
   return (
     <dialog
@@ -46,7 +60,7 @@ export function Modal({ children }: { children: ReactNode }) {
         }
       }}
       className={styles.dialog}
-      onClose={() => navigate(-1)}
+      onClose={dismiss}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           (e.currentTarget as HTMLDialogElement).close();
