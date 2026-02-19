@@ -4,11 +4,11 @@ import * as styles from "./auth-field.css";
 interface AuthFieldProps {
   meta: FieldMetadata<string>;
   label: string;
-  type?: string;
+  type: "email" | "password";
   autoComplete?: string;
 }
 
-export function AuthField({ meta, label, type = "text", autoComplete }: AuthFieldProps) {
+export function AuthField({ meta, label, type, autoComplete }: AuthFieldProps) {
   return (
     <div className={styles.field}>
       <label htmlFor={meta.id}>{label}</label>
