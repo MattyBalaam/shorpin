@@ -53,6 +53,10 @@ export async function loader({ context }: Route.LoaderArgs) {
         if (error) throw error;
         return data ?? [];
       }),
+    waitlistCount: supabase
+      .from("waitlist")
+      .select("*", { count: "exact", head: true })
+      .then(({ count }) => count ?? 0),
   };
 }
 
@@ -122,6 +126,16 @@ function ListsSkeleton() {
   );
 }
 
+function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
+  const count = use(countPromise);
+  if (count === 0) return null;
+  return (
+    <Link to={href("/sign-ups")}>
+      {count} pending sign-up{count !== 1 ? "s" : ""}
+    </Link>
+  );
+}
+
 function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
   const lists = use(listsPromise);
 
@@ -166,9 +180,13 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   });
 
   const { state } = useNavigation();
+  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
   return (
     <>
+      <Suspense fallback={null}>
+        <PendingSignUps countPromise={pendingCount} />
+      </Suspense>
       <nav className={styles.listWrapper}>
         <Suspense fallback={<ListsSkeleton />}>
           <Lists listsPromise={loaderData.lists as unknown as Promise<ListItem[]>} />

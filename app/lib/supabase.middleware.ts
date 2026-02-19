@@ -11,6 +11,7 @@ const publicRoutes = [
   href("/forgot-password"),
   href("/auth/confirm"),
   href("/set-password"),
+  href("/request-access"),
 ];
 
 export const supabaseMiddleware: MiddlewareFunction<Response> = async (
