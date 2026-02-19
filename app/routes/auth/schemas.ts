@@ -1,21 +1,31 @@
-import { z } from "zod/v4";
+import * as v from "valibot";
 
-export const zLogin = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email"),
-  password: z.string().min(1, "Password is required"),
+const email = v.pipe(
+  v.string(),
+  v.minLength(1, "Email is required"),
+  v.email("Invalid email"),
+);
+
+export const zLogin = v.object({
+  email,
+  password: v.pipe(v.string(), v.minLength(1, "Password is required")),
 });
 
-export const zForgotPassword = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email"),
+export const zForgotPassword = v.object({ email });
+
+export const zSetPassword = v.object({
+  password: v.pipe(
+    v.string(),
+    v.minLength(8, "Password must be at least 8 characters"),
+  ),
+  "confirm-password": v.pipe(
+    v.string(),
+    v.minLength(8, "Confirmation must be at least 8 characters"),
+  ),
 });
 
-export const zSetPassword = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  "confirm-password": z.string().min(8, "Confirmation must be at least 8 characters"),
-});
-
-export const zRequestAccess = z.object({
-  email: z.string().min(1, "Email is required").email("Invalid email"),
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+export const zRequestAccess = v.object({
+  email,
+  first_name: v.pipe(v.string(), v.minLength(1, "First name is required")),
+  last_name: v.pipe(v.string(), v.minLength(1, "Last name is required")),
 });

@@ -3,18 +3,19 @@ import type { Route } from "./+types/request-access";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
 import { redirectWithSuccess } from "remix-toast";
+import * as v from "valibot";
 import { zRequestAccess } from "./schemas";
 
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
   const submission = parseSubmission(formData);
-  const result = zRequestAccess.safeParse(submission.payload);
+  const result = v.safeParse(zRequestAccess, submission.payload);
 
   if (!result.success) {
     return report(submission);
   }
 
-  const { email, first_name, last_name } = result.data;
+  const { email, first_name, last_name } = result.output;
   const supabase = context.get(supabaseContext);
 
   const { error } = await supabase

@@ -8,7 +8,7 @@ import {
   type MetaFunction,
 } from "react-router";
 import { useForm } from "@conform-to/react/future";
-import { z } from "zod/v4";
+import * as v from "valibot";
 
 import { Link } from "~/components/link/link";
 
@@ -23,11 +23,12 @@ import { Button } from "~/components/button/button";
 import * as styles from "./home.css";
 import { use, Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
+import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 export const meta: MetaFunction = () => {
   return [
     { title: "Shorpin" },
-    { name: "description", content: "Loadsalists" },
+    { name: "description", content: "We got lists, they’re multiplying" },
   ];
 };
 
@@ -37,8 +38,8 @@ export const handle = {
   },
 };
 
-const zCreate = z.object({
-  "new-list": z.string().min(1, "List name is required"),
+const zCreate = v.object({
+  "new-list": v.pipe(v.string(), v.minLength(1, "List name is required")),
 });
 
 export async function loader({ context }: Route.LoaderArgs) {
@@ -66,13 +67,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const submission = parseSubmission(formData);
 
-  const result = zCreate.safeParse(submission.payload);
+  const result = v.safeParse(zCreate, submission.payload);
 
   if (!result.success) {
     return report(submission);
   }
 
-  const listName = result.data["new-list"];
+  const listName = result.output["new-list"];
   const baseSlug = slugify(listName);
 
   if (listName) {
@@ -190,15 +191,18 @@ export default function Index({ loaderData }: Route.ComponentProps) {
       </Suspense>
       <nav className={styles.listWrapper}>
         <Suspense fallback={<ListsSkeleton />}>
-          <Lists listsPromise={loaderData.lists as unknown as Promise<ListItem[]>} />
+          <Lists
+            listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+          />
         </Suspense>
       </nav>
-      <hr />
 
       <Actions>
         <RouterForm method="POST" {...form.props} className={styles.actions}>
           <div className={styles.newList}>
-            <label htmlFor={fields["new-list"].id}>New list</label>
+            <VisuallyHidden>
+              <label htmlFor={fields["new-list"].id}>New list</label>
+            </VisuallyHidden>
             <input
               name={fields["new-list"].name}
               id={fields["new-list"].id}
@@ -206,7 +210,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
             />
 
             <Button type="submit" isSubmitting={state === "submitting"}>
-              Create
+              Add
             </Button>
           </div>
         </RouterForm>

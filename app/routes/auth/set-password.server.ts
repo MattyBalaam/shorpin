@@ -3,6 +3,7 @@ import { redirectWithSuccess } from "remix-toast";
 import { href } from "react-router";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
+import * as v from "valibot";
 import { zSetPassword } from "./schemas";
 
 export async function loader({ context }: Route.LoaderArgs) {
@@ -16,14 +17,14 @@ export async function loader({ context }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
   const submission = parseSubmission(formData);
-  const result = zSetPassword.safeParse(submission.payload);
+  const result = v.safeParse(zSetPassword, submission.payload);
 
   if (!result.success) {
     return report(submission);
   }
 
-  const { password } = result.data;
-  const confirm = result.data["confirm-password"];
+  const { password } = result.output;
+  const confirm = result.output["confirm-password"];
 
   if (password !== confirm) {
     return report(submission, {

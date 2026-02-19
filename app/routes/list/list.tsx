@@ -10,6 +10,7 @@ import {
   useForm,
   useFormData,
 } from "@conform-to/react/future";
+import * as v from "valibot";
 import { zList } from "./data";
 import { Link } from "~/components/link/link";
 import { Form } from "~/react-aria/Form";
@@ -61,20 +62,20 @@ export async function clientAction({
     const formData = await request.formData();
     const submission = parseSubmission(formData);
 
-    const result = zList.safeParse(submission.payload);
+    const result = v.safeParse(zList, submission.payload);
 
     if (!result.success) {
       throw new Error("fix me");
     }
 
     // Get current items from form
-    const currentItems = result.data.items;
+    const currentItems = result.output.items;
 
     // Add new item if present
-    if (result.data.new) {
+    if (result.output.new) {
       currentItems.push({
         id: crypto.randomUUID(),
-        value: result.data.new,
+        value: result.output.new,
       });
     }
 
@@ -83,7 +84,7 @@ export async function clientAction({
     return {
       lastDeleted: undefined,
       lastResult: report(submission, {
-        reset: Boolean(result.data.new),
+        reset: Boolean(result.output.new),
         value: {
           ...submission.payload,
           new: "",
@@ -267,7 +268,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     useFormData(form.id, (formData) => {
       const submission = parseSubmission(formData);
 
-      const result = zList.safeParse(submission.payload);
+      const result = v.safeParse(zList, submission.payload);
 
       if (!result.success) {
         return [];
@@ -276,7 +277,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       return defaultValue.items
         .filter(
           ({ value, id }) =>
-            result.data.items?.find((item) => item?.id === id)?.value !== value,
+            result.output.items?.find((item) => item?.id === id)?.value !== value,
         )
         .map(({ id }) => id);
     }) || [];

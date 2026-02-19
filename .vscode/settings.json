@@ -12,10 +12,13 @@
   "editor.defaultFormatter": "oxc.oxc-vscode",
 
   "cSpell.words": [
+    "oxfmt",
     "Reorderable",
     "Revalidator",
     "shorpin",
     "subgrid",
-    "supabase"
+    "supabase",
+    "tsgo",
+    "waitlist"
   ]
 }

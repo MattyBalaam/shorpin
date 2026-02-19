@@ -12,3 +12,8 @@ export const field = style({
   flexDirection: "column",
   gap: vars.spacing.xs,
 });
+
+export const input = style({
+  paddingBlock: vars.spacing.sm,
+  paddingInline: vars.spacing.md,
+});

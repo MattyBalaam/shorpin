@@ -20,3 +20,8 @@ export const content = style({
   gap: vars.spacing.lg,
 });
 
+export const actions = style({
+  display: "flex",
+  justifyContent: "end",
+  gap: vars.spacing.lg,
+});
