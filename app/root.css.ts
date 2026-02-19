@@ -14,4 +14,3 @@ export const main = style({
 globalStyle("body, h1", {
   margin: 0,
 });
-
