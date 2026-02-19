@@ -1,32 +1,21 @@
 import { Form, useNavigation } from "react-router";
 import type { Route } from "./+types/config";
 import { Button } from "~/components/button/button";
+import { Modal } from "~/components/modal/modal";
 
 export { loader, action } from "./config.server";
 
-export const handle = {
-  breadcrumbs: [
-    {
-      label: (data: any) => data?.listName || "List",
-      to: (_data: unknown, pathname: string) => pathname.replace("/config", ""),
-    },
-    { label: "Settings" },
-  ],
-};
-
 export default function Config({ loaderData }: Route.ComponentProps) {
-  const { isOwner, users } = loaderData;
+  const { isOwner, users, listName } = loaderData;
   const { state } = useNavigation();
 
-  if (!isOwner) {
-    return <p>Only the list owner can manage settings.</p>;
-  }
-
   return (
-    <>
-      <h2>Collaborators</h2>
+    <Modal>
+      <h2>{listName} — Settings</h2>
 
-      {users.length === 0 ? (
+      {!isOwner ? (
+        <p>Only the list owner can manage settings.</p>
+      ) : users.length === 0 ? (
         <p>No other users yet.</p>
       ) : (
         <Form method="POST">
@@ -49,6 +38,6 @@ export default function Config({ loaderData }: Route.ComponentProps) {
           </Button>
         </Form>
       )}
-    </>
+    </Modal>
   );
 }

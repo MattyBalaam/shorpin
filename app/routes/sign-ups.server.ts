@@ -1,5 +1,7 @@
+import { href } from "react-router";
 import type { Route } from "./+types/sign-ups";
 import { supabaseContext } from "~/lib/supabase.middleware";
+import { redirectWithSuccess } from "remix-toast";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -29,5 +31,5 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (error) throw error;
 
-  return null;
+  return redirectWithSuccess(href("/"), "Sign-ups handled.");
 }

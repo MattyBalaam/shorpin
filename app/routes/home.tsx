@@ -3,6 +3,7 @@ import type { Route } from "./+types/home";
 import {
   href,
   Form as RouterForm,
+  Outlet,
   useNavigation,
   type MetaFunction,
 } from "react-router";
@@ -154,7 +155,7 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
               <Link
                 className={styles.itemConfig}
                 variant="button"
-                to={href("/lists/:list/config", { list: slug })}
+                to={href("/config/:list", { list: slug })}
               >
                 settings
               </Link>
@@ -210,6 +211,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           </div>
         </RouterForm>
       </Actions>
+      <Outlet />
     </>
   );
 }
