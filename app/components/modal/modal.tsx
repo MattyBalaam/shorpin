@@ -20,15 +20,3 @@ export function Modal({ children }: { children: ReactNode }) {
     </dialog>
   );
 }
-
-export function ModalActions({ children }: { children: ReactNode }) {
-  return (
-    <form method="dialog" className={styles.closeForm}>
-      <button className={styles.close} aria-label="Close">
-        ×
-      </button>
-
-      {children}
-    </form>
-  );
-}

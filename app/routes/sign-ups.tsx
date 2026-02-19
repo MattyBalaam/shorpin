@@ -16,18 +16,19 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
         <p>No pending sign-ups.</p>
       ) : (
         <Form method="POST">
-          <ul>
-            {signUps.map(({ id, email, first_name, last_name, created_at }) => (
-              <li key={id}>
-                <label>
-                  <input type="checkbox" name="ids" value={id} />
-                  {first_name} {last_name} — {email}{" "}
-                  <small>{new Date(created_at).toLocaleDateString()}</small>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {signUps.map(({ id, email, first_name, last_name, created_at }) => (
+            <div key={id}>
+              <input type="checkbox" name="ids" value={id} />
+
+              <label htmlFor={id}>
+                {first_name} {last_name} — {email}{" "}
+                <small>{new Date(created_at).toLocaleDateString()}</small>
+              </label>
+            </div>
+          ))}
+
           <Button type="submit">Mark as handled</Button>
+          <Button type="submit" formMethod="dialog">Close</Button>
         </Form>
       )}
     </Modal>

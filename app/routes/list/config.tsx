@@ -36,6 +36,7 @@ export default function Config({ loaderData }: Route.ComponentProps) {
           <Button type="submit" isSubmitting={state === "submitting"}>
             Save
           </Button>
+          <Button type="submit" formMethod="dialog">Close</Button>
         </Form>
       )}
     </Modal>

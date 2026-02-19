@@ -20,16 +20,3 @@ export const content = style({
   gap: vars.spacing.lg,
 });
 
-export const closeForm = style({
-  display: "flex",
-  justifyContent: "flex-end",
-});
-
-export const close = style({
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  fontSize: vars.fontSize.lg,
-  lineHeight: 1,
-  padding: 0,
-});
