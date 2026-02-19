@@ -9,16 +9,16 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
 
   if (actionData?.success) {
     return (
-      <main>
+      <>
         <h1>Check your email</h1>
         <p>If an account exists for that address, you'll receive a password reset link shortly.</p>
         <Link to="/login">Back to sign in</Link>
-      </main>
+      </>
     );
   }
 
   return (
-    <main>
+    <>
       <h1>Forgot password</h1>
       <Form method="POST">
         <label>
@@ -30,6 +30,6 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
         </Button>
       </Form>
       <Link to="/login">Back to sign in</Link>
-    </main>
+    </>
   );
 }

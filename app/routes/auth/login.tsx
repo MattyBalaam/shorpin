@@ -9,7 +9,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
 
   return (
-    <main>
+    <>
       <h1>Sign in</h1>
       <Form method="POST">
         <label>
@@ -31,6 +31,6 @@ export default function Login({ actionData }: Route.ComponentProps) {
         </Button>
       </Form>
       <Link to="/forgot-password">Forgot password?</Link>
-    </main>
+    </>
   );
 }

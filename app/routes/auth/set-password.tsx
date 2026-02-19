@@ -8,7 +8,7 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
   const { state } = useNavigation();
 
   return (
-    <main>
+    <>
       <h1>Set new password</h1>
       <Form method="POST">
         <input type="hidden" autoComplete="username" value={loaderData.email} readOnly />
@@ -37,6 +37,6 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
           Update password
         </Button>
       </Form>
-    </main>
+    </>
   );
 }
