@@ -5,6 +5,7 @@ import { type FieldMetadata } from "@conform-to/react/future";
 import { useNavigation } from "react-router";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
 import { Button } from "./button/button";
+import { deleteItemIntent } from "~/routes/list/intents";
 
 export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
@@ -27,7 +28,7 @@ export function Item({
   const isDeleting =
     navigation.state === "submitting" &&
     navigation.formData?.get("__INTENT__") ===
-      `delete-item-${fieldset.id.defaultValue}`;
+      deleteItemIntent(fieldset.id.defaultValue ?? "");
 
   return (
     <div
@@ -75,7 +76,7 @@ export function Item({
             className={styles.tick}
             type="submit"
             name="__INTENT__"
-            value={`delete-item-${fieldset.id.defaultValue}`}
+            value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
             ref={deleteButtonRef}
           >
             <VisuallyHidden>delete item</VisuallyHidden>☑️

@@ -18,6 +18,11 @@ export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
+import {
+  isDeleteItemIntent,
+  isUndeleteItemIntent,
+  undeleteItemIntent,
+} from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<
@@ -194,8 +199,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       if (
         // we want to skip validation when deleting or undeleting items
         // so that the intent is sent server side
-        ctx.intent?.type?.startsWith("undelete-item") ||
-        ctx.intent?.type?.startsWith("delete-item")
+        isUndeleteItemIntent(ctx.intent?.type) ||
+        isDeleteItemIntent(ctx.intent?.type)
       ) {
         return null;
       }
@@ -359,7 +364,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               <button
                 type="submit"
                 name="__INTENT__"
-                value={`undelete-item-${lastDeleted.id}`}
+                value={undeleteItemIntent(lastDeleted.id)}
                 className={styles.undoButton}
               >
                 Undo
