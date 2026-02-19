@@ -1,6 +1,8 @@
+import { href } from "react-router";
 import type { Route } from "./+types/request-access";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
+import { redirectWithSuccess } from "remix-toast";
 import { zRequestAccess } from "./schemas";
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -9,7 +11,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const result = zRequestAccess.safeParse(submission.payload);
 
   if (!result.success) {
-    return { result: report(submission), success: false };
+    return report(submission);
   }
 
   const { email, first_name, last_name } = result.data;
@@ -20,11 +22,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     .insert({ email, first_name, last_name });
 
   if (error) {
-    return {
-      result: report(submission, { error: { formErrors: ["Something went wrong. Please try again."] } }),
-      success: false,
-    };
+    return report(submission, { error: { formErrors: ["Something went wrong. Please try again."] } });
   }
 
-  return { result: report(submission), success: true };
+  return redirectWithSuccess(href("/login"), "Your account is being verified. We'll be in touch soon.");
 }

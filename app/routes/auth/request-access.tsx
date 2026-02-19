@@ -15,14 +15,10 @@ export const handle = {
 export default function RequestAccess({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
   const { form, fields } = useForm(zRequestAccess, {
-    lastResult: actionData?.result,
+    lastResult: actionData,
     shouldValidate: "onBlur",
     shouldRevalidate: "onInput",
   });
-
-  if (actionData?.success) {
-    return <p>Your account is being verified.</p>;
-  }
 
   return (
     <>
