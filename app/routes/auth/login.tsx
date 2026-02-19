@@ -24,22 +24,16 @@ export default function Login({ actionData }: Route.ComponentProps) {
           <p key={i}>{error}</p>
         ))}
         <AuthField
+          meta={fields.email}
           label="Email"
           type="email"
-          id={fields.email.id}
-          name={fields.email.name}
           autoComplete="email"
-          required
-          errors={fields.email.errors}
         />
         <AuthField
+          meta={fields.password}
           label="Password"
           type="password"
-          id={fields.password.id}
-          name={fields.password.name}
           autoComplete="current-password"
-          required
-          errors={fields.password.errors}
         />
         <Button type="submit" isSubmitting={state === "submitting"}>
           Sign in

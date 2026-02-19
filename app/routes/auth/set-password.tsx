@@ -25,24 +25,16 @@ export default function SetPassword({ loaderData, actionData }: Route.ComponentP
           <p key={i}>{error}</p>
         ))}
         <AuthField
+          meta={fields.password}
           label="New password"
           type="password"
-          id={fields.password.id}
-          name={fields.password.name}
           autoComplete="new-password"
-          required
-          minLength={8}
-          errors={fields.password.errors}
         />
         <AuthField
+          meta={fields["confirm-password"]}
           label="Confirm password"
           type="password"
-          id={fields["confirm-password"].id}
-          name={fields["confirm-password"].name}
           autoComplete="new-password"
-          required
-          minLength={8}
-          errors={fields["confirm-password"].errors}
         />
         <Button type="submit" isSubmitting={state === "submitting"}>
           Update password

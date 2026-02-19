@@ -1,40 +1,34 @@
+import type { FieldMetadata } from "@conform-to/react/future";
 import * as styles from "./auth-field.css";
 
 interface AuthFieldProps {
+  meta: FieldMetadata<string>;
   label: string;
-  id: string;
-  name: string;
   type?: string;
   autoComplete?: string;
-  required?: boolean;
-  minLength?: number;
-  errors?: string[];
 }
 
-export function AuthField({
-  label,
-  id,
-  name,
-  type = "text",
-  autoComplete,
-  required,
-  minLength,
-  errors,
-}: AuthFieldProps) {
+export function AuthField({ meta, label, type = "text", autoComplete }: AuthFieldProps) {
   return (
     <div className={styles.field}>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={meta.id}>{label}</label>
       <input
         type={type}
-        name={name}
-        id={id}
+        name={meta.name}
+        id={meta.id}
         autoComplete={autoComplete}
-        required={required}
-        minLength={minLength}
+        required={meta.required}
+        minLength={meta.minLength}
+        aria-invalid={meta.ariaInvalid}
+        aria-describedby={meta.ariaDescribedBy}
       />
-      {errors?.map((error, i) => (
-        <p key={i}>{error}</p>
-      ))}
+      {meta.errors && (
+        <div id={meta.errorId}>
+          {meta.errors.map((error, i) => (
+            <p key={i}>{error}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
