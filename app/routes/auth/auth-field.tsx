@@ -1,12 +1,13 @@
 import type { FieldMetadata } from "@conform-to/react/future";
 import * as styles from "./auth-field.css";
 
-interface AuthFieldProps {
+type AuthFieldProps = {
   meta: FieldMetadata<string>;
   label: string;
-  type: "email" | "password";
-  autoComplete?: string;
-}
+} & (
+  | { type: "email"; autoComplete: "email" }
+  | { type: "password"; autoComplete: "current-password" | "new-password" }
+);
 
 export function AuthField({ meta, label, type, autoComplete }: AuthFieldProps) {
   return (
