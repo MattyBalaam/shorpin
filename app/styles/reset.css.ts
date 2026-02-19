@@ -1,6 +1,7 @@
 import { globalStyle } from "@vanilla-extract/css";
 
 import { reset } from "./layers.css";
+import { vars } from "./theme.css";
 
 globalStyle("html, body, ul, ol, li, dialog", {
   "@layer": {
@@ -45,6 +46,12 @@ globalStyle("html, body", {
 /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
 globalStyle("ul[role='list'], ol[role='list']", {
   listStyle: "none",
+});
+
+globalStyle("input", {
+  height: vars.spacing.controlHeight,
+  paddingInline: vars.spacing.md,
+  borderRadius: vars.spacing.controlRadius,
 });
 
 /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
