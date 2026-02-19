@@ -9,6 +9,7 @@ export const logOut = style({
   justifyContent: "flex-end",
   alignItems: "center",
   paddingInlineEnd: vars.spacing.md,
+  minWidth: vars.spacing.controlHeight,
 });
 
 export const logOutLabel = style({
