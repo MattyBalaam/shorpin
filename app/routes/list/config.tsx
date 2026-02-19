@@ -2,6 +2,7 @@ import { Form, href, useParams } from "react-router";
 import type { Route } from "./+types/config";
 import { Modal } from "~/components/modal/modal";
 import { Link } from "~/components/link/link";
+import { CheckboxField } from "~/components/checkbox-field/checkbox-field";
 import { use, Suspense } from "react";
 
 import * as styles from "./config.css";
@@ -24,15 +25,15 @@ function UsersList({ usersPromise }: { usersPromise: Promise<User[]> }) {
       <fieldset>
         <legend>Select collaborators</legend>
         {users.map(({ id, email, isMember }) => (
-          <label key={id}>
-            <input
-              type="checkbox"
-              name="member-ids"
-              value={id}
-              defaultChecked={isMember}
-            />
+          <CheckboxField
+            key={id}
+            id={id}
+            name="member-ids"
+            value={id}
+            defaultChecked={isMember}
+          >
             {email}
-          </label>
+          </CheckboxField>
         ))}
       </fieldset>
     </Form>

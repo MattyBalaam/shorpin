@@ -52,6 +52,11 @@ globalStyle("input", {
   height: vars.spacing.controlHeight,
   paddingInline: vars.spacing.md,
   borderRadius: vars.spacing.controlRadius,
+  border: "none",
+});
+
+globalStyle("input:focus", {
+  outline: "2px solid yellow",
 });
 
 /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */

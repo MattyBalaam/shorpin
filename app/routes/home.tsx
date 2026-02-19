@@ -156,7 +156,7 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
               </Link>
               <Link
                 className={styles.itemConfig}
-                variant="button"
+                variant="outline"
                 to={href("/config/:list", { list: slug })}
               >
                 admin

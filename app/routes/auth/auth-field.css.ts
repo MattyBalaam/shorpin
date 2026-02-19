@@ -13,7 +13,7 @@ export const field = style({
   gap: vars.spacing.xs,
 });
 
-export const input = style({
-  paddingBlock: vars.spacing.sm,
-  paddingInline: vars.spacing.md,
+export const links = style({
+  display: "flex",
+  gap: vars.spacing.lg,
 });

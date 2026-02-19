@@ -4,6 +4,7 @@ import * as styles from "./item.css";
 import { type FieldMetadata } from "@conform-to/react/future";
 import { useNavigation } from "react-router";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
+import { Button } from "./button/button";
 
 export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
@@ -70,7 +71,7 @@ export function Item({
         </span>
 
         <span className={styles.deleteButton}>
-          <button
+          <Button
             className={styles.tick}
             type="submit"
             name="__INTENT__"
@@ -78,7 +79,7 @@ export function Item({
             ref={deleteButtonRef}
           >
             <VisuallyHidden>delete item</VisuallyHidden>☑️
-          </button>
+          </Button>
         </span>
 
         {/* passes up the items id */}

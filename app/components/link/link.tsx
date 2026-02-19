@@ -4,15 +4,13 @@ import { Link as RouterLink } from "react-router";
 import * as clickableStyles from "~/components/shared/clickable-element.css";
 
 interface LinkProps extends ComponentProps<typeof RouterLink> {
-  variant?: "default" | "button" | "destructive";
+  variant?: keyof typeof clickableStyles.variant;
 }
 
-export function Link({ variant = "default", className, ...props }: LinkProps) {
+export function Link({ variant = "link", className, ...props }: LinkProps) {
   return (
     <RouterLink
-      className={`${className} ${
-        variant === "button" ? clickableStyles.clickable : ""
-      } ${variant === "destructive" ? `${clickableStyles.clickable} ${clickableStyles.destructive}` : ""}`}
+      className={`${className} ${clickableStyles.variant[variant]}`}
       viewTransition
       {...props}
     />

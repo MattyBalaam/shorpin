@@ -7,6 +7,7 @@ interface ButtonProps extends React.DetailedHTMLProps<
   HTMLButtonElement
 > {
   isSubmitting?: boolean;
+  variant?: Exclude<keyof typeof clickableStyles.variant, "link">;
 }
 
 export function Button({
@@ -15,11 +16,12 @@ export function Button({
   children,
   isSubmitting,
   disabled,
+  variant = "outline",
   ...props
 }: ButtonProps) {
   return (
     <button
-      className={[clickableStyles.clickable, className].join(" ")}
+      className={[clickableStyles.variant[variant], className].join(" ")}
       type={type}
       // test if we need to disable here, I think react router might handle this
       // disabled={disabled || isSubmitting}

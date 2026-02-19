@@ -1,13 +1,8 @@
-import { style } from "@vanilla-extract/css";
+import { styleVariants } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
-export const destructive = style({
-  color: "red",
-});
-
-export const clickable = style({
+const buttonBase = {
   appearance: "none",
-  border: "2px solid currentColor",
   paddingInline: vars.spacing.md,
   textDecoration: "none",
   minWidth: 0,
@@ -17,7 +12,31 @@ export const clickable = style({
   background: "none",
   display: "inline-flex",
   alignItems: "center",
+  ":focus": {
+    background: "yellow",
+    outline: "none",
+    color: "black",
+    borderColor: "yellow",
+  },
   ":hover": {
     opacity: 0.8,
+  },
+} as const;
+
+export const variant = styleVariants({
+  outline: {
+    ...buttonBase,
+    border: "2px solid currentColor",
+  },
+  destructive: {
+    color: "red",
+    ...buttonBase,
+  },
+  link: {
+    borderRadius: vars.spacing.controlRadius,
+    ":focus": {
+      outline: "2px solid yellow",
+      outlineOffset: vars.spacing.sm,
+    },
   },
 });

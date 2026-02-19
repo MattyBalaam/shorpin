@@ -33,11 +33,11 @@ export default function Delete({ loaderData }: Route.ComponentProps) {
       <p>Are you sure?</p>
 
       <div className={styles.actions}>
-        <Button type="submit" className={styles.deleteButton}>
+        <Button variant="destructive" type="submit">
           Yes
         </Button>
 
-        <Link variant="button" to={loaderData.returnTo}>
+        <Link variant="outline" to={loaderData.returnTo}>
           I do not
         </Link>
       </div>

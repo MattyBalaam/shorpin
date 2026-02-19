@@ -276,7 +276,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       return defaultValue.items
         .filter(
           ({ value, id }) =>
-            result.output.items?.find((item) => item?.id === id)?.value !== value,
+            result.output.items?.find((item) => item?.id === id)?.value !==
+            value,
         )
         .map(({ id }) => id);
     }) || [];
@@ -288,7 +289,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     >
       <div className={styles.topActions}>
         <Link
-          variant="button"
+          variant="outline"
           to="./confirm-delete"
           relative="route"
           className={styles.deleteLink}
@@ -333,30 +334,30 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
         <ScrollArea>
           <Items
-              fieldMetadata={fields.items}
-              edited={edited}
-              pendingItem={
-                state === "submitting" && formData?.get("new-submit") === "new"
-                  ? (formData.get(fields.new.name) as string)
-                  : null
-              }
-              onReorder={(newOrder) => {
-                const itemRecord = Object.fromEntries(
-                  defaultValue.items.map((item) => [item.id, item]),
-                );
+            fieldMetadata={fields.items}
+            edited={edited}
+            pendingItem={
+              state === "submitting" && formData?.get("new-submit") === "new"
+                ? (formData.get(fields.new.name) as string)
+                : null
+            }
+            onReorder={(newOrder) => {
+              const itemRecord = Object.fromEntries(
+                defaultValue.items.map((item) => [item.id, item]),
+              );
 
-                intent.update({
-                  name: fields.items.name,
-                  value: newOrder.map((id) => itemRecord[id]),
-                });
-              }}
-              onReorderComplete={() => {
-                // Wait for React to flush the intent.update() before submitting
-                requestAnimationFrame(() => {
-                  reorderSubmitRef.current?.click();
-                });
-              }}
-            />
+              intent.update({
+                name: fields.items.name,
+                value: newOrder.map((id) => itemRecord[id]),
+              });
+            }}
+            onReorderComplete={() => {
+              // Wait for React to flush the intent.update() before submitting
+              requestAnimationFrame(() => {
+                reorderSubmitRef.current?.click();
+              });
+            }}
+          />
         </ScrollArea>
 
         <Actions>

@@ -1,6 +1,7 @@
 import { Form, href } from "react-router";
 import type { Route } from "./+types/sign-ups";
 import { Modal } from "~/components/modal/modal";
+import { CheckboxField } from "~/components/checkbox-field/checkbox-field";
 
 export { loader, action } from "./sign-ups.server";
 
@@ -18,16 +19,12 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
       ) : (
         <Form id={formId} method="POST">
           {signUps.map(({ id, email, first_name, last_name, created_at }) => (
-            <div key={id}>
-              <input type="checkbox" name="ids" value={id} />
-
-              <label htmlFor={id}>
-                {first_name} {last_name} — {email}{" "}
-                <time dateTime={created_at}>
-                  {new Date(created_at).toLocaleDateString()}
-                </time>
-              </label>
-            </div>
+            <CheckboxField key={id} id={id} name="ids" value={id}>
+              {first_name} {last_name} — {email} at{" "}
+              <time dateTime={created_at}>
+                {new Date(created_at).toLocaleDateString()}
+              </time>
+            </CheckboxField>
           ))}
         </Form>
       )}
