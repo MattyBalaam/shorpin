@@ -4,6 +4,8 @@ import { Modal } from "~/components/modal/modal";
 import { Link } from "~/components/link/link";
 import { use, Suspense } from "react";
 
+import * as styles from "./config.css";
+
 export { loader, action } from "./config.server";
 
 const formId = "config-form";
@@ -43,7 +45,7 @@ export default function Config({
   const { list } = useParams<{ list: string }>();
 
   return (
-    <Modal>
+    <Modal urlOnClose={href("/")}>
       <h2>{listName} — Admin</h2>
 
       <Suspense fallback={null}>
@@ -51,7 +53,11 @@ export default function Config({
       </Suspense>
 
       <Modal.Actions>
-        <Link variant="destructive" to={href("/lists/:list/confirm-delete", { list: list! })}>
+        <Link
+          variant="destructive"
+          to={href("/lists/:list/confirm-delete", { list: list! })}
+          className={styles.deleteList}
+        >
           Delete list
         </Link>
         <Modal.Close>Close</Modal.Close>

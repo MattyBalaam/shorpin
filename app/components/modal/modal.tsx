@@ -36,20 +36,16 @@ function ModalSubmit({
 
 export function Modal({
   children,
-  to,
+  urlOnClose,
 }: {
   children: ReactNode;
-  to?: string | number;
+  urlOnClose: string;
 }) {
   const navigate = useNavigate();
   const navigation = useNavigation();
 
   function dismiss() {
-    if (typeof to === "string") {
-      navigate(to);
-    } else {
-      navigate(to ?? -1);
-    }
+    navigate(urlOnClose);
   }
 
   return (

@@ -13,8 +13,8 @@ export const [themeClass, vars] = createTheme({
     xxl: "2rem", // 32px
     xxxl: "3rem", // 48px
     // Shared height for all interactive controls (buttons, inputs)
-    controlHeight: "2rem",
-    controlRadius: "3px",
+    controlHeight: "1.8rem",
+    controlRadius: "0.33rem",
   },
   palette: {
     primary: "#A9CBB7",

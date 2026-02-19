@@ -1,4 +1,4 @@
-import { Form } from "react-router";
+import { Form, href } from "react-router";
 import type { Route } from "./+types/sign-ups";
 import { Modal } from "~/components/modal/modal";
 
@@ -10,7 +10,7 @@ export default function SignUps({ loaderData }: Route.ComponentProps) {
   const { signUps } = loaderData;
 
   return (
-    <Modal>
+    <Modal urlOnClose={href("/")}>
       <h2>Pending sign-ups</h2>
 
       {signUps.length === 0 ? (
