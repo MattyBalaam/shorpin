@@ -1,18 +1,25 @@
-import { Form, Link, useNavigation } from "react-router";
+import { Form, Link, href, useNavigation } from "react-router";
 import type { Route } from "./+types/forgot-password";
 import { Button } from "~/components/button/button";
+import { useForm } from "@conform-to/react/future";
+import { zForgotPassword } from "./schemas";
 
 export { action } from "./forgot-password.server";
 
 export default function ForgotPassword({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();
+  const { form, fields } = useForm(zForgotPassword, {
+    lastResult: actionData?.result,
+    shouldValidate: "onBlur",
+    shouldRevalidate: "onInput",
+  });
 
   if (actionData?.success) {
     return (
       <>
         <h1>Check your email</h1>
         <p>If an account exists for that address, you'll receive a password reset link shortly.</p>
-        <Link to="/login">Back to sign in</Link>
+        <Link to={href("/login")}>Back to sign in</Link>
       </>
     );
   }
@@ -20,16 +27,22 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
   return (
     <>
       <h1>Forgot password</h1>
-      <Form method="POST">
-        <label>
-          Email
-          <input type="email" name="email" required autoComplete="email" />
-        </label>
+      <Form method="POST" {...form.props}>
+        {form.errors?.map((error, i) => <p key={i}>{error}</p>)}
+        <label htmlFor={fields.email.id}>Email</label>
+        <input
+          type="email"
+          name={fields.email.name}
+          id={fields.email.id}
+          required
+          autoComplete="email"
+        />
+        {fields.email.errors?.map((error, i) => <p key={i}>{error}</p>)}
         <Button type="submit" isSubmitting={state === "submitting"}>
           Send reset link
         </Button>
       </Form>
-      <Link to="/login">Back to sign in</Link>
+      <Link to={href("/login")}>Back to sign in</Link>
     </>
   );
 }

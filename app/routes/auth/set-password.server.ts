@@ -2,6 +2,8 @@ import type { Route } from "./+types/set-password";
 import { redirectWithSuccess } from "remix-toast";
 import { href } from "react-router";
 import { supabaseContext } from "~/lib/supabase.middleware";
+import { parseSubmission, report } from "@conform-to/react/future";
+import { zSetPassword } from "./schemas";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -13,18 +15,29 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
-  const password = formData.get("password") as string;
-  const confirm = formData.get("confirm-password") as string;
+  const submission = parseSubmission(formData);
+  const result = zSetPassword.safeParse(submission.payload);
+
+  if (!result.success) {
+    return report(submission);
+  }
+
+  const { password } = result.data;
+  const confirm = result.data["confirm-password"];
 
   if (password !== confirm) {
-    return { error: "Passwords do not match" };
+    return report(submission, {
+      error: { fieldErrors: { "confirm-password": ["Passwords do not match"] } },
+    });
   }
 
   const supabase = context.get(supabaseContext);
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return { error: error.message };
+    return report(submission, {
+      error: { formErrors: [error.message] },
+    });
   }
 
   throw await redirectWithSuccess(href("/"), "Password updated successfully");
