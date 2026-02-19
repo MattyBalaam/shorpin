@@ -1,4 +1,4 @@
-import { Form, href, useParams } from "react-router";
+import { Form, href } from "react-router";
 import type { Route } from "./+types/config";
 import { Modal } from "~/components/modal/modal";
 import { Link } from "~/components/link/link";
@@ -42,9 +42,8 @@ function UsersList({ usersPromise }: { usersPromise: Promise<User[]> }) {
 
 export default function Config({
   loaderData: { users, listName },
+  params: { list },
 }: Route.ComponentProps) {
-  const { list } = useParams<{ list: string }>();
-
   return (
     <Modal urlOnClose={href("/")}>
       <h2>{listName} — Admin</h2>
@@ -56,7 +55,7 @@ export default function Config({
       <Modal.Actions>
         <Link
           variant="destructive"
-          to={href("/lists/:list/confirm-delete", { list: list! })}
+          to={href("/lists/:list/confirm-delete", { list })}
           className={styles.deleteList}
         >
           Delete list
