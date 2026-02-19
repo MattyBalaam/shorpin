@@ -40,6 +40,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
         </Button>
       </Form>
       <Link to={href("/forgot-password")}>Forgot password?</Link>
+      <Link to={href("/request-access")}>Request access</Link>
     </>
   );
 }
