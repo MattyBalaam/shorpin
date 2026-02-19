@@ -8,7 +8,7 @@ export const handle = {
   breadcrumbs: [
     {
       label: (data: any) => data?.listName || "List",
-      to: (_data: any, pathname: string) => pathname.replace("/config", ""),
+      to: (_data: unknown, pathname: string) => pathname.replace("/config", ""),
     },
     { label: "Settings" },
   ],

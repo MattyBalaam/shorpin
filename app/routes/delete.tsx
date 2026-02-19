@@ -16,7 +16,7 @@ export const handle = {
   breadcrumbs: [
     {
       label: (data: any) => data?.listName || "List",
-      to: (_data: any, pathname: string) =>
+      to: (_data: unknown, pathname: string) =>
         pathname.replace("/confirm-delete", ""),
     },
     {
