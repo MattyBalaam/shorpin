@@ -103,6 +103,33 @@ export const actions = style({
   gridColumn: "content",
 });
 
+export const pendingSignUps = style({
+  gridRow: "breadcrumbs",
+  gridColumn: "left",
+  containerType: "inline-size",
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "center",
+  paddingInlineStart: vars.spacing.md,
+});
+
+export const signUpsLabel = style({
+  display: "none",
+  "@container": {
+    "(min-width: 100px)": {
+      display: "inline",
+    },
+  },
+});
+
+export const signUpsCount = style({
+  "@container": {
+    "(min-width: 100px)": {
+      display: "none",
+    },
+  },
+});
+
 export const newList = style({
   display: "flex",
   gap: vars.spacing.md,

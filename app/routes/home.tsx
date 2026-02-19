@@ -133,7 +133,12 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   if (count === 0) return null;
   return (
     <Link to={href("/sign-ups")}>
-      {count} pending sign-up{count !== 1 ? "s" : ""}
+      <span className={styles.signUpsLabel}>
+        {count} pending sign-up{count !== 1 ? "s" : ""}
+      </span>
+      <span aria-hidden="true" className={styles.signUpsCount}>
+        {count}
+      </span>
     </Link>
   );
 }
@@ -179,9 +184,11 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <Suspense fallback={null}>
-        <PendingSignUps countPromise={pendingCount} />
-      </Suspense>
+      <div className={styles.pendingSignUps}>
+        <Suspense fallback={null}>
+          <PendingSignUps countPromise={pendingCount} />
+        </Suspense>
+      </div>
       <nav className={styles.listWrapper}>
         <Suspense fallback={<ListsSkeleton />}>
           <Lists
