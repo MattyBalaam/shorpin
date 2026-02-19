@@ -288,15 +288,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       defaultSecondary={defaultValue.themeSecondary}
     >
       <div className={styles.topActions}>
-        <Link
-          variant="outline"
-          to="./confirm-delete"
-          relative="route"
-          className={styles.deleteLink}
-        >
-          Delete list
-        </Link>
-
         <Theme.Button formId={form.id} />
       </div>
 
