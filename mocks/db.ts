@@ -50,21 +50,20 @@ export const listItems = new Collection({ schema: listItemsSchema });
 export const waitlist = new Collection({ schema: waitlistSchema });
 
 // ── Contract checks ───────────────────────────────────────────────────────────
-// These run during `pnpm typecheck`. A type error here means a mock schema field
-// has diverged from the real Supabase Row type in database.types.ts.
-// The error message names the exact field that is incompatible.
-
-declare const _usersRow: InferOutput<typeof usersSchema>;
-_usersRow satisfies Partial<Tables<"profiles">>;
-
-declare const _listsRow: InferOutput<typeof listsSchema>;
-_listsRow satisfies Partial<Tables<"lists">>;
-
-declare const _listMembersRow: InferOutput<typeof listMembersSchema>;
-_listMembersRow satisfies Partial<Tables<"list_members">>;
-
-declare const _listItemsRow: InferOutput<typeof listItemsSchema>;
-_listItemsRow satisfies Partial<Tables<"list_items">>;
-
-declare const _waitlistRow: InferOutput<typeof waitlistSchema>;
-_waitlistRow satisfies Partial<Tables<"waitlist">>;
+// Each field must be `true`. If a mock schema field diverges from the real
+// Supabase Row type, TypeScript errors on that key during `pnpm typecheck`:
+// "Type 'true' is not assignable to type 'false'".
+// `void` makes this a valid expression statement with no unused-variable warning.
+void ({
+  users: true,
+  lists: true,
+  listMembers: true,
+  listItems: true,
+  waitlist: true,
+} satisfies {
+  users: InferOutput<typeof usersSchema> extends Partial<Tables<"profiles">> ? true : false;
+  lists: InferOutput<typeof listsSchema> extends Partial<Tables<"lists">> ? true : false;
+  listMembers: InferOutput<typeof listMembersSchema> extends Partial<Tables<"list_members">> ? true : false;
+  listItems: InferOutput<typeof listItemsSchema> extends Partial<Tables<"list_items">> ? true : false;
+  waitlist: InferOutput<typeof waitlistSchema> extends Partial<Tables<"waitlist">> ? true : false;
+});
