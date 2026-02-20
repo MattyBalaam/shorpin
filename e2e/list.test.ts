@@ -16,5 +16,6 @@ test("empty list shows no items", async ({ page }) => {
 
   await page.getByRole("link", { name: "Owner Empty" }).click();
 
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  // The only textbox on an empty list is the "add new item" input
+  await expect(page.getByRole("textbox")).toHaveCount(1);
 });

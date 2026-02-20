@@ -19,7 +19,7 @@ test("collaborator sees their lists plus the shared list", async ({ page }) => {
 
   await expect(page.getByRole("link", { name: "Collab Shopping" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Collab Empty" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Shopping" })).toBeVisible(); // shared from owner
+  await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible(); // shared from owner
 });
 
 test("collaborator sees admin only for their own lists, not the shared one", async ({
