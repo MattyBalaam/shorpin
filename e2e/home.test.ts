@@ -4,8 +4,8 @@ import { login } from "./helpers";
 test("owner sees their two lists", async ({ page }) => {
   await login(page, "owner@test.com");
 
-  await expect(page.getByText("Shopping")).toBeVisible();
-  await expect(page.getByText("Owner Empty")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Shopping" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Owner Empty" })).toBeVisible();
 });
 
 test("owner sees admin link for both their lists", async ({ page }) => {
@@ -17,9 +17,9 @@ test("owner sees admin link for both their lists", async ({ page }) => {
 test("collaborator sees their lists plus the shared list", async ({ page }) => {
   await login(page, "collab@test.com");
 
-  await expect(page.getByText("Collab Shopping")).toBeVisible();
-  await expect(page.getByText("Collab Empty")).toBeVisible();
-  await expect(page.getByText("Shopping")).toBeVisible(); // shared from owner
+  await expect(page.getByRole("link", { name: "Collab Shopping" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Collab Empty" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Shopping" })).toBeVisible(); // shared from owner
 });
 
 test("collaborator sees admin only for their own lists, not the shared one", async ({
