@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { users, lists, listMembers, waitlist } from "./db";
+import { users, lists, listItems, listMembers, waitlist } from "./db";
 
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
@@ -72,10 +72,27 @@ export const handlers = [
   }),
 
   http.get("*/rest/v1/lists", ({ request }) => {
+    const url = new URL(request.url);
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
     if (!user) return HttpResponse.json([], { status: 401 });
 
+    // Single list by slug — used by the list detail page (embeds list_items)
+    const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
+    if (slugParam) {
+      const list = lists.findFirst((q) =>
+        q.where({ slug: slugParam, state: "active" })
+      );
+      if (!list) return HttpResponse.json(null, { status: 406 });
+
+      const items = listItems
+        .findMany((q) => q.where({ list_id: list.id }))
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      return HttpResponse.json({ ...list, list_items: items });
+    }
+
+    // All accessible lists — used by the home page
     const ownedLists = lists.findMany((q) =>
       q.where({ user_id: user.id, state: "active" })
     );
