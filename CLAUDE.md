@@ -9,7 +9,7 @@ Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 - Before committing run `pnpm typecheck` and make sure there are no type issues.
 - Before committing, run e2e tests based on the scope of the change:
   - CSS, types, docs, or config only: no e2e required
-  - A specific route or component: run the relevant e2e file (e.g. `pnpm exec playwright test e2e/home.test.ts`)
+  - A specific route or component: run the relevant e2e file (e.g. `pnpm exec playwright test e2e/home.spec.ts`)
   - Shared infrastructure (mocks, handlers, seed, helpers, fixtures): run the full suite (`pnpm exec playwright test`)
 
 ## Scripts

@@ -3,8 +3,10 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  reporter: [["html", { open: "never" }]],
   use: {
     baseURL: "http://localhost:5174",
+    trace: "on-first-retry",
   },
   webServer: [
     {
