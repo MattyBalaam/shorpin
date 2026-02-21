@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { http, HttpResponse } from "msw";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
 
@@ -64,6 +65,7 @@ export const handlers = [
 
   // ── Database ─────────────────────────────────────────────────────────────
 
+  // Waitlist — HEAD for home page count
   http.head("*/rest/v1/waitlist", () => {
     const count = waitlist.count();
     return new HttpResponse(null, {
@@ -71,18 +73,64 @@ export const handlers = [
     });
   }),
 
+  // Waitlist — GET for sign-ups page
+  http.get("*/rest/v1/waitlist", () => {
+    const entries = waitlist.findMany();
+    return HttpResponse.json(
+      entries.map((e) => ({
+        id: e.id,
+        email: e.email,
+        first_name: e.first_name ?? null,
+        last_name: e.last_name ?? null,
+        created_at: e.created_at ?? new Date().toISOString(),
+      })),
+    );
+  }),
+
+  // Waitlist — DELETE for sign-ups action
+  http.delete("*/rest/v1/waitlist", ({ request }) => {
+    const url = new URL(request.url);
+    const idsParam = url.searchParams.get("id") ?? "";
+    const inMatch = idsParam.match(/^in\.\((.+)\)$/);
+    if (inMatch) {
+      const ids = inMatch[1].split(",");
+      ids.forEach((id) => waitlist.delete((q) => q.where({ id })));
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // Lists — GET (home page all lists, single list by slug, slug prefix check)
   http.get("*/rest/v1/lists", ({ request }) => {
     const url = new URL(request.url);
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
     if (!user) return HttpResponse.json([], { status: 401 });
 
-    // Single list by slug — used by the list detail page (embeds list_items)
-    const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
-    if (slugParam) {
-      const list = lists.findFirst((q) =>
-        q.where({ slug: slugParam, state: "active" })
+    const slugParam = url.searchParams.get("slug");
+
+    // Slug prefix query — used by home action to check for slug conflicts.
+    // url.searchParams already URL-decodes, so "like.groceries%" comes through as-is.
+    if (slugParam?.startsWith("like.")) {
+      const prefix = slugParam.slice(5).replace(/%$/, "");
+      const matching = lists.findMany((q) =>
+        q.where({ state: "active", slug: (s: string) => s.startsWith(prefix) }),
       );
+      return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
+    }
+
+    // Single list by slug — used by the list detail page (embeds list_items).
+    // Scoped to the requesting user so parallel workers with the same slug
+    // don't collide in the shared in-memory DB.
+    if (slugParam?.startsWith("eq.")) {
+      const slug = slugParam.slice(3);
+      if (!user) return HttpResponse.json(null, { status: 401 });
+
+      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      const memberListIds = new Set(memberships.map((m) => m.list_id));
+      const list =
+        lists
+          .findMany((q) => q.where({ slug, state: "active" }))
+          .find((l) => l.user_id === user.id || memberListIds.has(l.id)) ?? null;
       if (!list) return HttpResponse.json(null, { status: 406 });
 
       const items = listItems
@@ -108,6 +156,162 @@ export const handlers = [
     return HttpResponse.json([...ownedLists, ...sharedLists]);
   }),
 
+  // Lists — POST for home action (create new list)
+  http.post("*/rest/v1/lists", async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string;
+      slug: string;
+      user_id: string;
+    };
+    const list = await lists.create({
+      id: randomUUID(),
+      name: body.name,
+      slug: body.slug,
+      state: "active",
+      user_id: body.user_id,
+      created_at: new Date().toISOString(),
+    });
+    return HttpResponse.json(list, { status: 201 });
+  }),
+
+  // Lists — PATCH for delete action (soft-delete by slug)
+  http.patch("*/rest/v1/lists", async ({ request }) => {
+    const url = new URL(request.url);
+    const body = (await request.json()) as { state?: string };
+    const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
+    if (slugParam && body.state) {
+      const state = body.state as "active" | "deleted";
+      await lists.update((q) => q.where({ slug: slugParam }), {
+        data(draft) {
+          draft.state = state;
+        },
+      });
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // List items — GET for list action cleanup query
+  http.get("*/rest/v1/list_items", ({ request }) => {
+    const url = new URL(request.url);
+    const listId = url.searchParams.get("list_id")?.replace("eq.", "");
+    const state = url.searchParams.get("state")?.replace("eq.", "") as
+      | "active"
+      | "deleted"
+      | undefined;
+
+    let items = listId
+      ? listItems.findMany((q) => q.where({ list_id: listId }))
+      : listItems.findMany();
+
+    if (state) {
+      items = items.filter((item) => item.state === state);
+    }
+
+    // Sort by updated_at desc if requested
+    const order = url.searchParams.get("order") ?? "";
+    if (order.includes("updated_at.desc")) {
+      items = [...items].sort((a, b) => b.updated_at - a.updated_at);
+    }
+
+    return HttpResponse.json(items.map((item) => ({ id: item.id })));
+  }),
+
+  // List items — POST for list action (add new item)
+  http.post("*/rest/v1/list_items", async ({ request }) => {
+    const body = (await request.json()) as {
+      id?: string;
+      list_id: string;
+      value: string;
+      state?: "active" | "deleted";
+      sort_order?: number;
+      updated_at?: number;
+    };
+    const item = await listItems.create({
+      id: body.id ?? randomUUID(),
+      list_id: body.list_id,
+      value: body.value,
+      state: body.state ?? "active",
+      sort_order: body.sort_order ?? 0,
+      updated_at: body.updated_at ?? Date.now(),
+    });
+    return HttpResponse.json(item, { status: 201 });
+  }),
+
+  // List items — PATCH for list action (update value/state/sort_order)
+  http.patch("*/rest/v1/list_items", async ({ request }) => {
+    const url = new URL(request.url);
+    const body = (await request.json()) as {
+      value?: string;
+      state?: "active" | "deleted";
+      sort_order?: number;
+      updated_at?: number;
+    };
+    const idParam = url.searchParams.get("id")?.replace("eq.", "");
+    if (idParam) {
+      await listItems.update((q) => q.where({ id: idParam }), {
+        data(draft) {
+          if (body.value !== undefined) draft.value = body.value;
+          if (body.state !== undefined) draft.state = body.state;
+          if (body.sort_order !== undefined) draft.sort_order = body.sort_order;
+          if (body.updated_at !== undefined) draft.updated_at = body.updated_at;
+        },
+      });
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // List items — DELETE for list action (hard delete overflow items)
+  http.delete("*/rest/v1/list_items", ({ request }) => {
+    const url = new URL(request.url);
+    const idsParam = url.searchParams.get("id") ?? "";
+    const inMatch = idsParam.match(/^in\.\((.+)\)$/);
+    if (inMatch) {
+      const ids = inMatch[1].split(",");
+      ids.forEach((id) => listItems.delete((q) => q.where({ id })));
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // List members — GET
+  http.get("*/rest/v1/list_members", ({ request }) => {
+    const url = new URL(request.url);
+    const listId = url.searchParams.get("list_id")?.replace("eq.", "") ?? "";
+    const members = listMembers.findMany((q) => q.where({ list_id: listId }));
+    return HttpResponse.json(members);
+  }),
+
+  // List members — POST for config action (add collaborator)
+  http.post("*/rest/v1/list_members", async ({ request }) => {
+    const body = (await request.json()) as
+      | { list_id: string; user_id: string }
+      | Array<{ list_id: string; user_id: string }>;
+    const members = Array.isArray(body) ? body : [body];
+    for (const m of members) {
+      await listMembers.create({
+        id: randomUUID(),
+        list_id: m.list_id,
+        user_id: m.user_id,
+      });
+    }
+    return HttpResponse.json([], { status: 201 });
+  }),
+
+  // List members — DELETE for config action (remove collaborator)
+  http.delete("*/rest/v1/list_members", ({ request }) => {
+    const url = new URL(request.url);
+    const listId = url.searchParams.get("list_id")?.replace("eq.", "");
+    const userIdParam = url.searchParams.get("user_id") ?? "";
+    const inMatch = userIdParam.match(/^in\.\((.+)\)$/);
+    if (listId && inMatch) {
+      const userIds = inMatch[1].split(",");
+      userIds.forEach((userId) =>
+        listMembers.delete((q) => q.where({ list_id: listId, user_id: userId })),
+      );
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // Profiles — GET for config loader (all users except current)
   http.get("*/rest/v1/profiles", ({ request }) => {
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
@@ -117,10 +321,8 @@ export const handlers = [
     return HttpResponse.json(allUsers.map((u) => ({ id: u.id, email: u.email })));
   }),
 
-  http.get("*/rest/v1/list_members", ({ request }) => {
-    const url = new URL(request.url);
-    const listId = url.searchParams.get("list_id")?.replace("eq.", "") ?? "";
-    const members = listMembers.findMany((q) => q.where({ list_id: listId }));
-    return HttpResponse.json(members);
+  // Realtime broadcast — Supabase httpSend expects 202 for success
+  http.post("*/realtime/v1/api/broadcast", () => {
+    return HttpResponse.json({ message: "ok" }, { status: 202 });
   }),
 ];

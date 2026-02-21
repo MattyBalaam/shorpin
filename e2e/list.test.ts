@@ -1,8 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { login } from "./helpers";
+import { login, resetDb, createTestContext } from "./helpers";
+
+const ctx = createTestContext();
+
+test.beforeEach(async ({ page }) => {
+  await resetDb(page, ctx);
+});
 
 test("list with items shows all items", async ({ page }) => {
-  await login(page, "owner@test.com");
+  await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Shopping" }).click();
 
@@ -12,10 +18,41 @@ test("list with items shows all items", async ({ page }) => {
 });
 
 test("empty list shows no items", async ({ page }) => {
-  await login(page, "owner@test.com");
+  await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Owner Empty" }).click();
 
   // The only textbox on an empty list is the "add new item" input
   await expect(page.getByRole("textbox")).toHaveCount(1);
+});
+
+test("owner can add an item to a list", async ({ page }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Owner Empty" }).click();
+  await page.waitForURL("/lists/owner-empty");
+
+  await page.getByLabel("New item").fill("Butter");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await expect(page.getByRole("textbox").first()).toHaveValue("Butter");
+});
+
+test("owner can delete an item from a list", async ({ page }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Shopping" }).click();
+
+  // Delete the Milk item via its delete button (visually hidden "delete item" label)
+  await page
+    .locator("li")
+    .filter({ has: page.locator('input[value="Milk"]') })
+    .getByRole("button", { name: "delete item" })
+    .click();
+
+  // Milk should no longer be visible as an active item
+  await expect(page.locator('input[value="Milk"]')).not.toBeVisible();
+
+  // An undo button should appear
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { users, lists, listItems, listMembers } from "./db";
+import { users, lists, listItems, listMembers, waitlist } from "./db";
 
 async function createListWithItems(
   ownerId: string,
@@ -30,9 +30,13 @@ async function createListWithItems(
   return list;
 }
 
-export async function seed() {
-  const owner = await users.create({ id: "user-owner", email: "owner@test.com" });
-  const collab = await users.create({ id: "user-collab", email: "collab@test.com" });
+export async function seed(
+  ownerEmail = "owner@test.com",
+  collabEmail = "collab@test.com",
+  waitlistEmail = "pending@test.com",
+) {
+  const owner = await users.create({ id: randomUUID(), email: ownerEmail });
+  const collab = await users.create({ id: randomUUID(), email: collabEmail });
 
   // Owner gets 2 lists: one with 3 items, one empty
   const ownerList = await createListWithItems(owner.id, "Shopping", "shopping", [
@@ -55,5 +59,14 @@ export async function seed() {
     id: randomUUID(),
     list_id: ownerList.id,
     user_id: collab.id,
+  });
+
+  // One pending waitlist entry
+  await waitlist.create({
+    id: randomUUID(),
+    email: waitlistEmail,
+    first_name: "Pending",
+    last_name: "User",
+    created_at: new Date().toISOString(),
   });
 }

@@ -2,8 +2,7 @@ import { createServer } from "node:http";
 import { setupServer } from "msw/node";
 import { seed } from "./seed";
 import { handlers } from "./handlers";
-
-await seed();
+import { users, lists, listItems, listMembers, waitlist } from "./db";
 
 // MSW intercepts fetch() calls within this process before any TCP connection
 const msw = setupServer(...handlers);
@@ -21,6 +20,59 @@ createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200);
     res.end();
+    return;
+  }
+
+  // Reset endpoint — seeds fresh data for the given test worker's users.
+  // Accepts a JSON body: { ownerEmail, collabEmail, waitlistEmail }.
+  // Only clears and re-seeds data for those specific users so parallel
+  // workers don't interfere with each other.
+  if (req.method === "POST" && req.url === "/test/reset") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body =
+      chunks.length > 0
+        ? (JSON.parse(Buffer.concat(chunks).toString()) as {
+            ownerEmail?: string;
+            collabEmail?: string;
+            waitlistEmail?: string;
+          })
+        : {};
+
+    const ownerEmail = body.ownerEmail ?? "owner@test.com";
+    const collabEmail = body.collabEmail ?? "collab@test.com";
+    const waitlistEmail = body.waitlistEmail ?? "pending@test.com";
+
+    // Delete existing data for each user
+    for (const email of [ownerEmail, collabEmail]) {
+      const user = users.findFirst((q) => q.where({ email }));
+      if (!user) continue;
+
+      const userLists = lists.findMany((q) => q.where({ user_id: user.id }));
+      for (const list of userLists) {
+        const items = listItems.findMany((q) => q.where({ list_id: list.id }));
+        items.forEach((item) => listItems.delete((q) => q.where({ id: item.id })));
+        const members = listMembers.findMany((q) => q.where({ list_id: list.id }));
+        members.forEach((m) => listMembers.delete((q) => q.where({ id: m.id })));
+      }
+      userLists.forEach((l) => lists.delete((q) => q.where({ id: l.id })));
+
+      // Remove memberships where this user is a collaborator on other lists
+      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      memberships.forEach((m) => listMembers.delete((q) => q.where({ id: m.id })));
+
+      users.delete((q) => q.where({ id: user.id }));
+    }
+
+    // Remove the waitlist entry for this worker
+    const existingWaitlist = waitlist.findFirst((q) => q.where({ email: waitlistEmail }));
+    if (existingWaitlist) {
+      waitlist.delete((q) => q.where({ id: existingWaitlist.id }));
+    }
+
+    await seed(ownerEmail, collabEmail, waitlistEmail);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
