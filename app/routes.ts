@@ -5,8 +5,8 @@ export default [
   layout("routes/auth/layout.tsx", [
     route(
       "login",
-      // In mock dev mode, swap in the dev login that shows quick-login shortcuts
-      import.meta.env.MODE === "mock"
+      // In mock/preview mode, swap in the dev login that shows quick-login shortcuts
+      import.meta.env.MODE === "mock" || import.meta.env.MODE === "preview"
         ? "routes/auth/login.dev.tsx"
         : "routes/auth/login.tsx",
     ),

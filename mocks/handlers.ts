@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { http, HttpResponse } from "msw";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
 
@@ -173,7 +172,7 @@ export const handlers = [
     }
 
     const list = await lists.create({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       name: body.name,
       slug: body.slug,
       state: "active",
@@ -243,7 +242,7 @@ export const handlers = [
       updated_at?: number;
     };
     const item = await listItems.create({
-      id: body.id ?? randomUUID(),
+      id: body.id ?? crypto.randomUUID(),
       list_id: body.list_id,
       value: body.value,
       state: body.state ?? "active",
@@ -304,7 +303,7 @@ export const handlers = [
     const members = Array.isArray(body) ? body : [body];
     for (const m of members) {
       await listMembers.create({
-        id: randomUUID(),
+        id: crypto.randomUUID(),
         list_id: m.list_id,
         user_id: m.user_id,
       });

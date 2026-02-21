@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
 
 async function createListWithItems(
@@ -8,7 +7,7 @@ async function createListWithItems(
   items: string[],
 ) {
   const list = await lists.create({
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     name,
     slug,
     state: "active",
@@ -18,7 +17,7 @@ async function createListWithItems(
 
   for (let i = 0; i < items.length; i++) {
     await listItems.create({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       list_id: list.id,
       value: items[i],
       state: "active",
@@ -35,8 +34,8 @@ export async function seed(
   collabEmail = "collab@test.com",
   waitlistEmail?: string,
 ) {
-  const owner = await users.create({ id: randomUUID(), email: ownerEmail });
-  const collab = await users.create({ id: randomUUID(), email: collabEmail });
+  const owner = await users.create({ id: crypto.randomUUID(), email: ownerEmail });
+  const collab = await users.create({ id: crypto.randomUUID(), email: collabEmail });
 
   // Owner gets 2 lists: one with 3 items, one empty
   const ownerList = await createListWithItems(owner.id, "Shopping", "shopping", [
@@ -56,7 +55,7 @@ export async function seed(
 
   // Collab is also a member of the owner's Shopping list
   await listMembers.create({
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     list_id: ownerList.id,
     user_id: collab.id,
   });
@@ -64,7 +63,7 @@ export async function seed(
   // One pending waitlist entry — only created when a specific email is provided
   if (waitlistEmail) {
     await waitlist.create({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       email: waitlistEmail,
       first_name: "Pending",
       last_name: "User",

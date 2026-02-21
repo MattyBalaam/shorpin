@@ -7,6 +7,7 @@
     "dev": "concurrently --kill-others --names mock,app \"pnpm tsx mocks/server.ts\" \"react-router dev --mode mock\"",
     "dev:supabase": "react-router dev",
     "build": "react-router build",
+    "build:preview": "react-router build --mode preview",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsgo",
     "fmt": "oxfmt",
@@ -63,5 +64,10 @@
     "not dead",
     "not op_mini all"
   ],
-  "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c"
+  "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
 }
