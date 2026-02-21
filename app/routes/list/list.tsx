@@ -190,7 +190,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     [loaderData.listId, clientId, revalidate],
   );
 
-
   const { form, fields, intent } = useForm(zList, {
     defaultValue,
     lastResult,
@@ -343,7 +342,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         <Actions>
           <div className={styles.actions}>
             <VisuallyHidden>
-              <label htmlFor={fields.name.id}>New item</label>
+              <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
             <input
               name={fields.new.name}

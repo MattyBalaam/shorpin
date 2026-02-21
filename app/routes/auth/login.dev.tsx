@@ -25,7 +25,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
 
   return (
     <>
-      <h1>Sign in</h1>
+      <h1>Sign in (Dev Mode)</h1>
       <Form method="POST" {...form.props} className={styles.form}>
         {form.errors?.map((error, i) => (
           <p key={i}>{error}</p>

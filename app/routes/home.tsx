@@ -211,7 +211,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
       </ScrollArea>
 
       <Actions>
-        <RouterForm {...form.props} method="POST" action={href("/")} className={styles.actions}>
+        <RouterForm {...form.props} method="POST" className={styles.actions}>
           <div className={styles.newList}>
             <VisuallyHidden>
               <label htmlFor={fields["new-list"].id}>New list</label>
