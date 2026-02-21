@@ -13,7 +13,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: "pnpm dev --port 5174",
+      command: "pnpm react-router dev --mode mock --port 5174",
       url: "http://localhost:5174",
       env: {
         VITE_SUPABASE_URL: "http://localhost:9001",
