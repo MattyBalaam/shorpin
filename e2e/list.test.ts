@@ -12,9 +12,9 @@ test("list with items shows all items", async ({ page }) => {
 
   await page.getByRole("link", { name: "Shopping" }).click();
 
-  await expect(page.locator('input[value="Milk"]')).toBeVisible();
-  await expect(page.locator('input[value="Bread"]')).toBeVisible();
-  await expect(page.locator('input[value="Eggs"]')).toBeVisible();
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  await expect(page.getByLabel("Edit Bread")).toBeVisible();
+  await expect(page.getByLabel("Edit Eggs")).toBeVisible();
 });
 
 test("empty list shows no items", async ({ page }) => {
@@ -51,15 +51,9 @@ test("owner can delete an item from a list", async ({ page }) => {
 
   await page.getByRole("link", { name: "Shopping" }).click();
 
-  // Delete the Milk item via its delete button (visually hidden "delete item" label)
-  await page
-    .locator("li")
-    .filter({ has: page.locator('input[value="Milk"]') })
-    .getByRole("button", { name: "delete item" })
-    .click();
+  await page.getByRole("button", { name: "Delete Milk" }).click();
 
-  // Milk should no longer be visible as an active item
-  await expect(page.locator('input[value="Milk"]')).not.toBeVisible();
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
 
   // An undo button should appear
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();

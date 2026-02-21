@@ -42,6 +42,7 @@ export function Item({
           name={fieldset.value.name}
           id={fieldset.value.id}
           defaultValue={fieldset.value.defaultValue}
+          aria-label={`Edit ${fieldset.value.defaultValue}`}
           autoComplete="none"
           onBlur={function submitIfEdited(e) {
             if (edited) {
@@ -67,7 +68,7 @@ export function Item({
         ) : null}
 
         <span className={styles.dragHandle}>
-          <VisuallyHidden>drag to reorder</VisuallyHidden>
+          <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
           <span aria-hidden>||||||||||</span>
         </span>
 
@@ -79,7 +80,7 @@ export function Item({
             value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
             ref={deleteButtonRef}
           >
-            <VisuallyHidden>delete item</VisuallyHidden>☑️
+            <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>☑️
           </Button>
         </span>
 
