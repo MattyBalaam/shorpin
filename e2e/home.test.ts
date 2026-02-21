@@ -60,3 +60,14 @@ test("user adds new list", async ({ page }) => {
 
   await expect(page.getByRole("link", { name: "admin" })).toHaveCount(2);
 });
+
+test("shows an error message when list creation fails", async ({ page }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByLabel("New list").fill("__fail__");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await expect(
+    page.getByText("Failed to create list. Please try again."),
+  ).toBeVisible();
+});

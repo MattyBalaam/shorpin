@@ -163,6 +163,15 @@ export const handlers = [
       slug: string;
       user_id: string;
     };
+
+    // Sentinel for e2e error testing — trigger a DB error without shared state
+    if (body.name === "__fail__") {
+      return HttpResponse.json(
+        { code: "PGRST000", message: "Simulated DB error" },
+        { status: 500 },
+      );
+    }
+
     const list = await lists.create({
       id: randomUUID(),
       name: body.name,
