@@ -29,7 +29,7 @@ export const variant = styleVariants({
     border: "2px solid currentColor",
   },
   destructive: {
-    color: "red",
+    color: vars.palette.error,
     ...buttonBase,
   },
   link: {

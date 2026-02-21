@@ -128,6 +128,6 @@ export const newList = style({
 
 export const formError = style({
   gridColumn: "content",
-  color: "red",
+  color: vars.palette.error,
   margin: 0,
 });

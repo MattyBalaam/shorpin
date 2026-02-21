@@ -37,5 +37,5 @@ export const topActions = style({
 });
 
 export const deleteLink = style({
-  color: "red",
+  color: vars.palette.error,
 });
