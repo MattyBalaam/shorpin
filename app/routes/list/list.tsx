@@ -1,7 +1,7 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigation, useRevalidator } from "react-router";
+import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { Items } from "~/components/items";
 
@@ -50,9 +50,10 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 
 clientLoader.hydrate = true as const;
 
-// Prevent revalidation when offline
-export function shouldRevalidate() {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+// Prevent revalidation when offline, but allow initial navigation to this route
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+  const isRevalidation = currentUrl.pathname === nextUrl.pathname;
+  if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
     return false;
   }
   return true;
