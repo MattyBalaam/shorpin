@@ -108,7 +108,9 @@ export async function action({ request, context }: Route.ActionArgs) {
 
     if (error) {
       console.error("Error creating list:", error);
-      return report(submission);
+      return report(submission, {
+        error: { formErrors: ["Failed to create list. Please try again."] },
+      });
     }
 
     return redirectWithSuccess(
@@ -183,8 +185,9 @@ function Lists({
   );
 }
 
-export default function Index({ loaderData }: Route.ComponentProps) {
+export default function Index({ loaderData, actionData }: Route.ComponentProps) {
   const { form, fields } = useForm(zCreate, {
+    lastResult: actionData,
     shouldValidate: "onBlur",
     shouldRevalidate: "onInput",
   });
@@ -212,6 +215,9 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
       <Actions>
         <RouterForm {...form.props} method="POST" className={styles.actions}>
+          {form.errors?.map((error, i) => (
+            <p key={i} className={styles.formError}>{error}</p>
+          ))}
           <div className={styles.newList}>
             <VisuallyHidden>
               <label htmlFor={fields["new-list"].id}>New list</label>
