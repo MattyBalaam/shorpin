@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5174",
   },
   webServer: [
     {
@@ -13,8 +13,8 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: "pnpm dev",
-      url: "http://localhost:5173",
+      command: "pnpm dev --port 5174",
+      url: "http://localhost:5174",
       env: {
         VITE_SUPABASE_URL: "http://localhost:9001",
         VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "test-anon-key",
