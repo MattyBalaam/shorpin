@@ -48,6 +48,15 @@ export const skeletonContent = style({
   alignItems: "center",
 });
 
+export const emptyState = style({
+  gridColumn: "content",
+  paddingBlock: vars.spacing.xxl,
+  textAlign: "center",
+  color: vars.palette.chrome,
+  fontSize: vars.fontSize.sm,
+  listStyle: "none",
+});
+
 export const skeletonBar = style({
   height: "1em",
   borderRadius: "3px",

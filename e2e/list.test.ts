@@ -26,6 +26,14 @@ test("empty list shows no items", async ({ page }) => {
   await expect(page.getByRole("textbox")).toHaveCount(1);
 });
 
+test("empty list shows a placeholder prompt", async ({ page }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Owner Empty" }).click();
+
+  await expect(page.getByText("No items yet — add one below")).toBeVisible();
+});
+
 test("owner can add an item to a list", async ({ page }) => {
   await login(page, ctx.ownerEmail);
 
