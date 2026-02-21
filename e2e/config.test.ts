@@ -1,13 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { login, resetDb, createTestContext } from "./helpers";
+import { test, expect } from "./fixtures";
+import { login } from "./helpers";
 
-const ctx = createTestContext();
-
-test.beforeEach(async ({ page }) => {
-  await resetDb(page, ctx);
-});
-
-test("owner can open config modal for their list", async ({ page }) => {
+test("owner can open config modal for their list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "admin" }).first().click();
@@ -16,7 +10,7 @@ test("owner can open config modal for their list", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Admin/ })).toBeVisible();
 });
 
-test("owner sees collaborator checkboxes in config modal", async ({ page }) => {
+test("owner sees collaborator checkboxes in config modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Shopping list (collab is already a member)
@@ -31,7 +25,7 @@ test("owner sees collaborator checkboxes in config modal", async ({ page }) => {
   await expect(page.getByText(ctx.collabEmail)).toBeVisible();
 });
 
-test("owner can add a collaborator to a list", async ({ page }) => {
+test("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Owner Empty list (no current members)

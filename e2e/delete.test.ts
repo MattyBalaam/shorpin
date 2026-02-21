@@ -1,13 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { login, resetDb, createTestContext } from "./helpers";
+import { test, expect } from "./fixtures";
+import { login } from "./helpers";
 
-const ctx = createTestContext();
-
-test.beforeEach(async ({ page }) => {
-  await resetDb(page, ctx);
-});
-
-test("owner can delete a list", async ({ page }) => {
+test("owner can delete a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open admin config for Owner Empty

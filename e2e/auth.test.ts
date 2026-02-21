@@ -1,13 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { login, resetDb, createTestContext } from "./helpers";
+import { test, expect } from "./fixtures";
+import { login } from "./helpers";
 
-const ctx = createTestContext();
-
-test.beforeEach(async ({ page }) => {
-  await resetDb(page, ctx);
-});
-
-test("user can sign out", async ({ page }) => {
+test("user can sign out", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("button", { name: "Sign out" }).click();

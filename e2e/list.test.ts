@@ -1,13 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { login, resetDb, createTestContext } from "./helpers";
+import { test, expect } from "./fixtures";
+import { login } from "./helpers";
 
-const ctx = createTestContext();
-
-test.beforeEach(async ({ page }) => {
-  await resetDb(page, ctx);
-});
-
-test("list with items shows all items", async ({ page }) => {
+test("list with items shows all items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Shopping" }).click();
@@ -17,7 +11,7 @@ test("list with items shows all items", async ({ page }) => {
   await expect(page.getByLabel("Edit Eggs")).toBeVisible();
 });
 
-test("empty list shows no items", async ({ page }) => {
+test("empty list shows no items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Owner Empty" }).click();
@@ -26,7 +20,7 @@ test("empty list shows no items", async ({ page }) => {
   await expect(page.getByRole("textbox")).toHaveCount(1);
 });
 
-test("empty list shows a placeholder prompt", async ({ page }) => {
+test("empty list shows a placeholder prompt", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Owner Empty" }).click();
@@ -34,7 +28,7 @@ test("empty list shows a placeholder prompt", async ({ page }) => {
   await expect(page.getByText("No items yet — add one below")).toBeVisible();
 });
 
-test("owner can add an item to a list", async ({ page }) => {
+test("owner can add an item to a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Owner Empty" }).click();
@@ -46,7 +40,7 @@ test("owner can add an item to a list", async ({ page }) => {
   await expect(page.getByRole("textbox").first()).toHaveValue("Butter");
 });
 
-test("owner can delete an item from a list", async ({ page }) => {
+test("owner can delete an item from a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Shopping" }).click();

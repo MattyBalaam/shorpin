@@ -1,20 +1,14 @@
-import { test, expect } from "@playwright/test";
-import { login, resetDb, createTestContext } from "./helpers";
+import { test, expect } from "./fixtures";
+import { login } from "./helpers";
 
-const ctx = createTestContext();
-
-test.beforeEach(async ({ page }) => {
-  await resetDb(page, ctx);
-});
-
-test("admin sees pending sign-ups count on home page", async ({ page }) => {
+test("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // The seed adds 1 waitlist entry, so the home page should show "1 pending"
   await expect(page.getByRole("link", { name: /pending/ })).toBeVisible();
 });
 
-test("admin can view sign-ups modal", async ({ page }) => {
+test("admin can view sign-ups modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -24,7 +18,7 @@ test("admin can view sign-ups modal", async ({ page }) => {
   await expect(page.getByText(ctx.waitlistEmail)).toBeVisible();
 });
 
-test("admin can handle sign-ups", async ({ page }) => {
+test("admin can handle sign-ups", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
