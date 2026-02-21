@@ -35,7 +35,13 @@ test("admin can handle sign-ups", async ({ page }) => {
   await page.getByLabel(new RegExp(ctx.waitlistEmail)).check();
   await page.getByRole("button", { name: "Mark as handled" }).click();
 
-  // Should redirect back to home with no pending sign-ups
   await page.waitForURL("/");
-  await expect(page.getByRole("link", { name: /pending/ })).not.toBeVisible();
+
+  // Other parallel workers may still have pending entries so the count badge
+  // may stay visible — just verify this worker's specific entry is gone.
+  const pendingLink = page.getByRole("link", { name: /pending/ });
+  if (await pendingLink.isVisible()) {
+    await pendingLink.click();
+    await expect(page.getByText(ctx.waitlistEmail)).not.toBeVisible();
+  }
 });

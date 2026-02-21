@@ -183,18 +183,25 @@ export const handlers = [
     return HttpResponse.json(list, { status: 201 });
   }),
 
-  // Lists — PATCH for delete action (soft-delete by slug)
+  // Lists — PATCH for delete action (soft-delete by slug, scoped to requesting user)
   http.patch("*/rest/v1/lists", async ({ request }) => {
     const url = new URL(request.url);
     const body = (await request.json()) as { state?: string };
     const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
-    if (slugParam && body.state) {
+    const email = emailFromRequest(request);
+    const user = email ? users.findFirst((q) => q.where({ email })) : null;
+    if (slugParam && body.state && user) {
       const state = body.state as "active" | "deleted";
-      await lists.update((q) => q.where({ slug: slugParam }), {
-        data(draft) {
-          draft.state = state;
-        },
-      });
+      const list = lists.findFirst((q) =>
+        q.where({ slug: slugParam, user_id: user.id }),
+      );
+      if (list) {
+        await lists.update((q) => q.where({ id: list.id }), {
+          data(draft) {
+            draft.state = state;
+          },
+        });
+      }
     }
     return HttpResponse.json([]);
   }),
