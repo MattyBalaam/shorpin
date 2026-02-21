@@ -31,8 +31,8 @@ test("admin can handle sign-ups", async ({ page }) => {
 
   await expect(page.getByRole("dialog")).toBeVisible();
 
-  // Check the pending sign-up entry
-  await page.getByLabel(/Pending User/).check();
+  // Check this worker's pending sign-up entry by its unique email
+  await page.getByLabel(new RegExp(ctx.waitlistEmail)).check();
   await page.getByRole("button", { name: "Mark as handled" }).click();
 
   // Should redirect back to home with no pending sign-ups
