@@ -27,6 +27,9 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      options: --ipc=host
     steps:
       - uses: actions/checkout@v4
 
@@ -38,8 +41,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-
-      - run: pnpx playwright install --with-deps chromium
 
       - run: pnpm test:e2e
 
