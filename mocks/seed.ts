@@ -33,7 +33,7 @@ async function createListWithItems(
 export async function seed(
   ownerEmail = "owner@test.com",
   collabEmail = "collab@test.com",
-  waitlistEmail = "pending@test.com",
+  waitlistEmail?: string,
 ) {
   const owner = await users.create({ id: randomUUID(), email: ownerEmail });
   const collab = await users.create({ id: randomUUID(), email: collabEmail });
@@ -61,12 +61,14 @@ export async function seed(
     user_id: collab.id,
   });
 
-  // One pending waitlist entry
-  await waitlist.create({
-    id: randomUUID(),
-    email: waitlistEmail,
-    first_name: "Pending",
-    last_name: "User",
-    created_at: new Date().toISOString(),
-  });
+  // One pending waitlist entry — only created when a specific email is provided
+  if (waitlistEmail) {
+    await waitlist.create({
+      id: randomUUID(),
+      email: waitlistEmail,
+      first_name: "Pending",
+      last_name: "User",
+      created_at: new Date().toISOString(),
+    });
+  }
 }

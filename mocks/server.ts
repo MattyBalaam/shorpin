@@ -4,6 +4,18 @@ import { seed } from "./seed";
 import { handlers } from "./handlers";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
 
+// Seed fixed dev users at startup so pnpm dev works without any setup.
+// No waitlistEmail here — the demo entry is created separately below so it
+// has a distinct name and cannot conflict with e2e test selectors.
+await seed();
+await waitlist.create({
+  id: "dev-waitlist-demo",
+  email: "demo-pending@test.com",
+  first_name: "Demo",
+  last_name: "User",
+  created_at: new Date().toISOString(),
+});
+
 // MSW intercepts fetch() calls within this process before any TCP connection
 const msw = setupServer(...handlers);
 msw.listen({
