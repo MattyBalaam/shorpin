@@ -27,7 +27,7 @@ msw.listen({
   },
 });
 
-createServer(async (req, res) => {
+const httpServer = createServer(async (req, res) => {
   // Health check — Playwright webServer polls this before running tests
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200);
@@ -123,3 +123,9 @@ createServer(async (req, res) => {
 }).listen(9001, () => {
   console.log("[MSW] Mock server running on http://localhost:9001");
 });
+
+function shutdown() {
+  httpServer.close(() => process.exit(0));
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
