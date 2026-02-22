@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
 
 function emailFromRequest(request: Request): string | null {
@@ -27,6 +27,7 @@ export const handlers = [
   // ── Auth ────────────────────────────────────────────────────────────────
 
   http.post("*/auth/v1/token", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const grantType = url.searchParams.get("grant_type");
 
@@ -47,7 +48,8 @@ export const handlers = [
     return HttpResponse.json(makeSession(user));
   }),
 
-  http.get("*/auth/v1/user", ({ request }) => {
+  http.get("*/auth/v1/user", async ({ request }) => {
+    await delay();
     const email = emailFromRequest(request);
     if (!email) return HttpResponse.json({ message: "JWT expired" }, { status: 401 });
     const user = users.findFirst((q) => q.where({ email }));
@@ -60,12 +62,16 @@ export const handlers = [
     });
   }),
 
-  http.post("*/auth/v1/logout", () => new HttpResponse(null, { status: 204 })),
+  http.post("*/auth/v1/logout", async () => {
+    await delay();
+    return new HttpResponse(null, { status: 204 });
+  }),
 
   // ── Database ─────────────────────────────────────────────────────────────
 
   // Waitlist — HEAD for home page count
-  http.head("*/rest/v1/waitlist", () => {
+  http.head("*/rest/v1/waitlist", async () => {
+    await delay();
     const count = waitlist.count();
     return new HttpResponse(null, {
       headers: { "Content-Range": `0-0/${count}` },
@@ -73,7 +79,8 @@ export const handlers = [
   }),
 
   // Waitlist — GET for sign-ups page
-  http.get("*/rest/v1/waitlist", () => {
+  http.get("*/rest/v1/waitlist", async () => {
+    await delay();
     const entries = waitlist.findMany();
     return HttpResponse.json(
       entries.map((e) => ({
@@ -87,7 +94,8 @@ export const handlers = [
   }),
 
   // Waitlist — DELETE for sign-ups action
-  http.delete("*/rest/v1/waitlist", ({ request }) => {
+  http.delete("*/rest/v1/waitlist", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const idsParam = url.searchParams.get("id") ?? "";
     const inMatch = idsParam.match(/^in\.\((.+)\)$/);
@@ -99,7 +107,8 @@ export const handlers = [
   }),
 
   // Lists — GET (home page all lists, single list by slug, slug prefix check)
-  http.get("*/rest/v1/lists", ({ request }) => {
+  http.get("*/rest/v1/lists", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
@@ -162,6 +171,7 @@ export const handlers = [
 
   // Lists — POST for home action (create new list)
   http.post("*/rest/v1/lists", async ({ request }) => {
+    await delay();
     const body = (await request.json()) as {
       name: string;
       slug: string;
@@ -189,6 +199,7 @@ export const handlers = [
 
   // Lists — PATCH for delete action (soft-delete by slug, scoped to requesting user)
   http.patch("*/rest/v1/lists", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const body = (await request.json()) as { state?: string };
     const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
@@ -211,7 +222,8 @@ export const handlers = [
   }),
 
   // List items — GET for list action cleanup query
-  http.get("*/rest/v1/list_items", ({ request }) => {
+  http.get("*/rest/v1/list_items", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const listId = url.searchParams.get("list_id")?.replace("eq.", "");
     const state = url.searchParams.get("state")?.replace("eq.", "") as
@@ -238,6 +250,7 @@ export const handlers = [
 
   // List items — POST for list action (add new item)
   http.post("*/rest/v1/list_items", async ({ request }) => {
+    await delay();
     const body = (await request.json()) as {
       id?: string;
       list_id: string;
@@ -259,6 +272,7 @@ export const handlers = [
 
   // List items — PATCH for list action (update value/state/sort_order)
   http.patch("*/rest/v1/list_items", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const body = (await request.json()) as {
       value?: string;
@@ -281,7 +295,8 @@ export const handlers = [
   }),
 
   // List items — DELETE for list action (hard delete overflow items)
-  http.delete("*/rest/v1/list_items", ({ request }) => {
+  http.delete("*/rest/v1/list_items", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const idsParam = url.searchParams.get("id") ?? "";
     const inMatch = idsParam.match(/^in\.\((.+)\)$/);
@@ -293,7 +308,8 @@ export const handlers = [
   }),
 
   // List members — GET
-  http.get("*/rest/v1/list_members", ({ request }) => {
+  http.get("*/rest/v1/list_members", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const listId = url.searchParams.get("list_id")?.replace("eq.", "") ?? "";
     const members = listMembers.findMany((q) => q.where({ list_id: listId }));
@@ -302,6 +318,7 @@ export const handlers = [
 
   // List members — POST for config action (add collaborator)
   http.post("*/rest/v1/list_members", async ({ request }) => {
+    await delay();
     const body = (await request.json()) as
       | { list_id: string; user_id: string }
       | Array<{ list_id: string; user_id: string }>;
@@ -317,7 +334,8 @@ export const handlers = [
   }),
 
   // List members — DELETE for config action (remove collaborator)
-  http.delete("*/rest/v1/list_members", ({ request }) => {
+  http.delete("*/rest/v1/list_members", async ({ request }) => {
+    await delay();
     const url = new URL(request.url);
     const listId = url.searchParams.get("list_id")?.replace("eq.", "");
     const userIdParam = url.searchParams.get("user_id") ?? "";
@@ -332,7 +350,8 @@ export const handlers = [
   }),
 
   // Profiles — GET for config loader (all users except current)
-  http.get("*/rest/v1/profiles", ({ request }) => {
+  http.get("*/rest/v1/profiles", async ({ request }) => {
+    await delay();
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
     if (!user) return HttpResponse.json([], { status: 401 });
@@ -342,7 +361,8 @@ export const handlers = [
   }),
 
   // Realtime broadcast — Supabase httpSend expects 202 for success
-  http.post("*/realtime/v1/api/broadcast", () => {
+  http.post("*/realtime/v1/api/broadcast", async () => {
+    await delay();
     return HttpResponse.json({ message: "ok" }, { status: 202 });
   }),
 ];
