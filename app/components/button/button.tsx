@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
+import { Spinner } from "~/components/spinner/spinner";
 import * as clickableStyles from "~/components/shared/clickable-element.css";
-import * as styles from "./button.css";
 
 interface ButtonProps extends React.DetailedHTMLProps<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -27,7 +27,7 @@ export function Button({
       // disabled={disabled || isSubmitting}
       {...props}
     >
-      {isSubmitting ? <span className={styles.spinner} /> : children}
+      {isSubmitting ? <Spinner /> : children}
     </button>
   );
 }
