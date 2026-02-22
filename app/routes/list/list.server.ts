@@ -1,6 +1,10 @@
 import type { Route } from "./+types/list";
 
 import { dataWithError } from "remix-toast";
+import {
+  parseDeleteItemIntent,
+  parseUndeleteItemIntent,
+} from "./intents";
 
 import { type Items, sortData, zItems, zList } from "./data";
 
@@ -76,13 +80,8 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const supabase = context.get(supabaseContext);
 
-  const toDelete = submission.intent?.startsWith("delete-item-")
-    ? submission.intent.replace("delete-item-", "")
-    : undefined;
-
-  const toUndelete = submission.intent?.startsWith("undelete-item-")
-    ? submission.intent.replace("undelete-item-", "")
-    : undefined;
+  const toDelete = parseDeleteItemIntent(submission.intent);
+  const toUndelete = parseUndeleteItemIntent(submission.intent);
 
   // Fetch current list and items from Supabase
   const { data, error: listError } = await supabase

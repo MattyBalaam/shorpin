@@ -4,3 +4,12 @@ publish = "build/client"
 
 [functions]
 directory = ".netlify/functions"
+
+# Deploy previews (PRs) use the mock MSW build — no real Supabase needed.
+[context.deploy-preview]
+command = "pnpm build:preview"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

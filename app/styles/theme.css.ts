@@ -1,4 +1,4 @@
-import { createTheme, style } from "@vanilla-extract/css";
+import { createTheme } from "@vanilla-extract/css";
 
 export const [themeClass, vars] = createTheme({
   spacing: {
@@ -24,6 +24,7 @@ export const [themeClass, vars] = createTheme({
     text: "black",
     textOnChrome: "white",
     textOnChromeDarkMode: "black",
+    error: "red",
   },
   font: {
     // System font stack for optimal performance and native feel

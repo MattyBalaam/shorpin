@@ -111,6 +111,50 @@ useEffect(() => {
 }, [deps]);
 ```
 
+## Testing
+
+### Selectors
+
+Query elements in order of preference:
+
+**1. `getByLabel` — for all form controls**
+
+```ts
+// Good
+await page.getByLabel("Email").fill("user@example.com");
+await page.getByLabel("Password").fill("secret");
+
+// Avoid
+await page.locator("input[type=email]").fill("user@example.com");
+await page.locator("#password").fill("secret");
+```
+
+**2. `getByRole` with an accessible name — for everything else**
+
+```ts
+// Good
+await page.getByRole("button", { name: "Sign in" }).click();
+await page.getByRole("link", { name: "Shopping" }).click();
+await expect(page.getByRole("link", { name: "admin" })).toHaveCount(2);
+
+// Avoid
+await page.locator(".submit-button").click();
+await page.locator("a[href='/lists/shopping']").click();
+```
+
+The `name` matches the element's accessible name — the visible text, `aria-label`, or text derived from `aria-labelledby`. It accepts a string (exact match) or a `RegExp` for partial matches.
+
+**Fallback — attribute selectors**
+
+Only use attribute selectors when the element has no accessible name and adding one would require changing production markup solely for test purposes (e.g. unlabelled list item inputs where the value itself is the only identifier):
+
+```ts
+// Acceptable — no label exists on list item inputs
+await expect(page.locator('input[value="Milk"]')).toBeVisible();
+```
+
+Prefer improving accessibility in the component (adding a `<label>` or `aria-label`) over reaching for an attribute selector.
+
 ### Event Listeners
 
 Use `AbortController` for event listener cleanup instead of manual `removeEventListener`:

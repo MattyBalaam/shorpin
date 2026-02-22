@@ -8,10 +8,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vite";
 import devtoolsJson from "vite-plugin-devtools-json";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
     host: true,
   },
+  // Bundle mock packages into the SSR function for preview builds so they are
+  // available at runtime without requiring devDependencies to be installed.
+  ...(mode === "preview" && {
+    ssr: { noExternal: ["msw", "@msw/data", "valibot"] },
+  }),
   plugins: [
     devtoolsJson(),
     // reactRouterDevTools(),
@@ -21,4 +26,4 @@ export default defineConfig({
     netlify(),
     tsconfigPaths(),
   ],
-});
+}));

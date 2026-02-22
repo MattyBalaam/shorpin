@@ -12,7 +12,7 @@ export const itemContainer = style({
       background: vars.palette.primary,
     },
     "&[data-dismissing=true]": {
-      background: "red",
+      background: vars.palette.error,
     },
     "&[data-deleting=true]": {
       opacity: 0.4,

@@ -186,6 +186,10 @@ export function Items({
             />
           ))}
       </AnimatePresence>
+      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 &&
+        !pendingItem && (
+          <li className={styles.emptyState}>No items yet — add one below</li>
+        )}
       {pendingItem && (
         <li className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>

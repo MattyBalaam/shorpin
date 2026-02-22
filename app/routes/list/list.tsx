@@ -1,7 +1,11 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigation, useRevalidator } from "react-router";
+import {
+  useNavigation,
+  useRevalidator,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { Items } from "~/components/items";
 
@@ -18,6 +22,11 @@ export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
+import {
+  isDeleteItemIntent,
+  isUndeleteItemIntent,
+  undeleteItemIntent,
+} from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<
@@ -25,6 +34,11 @@ let cachedLoaderData: Awaited<
 > | null = null;
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  console.log("clientLoader", {
+    isOnline: navigator.onLine,
+    hasCache: !!cachedLoaderData,
+  });
+
   if (!navigator.onLine && cachedLoaderData) {
     return cachedLoaderData;
   }
@@ -34,6 +48,8 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
     cachedLoaderData = data;
     return data;
   } catch (error) {
+    console.error("Error in clientLoader", error);
+
     if (error instanceof TypeError && error.message.includes("fetch")) {
       if (cachedLoaderData) {
         return cachedLoaderData;
@@ -45,9 +61,19 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 
 clientLoader.hydrate = true as const;
 
-// Prevent revalidation when offline
-export function shouldRevalidate() {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+// Prevent revalidation when offline, but allow initial navigation to this route
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+}: ShouldRevalidateFunctionArgs) {
+  console.log("shouldRevalidate", {
+    currentUrl,
+    nextUrl,
+    isOnline: navigator.onLine,
+  });
+
+  const isRevalidation = currentUrl.pathname === nextUrl.pathname;
+  if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
     return false;
   }
   return true;
@@ -153,8 +179,15 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   const reorderSubmitRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const isOnline = useIsOnline();
-  const wasOfflineRef = useRef(false);
+  const isOnline = useIsOnline({
+    onOffline: () => {
+      toast.info("You're offline - changes saved locally");
+    },
+    onOnline: () => {
+      formRef.current?.requestSubmit();
+      toast.success("Back online - syncing changes");
+    },
+  });
 
   // Subscribe to broadcast for real-time updates
   useEffect(
@@ -178,30 +211,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     [loaderData.listId, clientId, revalidate],
   );
 
-  // Show toast when going offline
-  useEffect(
-    function notifyOfflineStatus() {
-      if (!isOnline) {
-        wasOfflineRef.current = true;
-        toast.info("You're offline - changes saved locally");
-      }
-    },
-    [isOnline],
-  );
-
-  // Auto-submit when back online if there were changes made offline
-  useEffect(
-    function submitOnReconnect() {
-      if (isOnline && wasOfflineRef.current) {
-        wasOfflineRef.current = false;
-        // Submit the form to sync any changes made while offline
-        formRef.current?.requestSubmit();
-        toast.success("Back online - syncing changes");
-      }
-    },
-    [isOnline],
-  );
-
   const { form, fields, intent } = useForm(zList, {
     defaultValue,
     lastResult,
@@ -210,8 +219,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       if (
         // we want to skip validation when deleting or undeleting items
         // so that the intent is sent server side
-        ctx.intent?.type?.startsWith("undelete-item") ||
-        ctx.intent?.type?.startsWith("delete-item")
+        isUndeleteItemIntent(ctx.intent?.type) ||
+        isDeleteItemIntent(ctx.intent?.type)
       ) {
         return null;
       }
@@ -288,15 +297,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       defaultSecondary={defaultValue.themeSecondary}
     >
       <div className={styles.topActions}>
-        <Link
-          variant="outline"
-          to="./confirm-delete"
-          relative="route"
-          className={styles.deleteLink}
-        >
-          Delete list
-        </Link>
-
         <Theme.Button formId={form.id} />
       </div>
 
@@ -363,7 +363,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         <Actions>
           <div className={styles.actions}>
             <VisuallyHidden>
-              <label htmlFor={fields.name.id}>New item</label>
+              <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
             <input
               name={fields.new.name}
@@ -384,7 +384,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
               <button
                 type="submit"
                 name="__INTENT__"
-                value={`undelete-item-${lastDeleted.id}`}
+                value={undeleteItemIntent(lastDeleted.id)}
                 className={styles.undoButton}
               >
                 Undo

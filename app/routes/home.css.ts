@@ -125,3 +125,9 @@ export const newList = style({
   display: "flex",
   gap: vars.spacing.md,
 });
+
+export const formError = style({
+  gridColumn: "content",
+  color: vars.palette.error,
+  margin: 0,
+});

@@ -15,6 +15,7 @@ export function AuthField({ meta, label, type, autoComplete }: AuthFieldProps) {
     <div className={styles.field}>
       <label htmlFor={meta.id}>{label}</label>
       <input
+        className={styles.input}
         type={type}
         name={meta.name}
         id={meta.id}

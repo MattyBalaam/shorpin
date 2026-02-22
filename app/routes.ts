@@ -3,7 +3,13 @@ import { layout, route } from "@react-router/dev/routes";
 
 export default [
   layout("routes/auth/layout.tsx", [
-    route("login", "routes/auth/login.tsx"),
+    route(
+      "login",
+      // In mock/preview mode, swap in the dev login that shows quick-login shortcuts
+      import.meta.env.MODE === "mock" || import.meta.env.MODE === "preview"
+        ? "routes/auth/login.dev.tsx"
+        : "routes/auth/login.tsx",
+    ),
     route("logout", "routes/auth/logout.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
     route("auth/confirm", "routes/auth/confirm.tsx"),
@@ -11,7 +17,7 @@ export default [
     route("request-access", "routes/auth/request-access.tsx"),
   ]),
   layout("routes/app/layout.tsx", [
-    route("", "routes/home.tsx", [
+    route("/", "routes/home.tsx", [
       route("sign-ups", "routes/sign-ups.tsx"),
       route("config/:list", "routes/list/config.tsx"),
     ]),

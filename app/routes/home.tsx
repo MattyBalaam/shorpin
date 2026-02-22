@@ -46,10 +46,15 @@ const zCreate = v.object({
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return {
+    userId: user?.id,
     lists: supabase
       .from("lists")
-      .select("id, name, slug")
+      .select("id, name, slug, user_id")
       .eq("state", "active")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
@@ -77,45 +82,43 @@ export async function action({ request, context }: Route.ActionArgs) {
   const listName = result.output["new-list"];
   const baseSlug = slugify(listName);
 
-  if (listName) {
-    const supabase = context.get(supabaseContext);
+  const supabase = context.get(supabaseContext);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const { data: matches } = await supabase
-      .from("lists")
-      .select("slug")
-      .like("slug", `${baseSlug}%`)
-      .eq("state", "active");
+  const { data: matches } = await supabase
+    .from("lists")
+    .select("slug")
+    .like("slug", `${baseSlug}%`)
+    .eq("state", "active");
 
-    const slug = resolveSlug(
-      baseSlug,
-      matches?.map((m: { slug: string }) => m.slug) ?? [],
-    );
+  const slug = resolveSlug(
+    baseSlug,
+    matches?.map((m: { slug: string }) => m.slug) ?? [],
+  );
 
-    const { error } = await supabase.from("lists").insert({
-      name: listName,
-      slug,
-      user_id: user!.id,
+  const { error } = await supabase.from("lists").insert({
+    name: listName,
+    slug,
+    user_id: user!.id,
+  });
+
+  if (error) {
+    console.error("Error creating list:", error);
+    return report(submission, {
+      error: { formErrors: ["Failed to create list. Please try again."] },
     });
-
-    if (error) {
-      console.error("Error creating list:", error);
-      return report(submission);
-    }
-
-    return redirectWithSuccess(
-      href("/lists/:list", { list: slug }),
-      `List "${listName}" created successfully!`,
-    );
   }
 
-  return report(submission);
+  return redirectWithSuccess(
+    href("/lists/:list", { list: slug }),
+    `List "${listName}" created successfully!`,
+  );
 }
 
-type ListItem = { id: string; name: string; slug: string };
+type ListItem = { id: string; name: string; slug: string; user_id: string };
 
 function ListsSkeleton() {
   return (
@@ -139,12 +142,19 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   );
 }
 
-function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
+function Lists({
+  listsPromise,
+  userId,
+}: {
+  listsPromise: Promise<ListItem[]>;
+  userId: string | undefined;
+}) {
   const lists = use(listsPromise);
 
   return (
     <ul className={styles.list}>
-      {lists.map(({ id, name, slug }) => {
+      {lists.map(({ id, name, slug, user_id }) => {
+        const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
             <span className={styles.item}>
@@ -154,13 +164,15 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
               >
                 {name}
               </Link>
-              <Link
-                className={styles.itemConfig}
-                variant="outline"
-                to={href("/config/:list", { list: slug })}
-              >
-                admin
-              </Link>
+              {isOwner && (
+                <Link
+                  className={styles.itemConfig}
+                  variant="outline"
+                  to={href("/config/:list", { list: slug })}
+                >
+                  admin
+                </Link>
+              )}
             </span>
           </li>
         );
@@ -169,8 +181,12 @@ function Lists({ listsPromise }: { listsPromise: Promise<ListItem[]> }) {
   );
 }
 
-export default function Index({ loaderData }: Route.ComponentProps) {
+export default function Index({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { form, fields } = useForm(zCreate, {
+    lastResult: actionData,
     shouldValidate: "onBlur",
     shouldRevalidate: "onInput",
   });
@@ -190,13 +206,19 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           <Suspense fallback={<ListsSkeleton />}>
             <Lists
               listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+              userId={loaderData.userId}
             />
           </Suspense>
         </nav>
       </ScrollArea>
 
       <Actions>
-        <RouterForm method="POST" {...form.props} className={styles.actions}>
+        <RouterForm {...form.props} method="POST" className={styles.actions}>
+          {form.errors?.map((error, i) => (
+            <p key={i} className={styles.formError}>
+              {error}
+            </p>
+          ))}
           <div className={styles.newList}>
             <VisuallyHidden>
               <label htmlFor={fields["new-list"].id}>New list</label>

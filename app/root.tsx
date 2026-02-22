@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
@@ -76,6 +77,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({
   loaderData: { toast: notification },
 }: Route.ComponentProps) {
+  const { pathname } = useLocation();
+
+  useEffect(
+    function signalHydration() {
+      document.documentElement.dataset.hydratedPath = pathname;
+    },
+    [pathname],
+  );
+
   useEffect(
     function showNewToast() {
       if (notification) {

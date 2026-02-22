@@ -17,3 +17,8 @@ export const links = style({
   display: "flex",
   gap: vars.spacing.lg,
 });
+
+export const input = style({
+  padding: vars.spacing.sm,
+  border: `1px solid ${vars.palette.text}`,
+});
