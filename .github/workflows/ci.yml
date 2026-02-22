@@ -27,6 +27,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
       options: --ipc=host
@@ -51,9 +53,13 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-      - name: Deploy to GitHub Pages
-        if: always()
+      - name: Deploy report to GitHub Pages
+        if: failure()
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report
+
+      - name: Link to report
+        if: failure()
+        run: echo "### [View Playwright Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
