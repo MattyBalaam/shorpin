@@ -35,6 +35,17 @@ const LOADING_PAGE = `<!DOCTYPE html>
 
 self.addEventListener('fetch', function(event) {
   if (event.request.mode !== 'navigate') return;
+
+  // For form submissions (POST etc.) pass the request straight through with
+  // manual redirect handling so the browser follows any server-side redirect
+  // (e.g. redirectWithSuccess → /lists/groceries) without the SW interfering.
+  // This preserves progressive enhancement: the action works even before React
+  // has hydrated the page.
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request, { redirect: 'manual' }));
+    return;
+  }
+
   event.respondWith(
     Promise.race([
       fetch(event.request),

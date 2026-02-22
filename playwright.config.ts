@@ -13,6 +13,8 @@ export default defineConfig({
       command: "pnpm tsx mocks/server.ts",
       url: "http://localhost:9001",
       reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
     },
     {
       command: "pnpm react-router dev --mode mock --port 5174",
@@ -22,6 +24,8 @@ export default defineConfig({
         VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "test-anon-key",
       },
       reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
     },
   ],
 });

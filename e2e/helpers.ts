@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export interface TestContext {
   ownerEmail: string;
@@ -21,12 +21,24 @@ export function createTestContext(): TestContext {
   };
 }
 
+/**
+ * Asserts that the app has hydrated at the given pathname within 300ms.
+ * Fails the test if React hasn't committed an effect for that route in time,
+ * which typically means the form was submitted before hydration completed.
+ */
+async function waitForHydration(page: Page, pathname: string) {
+  await expect(
+    page.locator(`html[data-hydrated-path="${pathname}"]`),
+  ).toBeAttached({ timeout: 300 });
+}
+
 export async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("any-password"); // mock ignores the password
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("/");
+  await waitForHydration(page, "/");
 }
 
 /**

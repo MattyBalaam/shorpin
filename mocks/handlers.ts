@@ -108,11 +108,16 @@ export const handlers = [
     const slugParam = url.searchParams.get("slug");
 
     // Slug prefix query — used by home action to check for slug conflicts.
-    // url.searchParams already URL-decodes, so "like.groceries%" comes through as-is.
+    // Scoped to the requesting user so parallel test workers don't pollute
+    // each other's slug namespace in the shared in-memory DB.
     if (slugParam?.startsWith("like.")) {
       const prefix = slugParam.slice(5).replace(/%$/, "");
       const matching = lists.findMany((q) =>
-        q.where({ state: "active", slug: (s: string) => s.startsWith(prefix) }),
+        q.where({
+          state: "active",
+          user_id: user.id,
+          slug: (s: string) => s.startsWith(prefix),
+        }),
       );
       return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
     }
