@@ -26,8 +26,8 @@ const LOADING_PAGE = `<!DOCTYPE html>
   <script>
     (function poll() {
       fetch(location.href, { cache: 'no-store' })
-        .then(function(r) { if (r.ok) location.reload(); else setTimeout(poll, 1000); })
-        .catch(function() { setTimeout(poll, 1000); });
+        .then(function(r) { if (r.ok) location.reload(); else setTimeout(poll, 200); })
+        .catch(function() { setTimeout(poll, 200); });
     })();
   </script>
 </body>

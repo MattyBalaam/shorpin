@@ -9,7 +9,7 @@ async function enableMocking() {
 }
 
 enableMocking().then(() => {
-  if ('serviceWorker' in navigator && import.meta.env.PROD && import.meta.env.MODE !== 'preview') {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(console.error);
   }
 
