@@ -16,6 +16,8 @@ await waitlist.create({
   created_at: new Date().toISOString(),
 });
 
+const port = Number(process.env.MOCK_SERVER_PORT ?? "9001");
+
 // MSW intercepts fetch() calls within this process before any TCP connection
 const msw = setupServer(...handlers);
 msw.listen({
@@ -103,7 +105,7 @@ const httpServer = createServer(async (req, res) => {
 
   try {
     // This fetch is intercepted by MSW — no real network request is made
-    const response = await fetch(`http://localhost:9001${req.url}`, {
+    const response = await fetch(`http://localhost:${port}${req.url}`, {
       method: req.method,
       headers,
       ...(hasBody && { body: Buffer.concat(chunks), duplex: "half" }),
@@ -120,8 +122,8 @@ const httpServer = createServer(async (req, res) => {
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "No mock handler", url: req.url, method: req.method }));
   }
-}).listen(9001, () => {
-  console.log("[MSW] Mock server running on http://localhost:9001");
+}).listen(port, () => {
+  console.log(`[MSW] Mock server running on http://localhost:${port}`);
 });
 
 function shutdown() {

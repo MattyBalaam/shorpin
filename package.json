@@ -17,7 +17,7 @@
     "db:reset": "supabase db reset",
     "knip": "knip",
     "test": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@netlify/vite-plugin": "2.8.0",

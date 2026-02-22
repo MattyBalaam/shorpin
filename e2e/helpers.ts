@@ -47,7 +47,8 @@ export async function login(page: Page, email: string) {
  * workers running different test files don't interfere with each other.
  */
 export async function resetDb(page: Page, ctx: TestContext) {
-  await page.request.post("http://localhost:9001/test/reset", {
+  const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
+  await page.request.post(`http://localhost:${mockPort}/test/reset`, {
     data: ctx,
   });
 }
