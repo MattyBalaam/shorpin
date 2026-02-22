@@ -1,7 +1,11 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
+import {
+  useNavigation,
+  useRevalidator,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { Items } from "~/components/items";
 
@@ -30,6 +34,11 @@ let cachedLoaderData: Awaited<
 > | null = null;
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  console.log("clientLoader", {
+    isOnline: navigator.onLine,
+    hasCache: !!cachedLoaderData,
+  });
+
   if (!navigator.onLine && cachedLoaderData) {
     return cachedLoaderData;
   }
@@ -39,6 +48,8 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
     cachedLoaderData = data;
     return data;
   } catch (error) {
+    console.error("Error in clientLoader", error);
+
     if (error instanceof TypeError && error.message.includes("fetch")) {
       if (cachedLoaderData) {
         return cachedLoaderData;
@@ -51,7 +62,16 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 clientLoader.hydrate = true as const;
 
 // Prevent revalidation when offline, but allow initial navigation to this route
-export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+}: ShouldRevalidateFunctionArgs) {
+  console.log("shouldRevalidate", {
+    currentUrl,
+    nextUrl,
+    isOnline: navigator.onLine,
+  });
+
   const isRevalidation = currentUrl.pathname === nextUrl.pathname;
   if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
     return false;

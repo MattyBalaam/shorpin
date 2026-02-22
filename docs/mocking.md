@@ -27,7 +27,7 @@ The port is read from `MOCK_SERVER_PORT` env var (default `9001`), so it can be 
 
 `pnpm test:e2e` runs [`scripts/test-e2e.mjs`](../scripts/test-e2e.mjs), which finds free ports starting from `9001` (mock) and `5174` (app) before starting Playwright. This prevents port conflicts when `pnpm dev` or another test run is already using those ports.
 
-Playwright passes the chosen ports to both web servers as `MOCK_SERVER_PORT` / `APP_SERVER_PORT` env vars. The app server receives `VITE_SUPABASE_URL=http://localhost:${mockPort}` so it always points at the correct mock instance.
+Playwright passes the chosen ports to both web servers as `MOCK_SERVER_PORT` / `APP_SERVER_PORT` env vars. The app is built with `react-router build --mode mock` before being served via `react-router-serve`, with `VITE_SUPABASE_URL=http://localhost:${mockPort}` baked in at build time so it always points at the correct mock instance. The `PORT` env var controls which port the production server listens on. A `timeout` of 120 s is set on the app webServer entry to accommodate the build step.
 
 Test isolation is handled through:
 

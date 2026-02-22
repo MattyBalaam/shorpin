@@ -82,44 +82,40 @@ export async function action({ request, context }: Route.ActionArgs) {
   const listName = result.output["new-list"];
   const baseSlug = slugify(listName);
 
-  if (listName) {
-    const supabase = context.get(supabaseContext);
+  const supabase = context.get(supabaseContext);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const { data: matches } = await supabase
-      .from("lists")
-      .select("slug")
-      .like("slug", `${baseSlug}%`)
-      .eq("state", "active");
+  const { data: matches } = await supabase
+    .from("lists")
+    .select("slug")
+    .like("slug", `${baseSlug}%`)
+    .eq("state", "active");
 
-    const slug = resolveSlug(
-      baseSlug,
-      matches?.map((m: { slug: string }) => m.slug) ?? [],
-    );
+  const slug = resolveSlug(
+    baseSlug,
+    matches?.map((m: { slug: string }) => m.slug) ?? [],
+  );
 
-    const { error } = await supabase.from("lists").insert({
-      name: listName,
-      slug,
-      user_id: user!.id,
+  const { error } = await supabase.from("lists").insert({
+    name: listName,
+    slug,
+    user_id: user!.id,
+  });
+
+  if (error) {
+    console.error("Error creating list:", error);
+    return report(submission, {
+      error: { formErrors: ["Failed to create list. Please try again."] },
     });
-
-    if (error) {
-      console.error("Error creating list:", error);
-      return report(submission, {
-        error: { formErrors: ["Failed to create list. Please try again."] },
-      });
-    }
-
-    return redirectWithSuccess(
-      href("/lists/:list", { list: slug }),
-      `List "${listName}" created successfully!`,
-    );
   }
 
-  return report(submission);
+  return redirectWithSuccess(
+    href("/lists/:list", { list: slug }),
+    `List "${listName}" created successfully!`,
+  );
 }
 
 type ListItem = { id: string; name: string; slug: string; user_id: string };
@@ -185,7 +181,10 @@ function Lists({
   );
 }
 
-export default function Index({ loaderData, actionData }: Route.ComponentProps) {
+export default function Index({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { form, fields } = useForm(zCreate, {
     lastResult: actionData,
     shouldValidate: "onBlur",
@@ -216,7 +215,9 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
       <Actions>
         <RouterForm {...form.props} method="POST" className={styles.actions}>
           {form.errors?.map((error, i) => (
-            <p key={i} className={styles.formError}>{error}</p>
+            <p key={i} className={styles.formError}>
+              {error}
+            </p>
           ))}
           <div className={styles.newList}>
             <VisuallyHidden>
