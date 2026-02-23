@@ -24,17 +24,31 @@ const LOADING_PAGE = `<!DOCTYPE html>
 <body>
   <div class="spinner"></div>
   <script>
+  // Poll for the real page to load. When it does, reload once to let React
+  // hydrate. This handles the cold-start case where Netlify Functions take
+  // time to boot — the user sees a spinner while waiting, then the real page.
   (function poll() {
     fetch(location.href, { cache: 'no-store' })
       .then(function(r) {
+        // Server still booting, keep polling
         if (!r.ok) { setTimeout(poll, 200); return; }
-        if (document.readyState === 'complete') return;
+
+        // Real HTML arrived
+        if (document.readyState === 'complete') {
+          // Already hydrated, nothing to do
+          if (document.documentElement.dataset.hydratedPath) return;
+          // Not yet hydrated — reload once to let React take over
+          setTimeout(function() { location.replace(location.href); }, 100);
+          return;
+        }
+
+        // Wait for HTML to fully parse, then reload for hydration
         document.addEventListener('DOMContentLoaded', function onDCL() {
           document.removeEventListener('DOMContentLoaded', onDCL);
-          if (document.documentElement.dataset.hydratedPath) return;
-          location.replace(location.href);
+          setTimeout(function() { location.replace(location.href); }, 100);
         });
       })
+      // Network error, keep polling
       .catch(function() { setTimeout(poll, 200); });
   })();
 </script>
