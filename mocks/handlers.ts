@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from "msw";
-import { users, lists, listItems, listMembers, waitlist } from "./db";
-import { broadcastEmitter, type BroadcastMessage } from "./broadcast";
+import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
 
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
@@ -36,7 +36,11 @@ export const handlers = [
       const body = (await request.json()) as { refresh_token: string };
       const email = body.refresh_token.replace("refresh-", "");
       const user = users.findFirst((q) => q.where({ email }));
-      if (!user) return HttpResponse.json({ error: "Invalid refresh token" }, { status: 400 });
+      if (!user)
+        return HttpResponse.json(
+          { error: "Invalid refresh token" },
+          { status: 400 },
+        );
       return HttpResponse.json(makeSession(user));
     }
 
@@ -44,7 +48,10 @@ export const handlers = [
     const body = (await request.json()) as { email: string };
     const user = users.findFirst((q) => q.where({ email: body.email }));
     if (!user) {
-      return HttpResponse.json({ error: "Invalid login credentials" }, { status: 400 });
+      return HttpResponse.json(
+        { error: "Invalid login credentials" },
+        { status: 400 },
+      );
     }
     return HttpResponse.json(makeSession(user));
   }),
@@ -52,9 +59,11 @@ export const handlers = [
   http.get("*/auth/v1/user", async ({ request }) => {
     await delay();
     const email = emailFromRequest(request);
-    if (!email) return HttpResponse.json({ message: "JWT expired" }, { status: 401 });
+    if (!email)
+      return HttpResponse.json({ message: "JWT expired" }, { status: 401 });
     const user = users.findFirst((q) => q.where({ email }));
-    if (!user) return HttpResponse.json({ message: "JWT expired" }, { status: 401 });
+    if (!user)
+      return HttpResponse.json({ message: "JWT expired" }, { status: 401 });
     return HttpResponse.json({
       id: user.id,
       email: user.email,
@@ -139,12 +148,15 @@ export const handlers = [
       const slug = slugParam.slice(3);
       if (!user) return HttpResponse.json(null, { status: 401 });
 
-      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      const memberships = listMembers.findMany((q) =>
+        q.where({ user_id: user.id }),
+      );
       const memberListIds = new Set(memberships.map((m) => m.list_id));
       const list =
         lists
           .findMany((q) => q.where({ slug, state: "active" }))
-          .find((l) => l.user_id === user.id || memberListIds.has(l.id)) ?? null;
+          .find((l) => l.user_id === user.id || memberListIds.has(l.id)) ??
+        null;
       if (!list) return HttpResponse.json(null, { status: 406 });
 
       const items = listItems
@@ -156,11 +168,11 @@ export const handlers = [
 
     // All accessible lists — used by the home page
     const ownedLists = lists.findMany((q) =>
-      q.where({ user_id: user.id, state: "active" })
+      q.where({ user_id: user.id, state: "active" }),
     );
 
     const memberships = listMembers.findMany((q) =>
-      q.where({ user_id: user.id })
+      q.where({ user_id: user.id }),
     );
     const memberListIds = new Set(memberships.map((m) => m.list_id));
     const sharedLists = lists
@@ -344,7 +356,9 @@ export const handlers = [
     if (listId && inMatch) {
       const userIds = inMatch[1].split(",");
       userIds.forEach((userId) =>
-        listMembers.delete((q) => q.where({ list_id: listId, user_id: userId })),
+        listMembers.delete((q) =>
+          q.where({ list_id: listId, user_id: userId }),
+        ),
       );
     }
     return HttpResponse.json([]);
@@ -357,8 +371,12 @@ export const handlers = [
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
     if (!user) return HttpResponse.json([], { status: 401 });
 
-    const allUsers = users.findMany((q) => q.where({ id: (id) => id !== user.id }));
-    return HttpResponse.json(allUsers.map((u) => ({ id: u.id, email: u.email })));
+    const allUsers = users.findMany((q) =>
+      q.where({ id: (id) => id !== user.id }),
+    );
+    return HttpResponse.json(
+      allUsers.map((u) => ({ id: u.id, email: u.email })),
+    );
   }),
 
   // Realtime broadcast — Supabase httpSend expects 202 for success.

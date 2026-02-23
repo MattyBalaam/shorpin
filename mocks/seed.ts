@@ -1,4 +1,4 @@
-import { users, lists, listItems, listMembers, waitlist } from "./db";
+import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
 
 async function createListWithItems(
   ownerId: string,
@@ -34,15 +34,22 @@ export async function seed(
   collabEmail = "collab@test.com",
   waitlistEmail?: string,
 ) {
-  const owner = await users.create({ id: crypto.randomUUID(), email: ownerEmail });
-  const collab = await users.create({ id: crypto.randomUUID(), email: collabEmail });
+  const owner = await users.create({
+    id: crypto.randomUUID(),
+    email: ownerEmail,
+  });
+  const collab = await users.create({
+    id: crypto.randomUUID(),
+    email: collabEmail,
+  });
 
   // Owner gets 2 lists: one with 3 items, one empty
-  const ownerList = await createListWithItems(owner.id, "Shopping", "shopping", [
-    "Milk",
-    "Bread",
-    "Eggs",
-  ]);
+  const ownerList = await createListWithItems(
+    owner.id,
+    "Shopping",
+    "shopping",
+    ["Milk", "Bread", "Eggs"],
+  );
   await createListWithItems(owner.id, "Owner Empty", "owner-empty", []);
 
   // Collab gets 2 lists: one with 3 items, one empty

@@ -1,10 +1,10 @@
 import { createServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { setupServer } from "msw/node";
-import { seed } from "./seed";
-import { handlers } from "./handlers";
-import { users, lists, listItems, listMembers, waitlist } from "./db";
-import { broadcastEmitter, type BroadcastMessage } from "./broadcast";
+import { seed } from "./seed.ts";
+import { handlers } from "./handlers.ts";
+import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
 
 // Seed fixed dev users at startup so pnpm dev works without any setup.
 // No waitlistEmail here — the demo entry is created separately below so it
@@ -67,21 +67,33 @@ const httpServer = createServer(async (req, res) => {
       const userLists = lists.findMany((q) => q.where({ user_id: user.id }));
       for (const list of userLists) {
         const items = listItems.findMany((q) => q.where({ list_id: list.id }));
-        items.forEach((item) => listItems.delete((q) => q.where({ id: item.id })));
-        const members = listMembers.findMany((q) => q.where({ list_id: list.id }));
-        members.forEach((m) => listMembers.delete((q) => q.where({ id: m.id })));
+        items.forEach((item) =>
+          listItems.delete((q) => q.where({ id: item.id })),
+        );
+        const members = listMembers.findMany((q) =>
+          q.where({ list_id: list.id }),
+        );
+        members.forEach((m) =>
+          listMembers.delete((q) => q.where({ id: m.id })),
+        );
       }
       userLists.forEach((l) => lists.delete((q) => q.where({ id: l.id })));
 
       // Remove memberships where this user is a collaborator on other lists
-      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
-      memberships.forEach((m) => listMembers.delete((q) => q.where({ id: m.id })));
+      const memberships = listMembers.findMany((q) =>
+        q.where({ user_id: user.id }),
+      );
+      memberships.forEach((m) =>
+        listMembers.delete((q) => q.where({ id: m.id })),
+      );
 
       users.delete((q) => q.where({ id: user.id }));
     }
 
     // Remove the waitlist entry for this worker
-    const existingWaitlist = waitlist.findFirst((q) => q.where({ email: waitlistEmail }));
+    const existingWaitlist = waitlist.findFirst((q) =>
+      q.where({ email: waitlistEmail }),
+    );
     if (existingWaitlist) {
       waitlist.delete((q) => q.where({ id: existingWaitlist.id }));
     }
@@ -103,7 +115,8 @@ const httpServer = createServer(async (req, res) => {
   // Collect body
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk);
-  const hasBody = chunks.length > 0 && req.method !== "GET" && req.method !== "HEAD";
+  const hasBody =
+    chunks.length > 0 && req.method !== "GET" && req.method !== "HEAD";
 
   try {
     // This fetch is intercepted by MSW — no real network request is made
@@ -122,7 +135,13 @@ const httpServer = createServer(async (req, res) => {
   } catch {
     // No matching handler — return 404 rather than crashing the server
     res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "No mock handler", url: req.url, method: req.method }));
+    res.end(
+      JSON.stringify({
+        error: "No mock handler",
+        url: req.url,
+        method: req.method,
+      }),
+    );
   }
 }).listen(port, () => {
   console.log(`[MSW] Mock server running on http://localhost:${port}`);
@@ -153,7 +172,9 @@ wss.on("connection", (ws) => {
   ws.on("message", (data) => {
     // Skip binary frames — only control messages (heartbeat/join/leave) arrive as JSON
     if (typeof data !== "string" && !Buffer.isBuffer(data)) return;
-    const raw = Array.isArray(data) ? Buffer.concat(data).toString() : data.toString();
+    const raw = Array.isArray(data)
+      ? Buffer.concat(data).toString()
+      : data.toString();
 
     let parsed: unknown;
     try {
@@ -171,10 +192,26 @@ wss.on("connection", (ws) => {
     ];
 
     const ok = () =>
-      ws.send(JSON.stringify([join_ref, ref, topic, "phx_reply", { status: "ok", response: {} }]));
+      ws.send(
+        JSON.stringify([
+          join_ref,
+          ref,
+          topic,
+          "phx_reply",
+          { status: "ok", response: {} },
+        ]),
+      );
 
     if (event === "heartbeat") {
-      ws.send(JSON.stringify([null, ref, "phoenix", "phx_reply", { status: "ok", response: {} }]));
+      ws.send(
+        JSON.stringify([
+          null,
+          ref,
+          "phoenix",
+          "phx_reply",
+          { status: "ok", response: {} },
+        ]),
+      );
     } else if (event === "phx_join") {
       // Supabase's httpSend uses subTopic (strips "realtime:" prefix), so normalise here to match
       const channelName = topic.replace(/^realtime:/i, "");
