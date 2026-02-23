@@ -3,7 +3,7 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.experimental.useTsgo": true,
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "oxc.fmt.experimental": true,
+  "oxc.fmt.enabled": true,
   "oxc.enabled": true,
   "mdx.server.enabled": true,
   "editor.codeActionsOnSave": {
