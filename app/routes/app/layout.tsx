@@ -6,9 +6,13 @@ import {
 } from "~/components/online-status/online-status";
 import { Button } from "~/components/button/button";
 import * as styles from "./layout.css";
+import { LazyMotion } from "motion/react";
+
+const loadFeatures = () => import("~/motion-features").then((m) => m.default);
 
 export default function AppLayout() {
   return (
+    <LazyMotion features={loadFeatures} strict>
     <OnlineStatusProvider>
       <OnlineStatusIndicator />
       <Breadcrumbs />
@@ -22,5 +26,6 @@ export default function AppLayout() {
       </Form>
       <Outlet />
     </OnlineStatusProvider>
+    </LazyMotion>
   );
 }
