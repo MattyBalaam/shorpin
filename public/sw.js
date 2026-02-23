@@ -29,7 +29,7 @@ const LOADING_PAGE = `<!DOCTYPE html>
       .then(function(r) {
         if (!r.ok) { setTimeout(poll, 200); return; }
         if (document.documentElement.dataset.hydratedPath) return;
-        location.reload();
+        location.replace(location.href);
       })
       .catch(function() { setTimeout(poll, 200); });
   })();
