@@ -12,6 +12,7 @@
   "editor.defaultFormatter": "oxc.oxc-vscode",
 
   "cSpell.words": [
+    "collab",
     "oxfmt",
     "picklist",
     "Reorderable",
@@ -20,6 +21,8 @@
     "subgrid",
     "supabase",
     "tsgo",
+    "vitest",
+    "apikey",
     "waitlist"
   ]
 }

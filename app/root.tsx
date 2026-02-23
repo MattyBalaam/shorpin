@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/react-router";
+import { useEffect } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -10,9 +12,8 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
-import type { Route } from "./+types/root";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
-import { useEffect } from "react";
+import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
 import { Toaster, toast } from "sonner";
@@ -107,6 +108,12 @@ export default function App({
 
 export function ErrorBoundary() {
   const error = useRouteError();
+
+  useEffect(() => {
+    if (error) {
+      Sentry.captureException(error);
+    }
+  }, [error]);
 
   if (isRouteErrorResponse(error)) {
     const message =
