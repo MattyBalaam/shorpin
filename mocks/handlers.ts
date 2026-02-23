@@ -1,5 +1,6 @@
 import { http, HttpResponse, delay } from "msw";
 import { users, lists, listItems, listMembers, waitlist } from "./db";
+import { broadcastEmitter, type BroadcastMessage } from "./broadcast";
 
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
@@ -360,9 +361,14 @@ export const handlers = [
     return HttpResponse.json(allUsers.map((u) => ({ id: u.id, email: u.email })));
   }),
 
-  // Realtime broadcast — Supabase httpSend expects 202 for success
-  http.post("*/realtime/v1/api/broadcast", async () => {
+  // Realtime broadcast — Supabase httpSend expects 202 for success.
+  // In mock mode, emit to SSE subscribers so dev cross-tab sync works.
+  http.post("*/realtime/v1/api/broadcast", async ({ request }) => {
     await delay();
+    const body = (await request.json()) as { messages?: BroadcastMessage[] };
+    for (const message of body.messages ?? []) {
+      broadcastEmitter.emit("message", message);
+    }
     return HttpResponse.json({ message: "ok" }, { status: 202 });
   }),
 ];
