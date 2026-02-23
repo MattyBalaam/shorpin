@@ -39,12 +39,7 @@ export default function RequestAccess({ actionData }: Route.ComponentProps) {
           type="text"
           autoComplete="family-name"
         />
-        <AuthField
-          meta={fields.email}
-          label="Email"
-          type="email"
-          autoComplete="email"
-        />
+        <AuthField meta={fields.email} label="Email" type="email" autoComplete="email" />
         <Button type="submit" isSubmitting={state === "submitting"}>
           Request access
         </Button>

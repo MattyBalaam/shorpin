@@ -15,17 +15,10 @@ interface BreadcrumbItem {
   to: string;
 }
 
-function resolveBreadcrumb(
-  def: BreadcrumbDef,
-  data: unknown,
-  pathname: string,
-) {
+function resolveBreadcrumb(def: BreadcrumbDef, data: unknown, pathname: string) {
   return {
     label: typeof def.label === "function" ? def.label(data) : def.label,
-    to:
-      typeof def.to === "function"
-        ? def.to(data, pathname)
-        : (def.to ?? pathname),
+    to: typeof def.to === "function" ? def.to(data, pathname) : (def.to ?? pathname),
   } satisfies BreadcrumbItem;
 }
 
@@ -45,9 +38,7 @@ export function Breadcrumbs() {
       };
 
       if (handle.breadcrumbs) {
-        return handle.breadcrumbs.map((def) =>
-          resolveBreadcrumb(def, match.data, match.pathname),
-        );
+        return handle.breadcrumbs.map((def) => resolveBreadcrumb(def, match.data, match.pathname));
       }
 
       return resolveBreadcrumb(handle.breadcrumb!, match.data, match.pathname);
@@ -58,10 +49,7 @@ export function Breadcrumbs() {
 
   const breadcrumbs = isHomePage
     ? breadcrumbsFromRoutes
-    : [
-        { label: "Home", to: "/" },
-        ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/"),
-      ];
+    : [{ label: "Home", to: "/" }, ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/")];
 
   if (breadcrumbs.length === 0) {
     return null;

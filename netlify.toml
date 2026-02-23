@@ -10,6 +10,6 @@ directory = ".netlify/functions"
 command = "pnpm build:preview"
 
 [[headers]]
-  for = "/sw.js"
-  [headers.values]
-    Cache-Control = "no-cache"
+for = "/sw.js"
+[headers.values]
+Cache-Control = "no-cache"

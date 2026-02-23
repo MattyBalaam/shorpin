@@ -24,10 +24,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const supabase = context.get(supabaseContext);
 
-  const { error } = await supabase
-    .from("waitlist")
-    .delete()
-    .in("id", ids);
+  const { error } = await supabase.from("waitlist").delete().in("id", ids);
 
   if (error) throw error;
 

@@ -12,12 +12,8 @@ export { expect } from "@playwright/test";
 export const test = base.extend<{ ctx: TestContext }>({
   ctx: async ({ page }, use) => {
     // DEBUG: forward browser console and errors to the test runner output
-    page.on("console", (msg) =>
-      console.log(`[browser][${msg.type()}] ${msg.text()}`),
-    );
-    page.on("pageerror", (err) =>
-      console.error(`[browser][pageerror] ${err.message}`),
-    );
+    page.on("console", (msg) => console.log(`[browser][${msg.type()}] ${msg.text()}`));
+    page.on("pageerror", (err) => console.error(`[browser][pageerror] ${err.message}`));
 
     const ctx = createTestContext();
     await resetDb(page, ctx);

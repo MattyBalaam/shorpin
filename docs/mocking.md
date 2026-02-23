@@ -55,15 +55,15 @@ The function intercepts all Supabase calls before they hit the network, so no re
 
 ## Key files
 
-| File | Purpose |
-|---|---|
-| [mocks/db.ts](../mocks/db.ts) | `@msw/data` collections — one per Supabase table. Valibot schemas are checked against `database.types.ts` at typecheck time so mock drift is caught early. |
-| [mocks/handlers.ts](../mocks/handlers.ts) | Shared MSW handlers for auth (`/auth/v1/*`) and REST API (`/rest/v1/*`). Auth uses the email as the bearer token so any password works. Slug prefix checks are scoped to the requesting user to prevent parallel test workers from interfering with each other. |
-| [mocks/seed.ts](../mocks/seed.ts) | Creates two users with lists and a collaborator relationship. Accepts email overrides so e2e tests can seed isolated namespaced users. |
-| [mocks/server.ts](../mocks/server.ts) | Starts MSW in the Node process and wraps it in an HTTP server. Port is read from `MOCK_SERVER_PORT` (default `9001`). Exposes `POST /test/reset` for per-test isolation. Shuts down cleanly on SIGTERM/SIGINT. |
-| [scripts/test-e2e.mjs](../scripts/test-e2e.mjs) | Port-finding wrapper that probes for free ports before starting Playwright, so concurrent runs never collide. |
-| [e2e/helpers.ts](../e2e/helpers.ts) | `createTestContext()` generates UUID-namespaced emails. `resetDb()` posts to `/test/reset`. `login()` drives the login form and waits for React hydration at `/` before returning. |
-| [e2e/fixtures.ts](../e2e/fixtures.ts) | Playwright `ctx` fixture that calls `resetDb` before each test and forwards browser console / page errors to stdout. Import `test` and `expect` from here, not from `@playwright/test`. |
+| File                                            | Purpose                                                                                                                                                                                                                                                         |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [mocks/db.ts](../mocks/db.ts)                   | `@msw/data` collections — one per Supabase table. Valibot schemas are checked against `database.types.ts` at typecheck time so mock drift is caught early.                                                                                                      |
+| [mocks/handlers.ts](../mocks/handlers.ts)       | Shared MSW handlers for auth (`/auth/v1/*`) and REST API (`/rest/v1/*`). Auth uses the email as the bearer token so any password works. Slug prefix checks are scoped to the requesting user to prevent parallel test workers from interfering with each other. |
+| [mocks/seed.ts](../mocks/seed.ts)               | Creates two users with lists and a collaborator relationship. Accepts email overrides so e2e tests can seed isolated namespaced users.                                                                                                                          |
+| [mocks/server.ts](../mocks/server.ts)           | Starts MSW in the Node process and wraps it in an HTTP server. Port is read from `MOCK_SERVER_PORT` (default `9001`). Exposes `POST /test/reset` for per-test isolation. Shuts down cleanly on SIGTERM/SIGINT.                                                  |
+| [scripts/test-e2e.mjs](../scripts/test-e2e.mjs) | Port-finding wrapper that probes for free ports before starting Playwright, so concurrent runs never collide.                                                                                                                                                   |
+| [e2e/helpers.ts](../e2e/helpers.ts)             | `createTestContext()` generates UUID-namespaced emails. `resetDb()` posts to `/test/reset`. `login()` drives the login form and waits for React hydration at `/` before returning.                                                                              |
+| [e2e/fixtures.ts](../e2e/fixtures.ts)           | Playwright `ctx` fixture that calls `resetDb` before each test and forwards browser console / page errors to stdout. Import `test` and `expect` from here, not from `@playwright/test`.                                                                         |
 
 ## Schema contract checks
 

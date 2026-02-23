@@ -55,10 +55,7 @@ test("owner can delete an item from a list", async ({ page, ctx }) => {
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
 });
 
-test("collab sees real-time update when owner adds an item", async ({
-  browser,
-  ctx,
-}) => {
+test("collab sees real-time update when owner adds an item", async ({ browser, ctx }) => {
   // Two isolated browser contexts simulate two separate users
   const ownerContext = await browser.newContext({ baseURL });
   const collabContext = await browser.newContext({ baseURL });
@@ -78,9 +75,7 @@ test("collab sees real-time update when owner adds an item", async ({
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Collab should receive the broadcast and see the notification
-    await expect(
-      collabPage.getByText("List updated by another user"),
-    ).toBeVisible();
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
     // And the new item should appear after revalidation
     await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
   } finally {

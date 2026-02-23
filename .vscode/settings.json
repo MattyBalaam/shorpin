@@ -23,5 +23,11 @@
     "vitest",
     "apikey",
     "waitlist"
-  ]
+  ],
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  }
 }

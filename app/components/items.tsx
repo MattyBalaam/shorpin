@@ -1,10 +1,4 @@
-import {
-  AnimatePresence,
-  Reorder,
-  stagger,
-  useAnimate,
-  Variants,
-} from "motion/react";
+import { AnimatePresence, Reorder, stagger, useAnimate, Variants } from "motion/react";
 import { Item } from "./item";
 import { useRef, useState } from "react";
 
@@ -67,16 +61,8 @@ function ReorderableItem({
       variants={variants.item}
       drag
       dragDirectionLock
-      dragConstraints={
-        lockedAxis === "x"
-          ? { top: 0, bottom: 0, left: 0, right: 0 }
-          : undefined
-      }
-      dragElastic={
-        lockedAxis === "x"
-          ? { left: 1, right: 1, top: 0, bottom: 0 }
-          : undefined
-      }
+      dragConstraints={lockedAxis === "x" ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined}
+      dragElastic={lockedAxis === "x" ? { left: 1, right: 1, top: 0, bottom: 0 } : undefined}
       onDirectionLock={(axis) => setLockedAxis(axis)}
       onDragEnd={handleDragEnd}
     >
@@ -144,8 +130,7 @@ export function Items({
 
   if (
     !didReorder.current &&
-    (incomingIds.length !== itemIds.length ||
-      incomingIds.some((id, i) => id !== itemIds[i]))
+    (incomingIds.length !== itemIds.length || incomingIds.some((id, i) => id !== itemIds[i]))
   ) {
     setItemIds(incomingIds);
   }
@@ -186,10 +171,9 @@ export function Items({
             />
           ))}
       </AnimatePresence>
-      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 &&
-        !pendingItem && (
-          <li className={styles.emptyState}>No items yet — add one below</li>
-        )}
+      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingItem && (
+        <li className={styles.emptyState}>No items yet — add one below</li>
+      )}
       {pendingItem && (
         <li className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>

@@ -10,7 +10,6 @@ export const form = style({
   overflow: "hidden",
 });
 
-
 export const hiddenSubmit = style({
   display: "none",
 });

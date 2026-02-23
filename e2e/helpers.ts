@@ -27,9 +27,9 @@ export function createTestContext(): TestContext {
  * which typically means the form was submitted before hydration completed.
  */
 async function waitForHydration(page: Page, pathname: string) {
-  await expect(
-    page.locator(`html[data-hydrated-path="${pathname}"]`),
-  ).toBeAttached({ timeout: 300 });
+  await expect(page.locator(`html[data-hydrated-path="${pathname}"]`)).toBeAttached({
+    timeout: 300,
+  });
 }
 
 export async function login(page: Page, email: string) {

@@ -1,11 +1,6 @@
 import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
 
-async function createListWithItems(
-  ownerId: string,
-  name: string,
-  slug: string,
-  items: string[],
-) {
+async function createListWithItems(ownerId: string, name: string, slug: string, items: string[]) {
   const list = await lists.create({
     id: crypto.randomUUID(),
     name,
@@ -44,12 +39,11 @@ export async function seed(
   });
 
   // Owner gets 2 lists: one with 3 items, one empty
-  const ownerList = await createListWithItems(
-    owner.id,
-    "Shopping",
-    "shopping",
-    ["Milk", "Bread", "Eggs"],
-  );
+  const ownerList = await createListWithItems(owner.id, "Shopping", "shopping", [
+    "Milk",
+    "Bread",
+    "Eggs",
+  ]);
   await createListWithItems(owner.id, "Owner Empty", "owner-empty", []);
 
   // Collab gets 2 lists: one with 3 items, one empty

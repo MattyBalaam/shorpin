@@ -1,10 +1,4 @@
-import {
-  Form,
-  href,
-  useLocation,
-  useNavigate,
-  useNavigation,
-} from "react-router";
+import { Form, href, useLocation, useNavigate, useNavigation } from "react-router";
 import { Link } from "~/components/link/link";
 import type { Route } from "./+types/delete";
 import * as styles from "./delete.css";
@@ -16,8 +10,7 @@ export const handle = {
   breadcrumbs: [
     {
       label: (data: any) => data?.listName || "List",
-      to: (_data: unknown, pathname: string) =>
-        pathname.replace("/confirm-delete", ""),
+      to: (_data: unknown, pathname: string) => pathname.replace("/confirm-delete", ""),
     },
     {
       label: "Delete",

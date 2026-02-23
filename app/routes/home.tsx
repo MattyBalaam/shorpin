@@ -1,12 +1,6 @@
 import type { Route } from "./+types/home";
 
-import {
-  href,
-  Form as RouterForm,
-  Outlet,
-  useNavigation,
-  type MetaFunction,
-} from "react-router";
+import { href, Form as RouterForm, Outlet, useNavigation, type MetaFunction } from "react-router";
 import { useForm } from "@conform-to/react/future";
 import * as v from "valibot";
 
@@ -94,10 +88,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     .like("slug", `${baseSlug}%`)
     .eq("state", "active");
 
-  const slug = resolveSlug(
-    baseSlug,
-    matches?.map((m: { slug: string }) => m.slug) ?? [],
-  );
+  const slug = resolveSlug(baseSlug, matches?.map((m: { slug: string }) => m.slug) ?? []);
 
   const { error } = await supabase.from("lists").insert({
     name: listName,
@@ -158,10 +149,7 @@ function Lists({
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
             <span className={styles.item}>
-              <Link
-                className={styles.itemLink}
-                to={href("/lists/:list", { list: slug })}
-              >
+              <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
                 {name}
               </Link>
               {isOwner && (
@@ -181,10 +169,7 @@ function Lists({
   );
 }
 
-export default function Index({
-  loaderData,
-  actionData,
-}: Route.ComponentProps) {
+export default function Index({ loaderData, actionData }: Route.ComponentProps) {
   const { form, fields } = useForm(zCreate, {
     lastResult: actionData,
     shouldValidate: "onBlur",
@@ -223,11 +208,7 @@ export default function Index({
             <VisuallyHidden>
               <label htmlFor={fields["new-list"].id}>New list</label>
             </VisuallyHidden>
-            <input
-              name={fields["new-list"].name}
-              id={fields["new-list"].id}
-              autoComplete="off"
-            />
+            <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
 
             <Button type="submit" isSubmitting={state === "submitting"}>
               Add

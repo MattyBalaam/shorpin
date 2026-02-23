@@ -26,7 +26,10 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   }
 
   const users = Promise.all([
-    supabase.from("profiles").select("id, email").neq("id", data.user_id ?? ""),
+    supabase
+      .from("profiles")
+      .select("id, email")
+      .neq("id", data.user_id ?? ""),
     supabase.from("list_members").select("user_id").eq("list_id", data.id),
   ]).then(([{ data: allProfiles }, { data: memberRows }]) => {
     const memberIds = new Set(memberRows?.map((m) => m.user_id) ?? []);
@@ -80,11 +83,7 @@ export async function action({ params: { list }, request, context }: Route.Actio
   // Remove unchecked users
   const toRemove = [...currentIds].filter((id) => !submittedIds.has(id));
   if (toRemove.length > 0) {
-    await supabase
-      .from("list_members")
-      .delete()
-      .eq("list_id", listData.id)
-      .in("user_id", toRemove);
+    await supabase.from("list_members").delete().eq("list_id", listData.id).in("user_id", toRemove);
   }
 
   return redirectWithSuccess(href("/"), "changed collaborators");

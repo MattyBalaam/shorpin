@@ -64,25 +64,13 @@ void ({
   listItems: true,
   waitlist: true,
 } satisfies {
-  users: InferOutput<typeof usersSchema> extends Partial<Tables<"profiles">>
+  users: InferOutput<typeof usersSchema> extends Partial<Tables<"profiles">> ? true : false;
+  lists: InferOutput<typeof listsSchema> extends Partial<Tables<"lists">> ? true : false;
+  listMembers: InferOutput<typeof listMembersSchema> extends Partial<Tables<"list_members">>
     ? true
     : false;
-  lists: InferOutput<typeof listsSchema> extends Partial<Tables<"lists">>
+  listItems: InferOutput<typeof listItemsSchema> extends Partial<Tables<"list_items">>
     ? true
     : false;
-  listMembers: InferOutput<typeof listMembersSchema> extends Partial<
-    Tables<"list_members">
-  >
-    ? true
-    : false;
-  listItems: InferOutput<typeof listItemsSchema> extends Partial<
-    Tables<"list_items">
-  >
-    ? true
-    : false;
-  waitlist: InferOutput<typeof waitlistSchema> extends Partial<
-    Tables<"waitlist">
-  >
-    ? true
-    : false;
+  waitlist: InferOutput<typeof waitlistSchema> extends Partial<Tables<"waitlist">> ? true : false;
 });

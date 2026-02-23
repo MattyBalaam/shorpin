@@ -15,27 +15,17 @@ export interface ItemRenderProps {
 }
 
 // This is a row for an item in the list with an input and a delete button
-export function Item({
-  fieldsetMetadata,
-  edited,
-  deleteButtonRef,
-  isDismissing,
-}: ItemRenderProps) {
+export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }: ItemRenderProps) {
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
 
   const isDeleting =
     navigation.state === "submitting" &&
-    navigation.formData?.get("__INTENT__") ===
-      deleteItemIntent(fieldset.id.defaultValue ?? "");
+    navigation.formData?.get("__INTENT__") === deleteItemIntent(fieldset.id.defaultValue ?? "");
 
   return (
-    <div
-      className={styles.itemContainer}
-      data-dismissing={isDismissing}
-      data-deleting={isDeleting}
-    >
+    <div className={styles.itemContainer} data-dismissing={isDismissing} data-deleting={isDeleting}>
       <div className={styles.item}>
         <input
           className={styles.input}

@@ -46,11 +46,7 @@ interface ThemeProps {
   children: React.ReactNode;
 }
 
-export function Theme({
-  defaultPrimary,
-  defaultSecondary,
-  children,
-}: ThemeProps) {
+export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps) {
   const [colors, setColors] = useState<{
     primary: string;
     secondary: string;
@@ -106,16 +102,8 @@ function Fields({ fieldNames }: FieldsProps) {
 
   return (
     <>
-      <input
-        type="hidden"
-        name={fieldNames.primary}
-        value={colors?.primary ?? ""}
-      />
-      <input
-        type="hidden"
-        name={fieldNames.secondary}
-        value={colors?.secondary ?? ""}
-      />
+      <input type="hidden" name={fieldNames.primary} value={colors?.primary ?? ""} />
+      <input type="hidden" name={fieldNames.secondary} value={colors?.secondary ?? ""} />
     </>
   );
 }

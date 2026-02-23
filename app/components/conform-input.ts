@@ -18,7 +18,17 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
     static formAssociated = true;
 
     static get observedAttributes() {
-      return ["name", "id", "label", "errors", "type", "placeholder", "required", "disabled", "value"];
+      return [
+        "name",
+        "id",
+        "label",
+        "errors",
+        "type",
+        "placeholder",
+        "required",
+        "disabled",
+        "value",
+      ];
     }
 
     private internals: ElementInternals;
@@ -146,7 +156,7 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
           bubbles: true,
           composed: true,
           detail: { value: input.value, name: this.getAttribute("name") },
-        })
+        }),
       );
     }
 
@@ -157,7 +167,7 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
           bubbles: true,
           composed: true,
           detail: { value: input.value, name: this.getAttribute("name") },
-        })
+        }),
       );
     }
 
@@ -167,7 +177,7 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
           bubbles: true,
           composed: true,
           detail: { name: this.getAttribute("name") },
-        })
+        }),
       );
     }
 
@@ -226,7 +236,9 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
       }
 
       if (this.errorEl) {
-        this.errorEl.innerHTML = errors.map((error) => `<span class="error">${error}</span>`).join("");
+        this.errorEl.innerHTML = errors
+          .map((error) => `<span class="error">${error}</span>`)
+          .join("");
       }
 
       if (this.inputEl) {

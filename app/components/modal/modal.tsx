@@ -18,13 +18,7 @@ function ModalClose({ children }: { children: ReactNode }) {
   return <Button type="submit">{children}</Button>;
 }
 
-function ModalSubmit({
-  children,
-  formId,
-}: {
-  children: ReactNode;
-  formId: string;
-}) {
+function ModalSubmit({ children, formId }: { children: ReactNode; formId: string }) {
   const { state } = useNavigation();
 
   return (
@@ -34,13 +28,7 @@ function ModalSubmit({
   );
 }
 
-export function Modal({
-  children,
-  urlOnClose,
-}: {
-  children: ReactNode;
-  urlOnClose: string;
-}) {
+export function Modal({ children, urlOnClose }: { children: ReactNode; urlOnClose: string }) {
   const navigate = useNavigate();
   const navigation = useNavigation();
 

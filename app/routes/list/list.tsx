@@ -1,19 +1,11 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  useNavigation,
-  useRevalidator,
-  type ShouldRevalidateFunctionArgs,
-} from "react-router";
+import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { Items } from "~/components/items";
 
-import {
-  parseSubmission,
-  useForm,
-  useFormData,
-} from "@conform-to/react/future";
+import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
 import * as v from "valibot";
 import { zList } from "./data";
 import { Link } from "~/components/link/link";
@@ -22,16 +14,10 @@ export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
-import {
-  isDeleteItemIntent,
-  isUndeleteItemIntent,
-  undeleteItemIntent,
-} from "./intents";
+import { isDeleteItemIntent, isUndeleteItemIntent, undeleteItemIntent } from "./intents";
 
 // Cache loader data for offline support
-let cachedLoaderData: Awaited<
-  ReturnType<typeof import("./list.server").loader>
-> | null = null;
+let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   if (!navigator.onLine && cachedLoaderData) {
@@ -57,10 +43,7 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 clientLoader.hydrate = true as const;
 
 // Prevent revalidation when offline, but allow initial navigation to this route
-export function shouldRevalidate({
-  currentUrl,
-  nextUrl,
-}: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
   console.log("shouldRevalidate", {
     currentUrl,
     nextUrl,
@@ -75,10 +58,7 @@ export function shouldRevalidate({
 }
 
 // Handle offline submissions - construct fake lastResult for Conform
-export async function clientAction({
-  request,
-  serverAction,
-}: Route.ClientActionArgs) {
+export async function clientAction({ request, serverAction }: Route.ClientActionArgs) {
   if (!navigator.onLine) {
     const formData = await request.formData();
     const submission = parseSubmission(formData);
@@ -233,9 +213,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     },
   });
 
-  const itemsKey = defaultValue.items
-    .map((i) => `${i.id}:${i.value}`)
-    .join(",");
+  const itemsKey = defaultValue.items.map((i) => `${i.id}:${i.value}`).join(",");
 
   // Track previous actionData to detect when updates came from our own action
   const prevActionDataRef = useRef(actionData);
@@ -263,15 +241,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
       intent.update({ name: fields.items.name, value: defaultValue.items });
     },
-    [
-      itemsKey,
-      intent,
-      actionData,
-      fields.items.name,
-      defaultValue.items,
-      form.id,
-      isOnline,
-    ],
+    [itemsKey, intent, actionData, fields.items.name, defaultValue.items, form.id, isOnline],
   );
 
   const lastDeleted = actionData?.lastDeleted || loaderData.lastDeleted;
@@ -288,9 +258,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
       return defaultValue.items
         .filter(
-          ({ value, id }) =>
-            result.output.items?.find((item) => item?.id === id)?.value !==
-            value,
+          ({ value, id }) => result.output.items?.find((item) => item?.id === id)?.value !== value,
         )
         .map(({ id }) => id);
     }) || [];
@@ -369,12 +337,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <VisuallyHidden>
               <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
-            <input
-              name={fields.new.name}
-              id={fields.new.id}
-              autoFocus
-              autoComplete="off"
-            />
+            <input name={fields.new.name} id={fields.new.id} autoFocus autoComplete="off" />
             <Button
               type="submit"
               value="new"

@@ -35,5 +35,4 @@ export const zList = v.object({
 
 type List = v.InferOutput<typeof zList>;
 
-export const sortData = (items: Items) =>
-  items.sort((a, b) => a.sortOrder - b.sortOrder);
+export const sortData = (items: Items) => items.sort((a, b) => a.sortOrder - b.sortOrder);

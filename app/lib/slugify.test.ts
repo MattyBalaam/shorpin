@@ -49,15 +49,11 @@ describe("resolveSlug", () => {
   });
 
   test("appends -2 when -1 is also taken", () => {
-    expect(resolveSlug("shopping", ["shopping", "shopping-1"])).toBe(
-      "shopping-2",
-    );
+    expect(resolveSlug("shopping", ["shopping", "shopping-1"])).toBe("shopping-2");
   });
 
   test("finds next available suffix with gaps", () => {
-    expect(
-      resolveSlug("shopping", ["shopping", "shopping-1", "shopping-2"]),
-    ).toBe("shopping-3");
+    expect(resolveSlug("shopping", ["shopping", "shopping-1", "shopping-2"])).toBe("shopping-3");
   });
 
   test("ignores unrelated slugs with same prefix", () => {
