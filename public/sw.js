@@ -28,7 +28,7 @@ const LOADING_PAGE = `<!DOCTYPE html>
   // hydrate. This handles the cold-start case where Netlify Functions take
   // time to boot — the user sees a spinner while waiting, then the real page.
   (function poll() {
-    fetch(location.href, { cache: 'no-store' })
+    fetch(location.href + (location.href.includes('?') ? '&' : '?') + '__sw__=1', { cache: 'no-store' })
       .then(function(r) {
         // Server still booting, keep polling
         if (!r.ok) { setTimeout(poll, 200); return; }
@@ -57,6 +57,9 @@ const LOADING_PAGE = `<!DOCTYPE html>
 
 self.addEventListener("fetch", (event) => {
   if (event.request.mode !== "navigate") return;
+
+  // Skip the loading page for our own polling requests to prevent loops
+  if (event.request.url.includes("__sw__=1")) return;
 
   // For form submissions (POST etc.) pass the request straight through with
   // manual redirect handling so the browser follows any server-side redirect
