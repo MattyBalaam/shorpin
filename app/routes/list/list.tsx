@@ -191,10 +191,10 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       let cancelled = false;
       let cleanup: (() => void) | undefined;
 
-      import("~/lib/supabase.client").then(({ supabase }) => {
+      import("~/lib/supabase.client").then(({ realtimeClient }) => {
         if (cancelled) return;
 
-        const channel = supabase
+        const channel = realtimeClient
           .channel(`list-${loaderData.listId}`)
           .on("broadcast", { event: "changed" }, ({ payload }) => {
             if (payload.clientId !== clientId) {
@@ -204,7 +204,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           })
           .subscribe();
 
-        cleanup = () => supabase.removeChannel(channel);
+        cleanup = () => realtimeClient.removeChannel(channel);
       });
 
       return () => {
