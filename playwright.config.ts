@@ -13,7 +13,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "pnpm tsx mocks/server.ts",
+      command: "node --experimental-strip-types mocks/server.ts",
       url: `http://localhost:${mockPort}`,
       env: { MOCK_SERVER_PORT: mockPort },
       reuseExistingServer: !process.env.CI,

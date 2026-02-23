@@ -33,12 +33,7 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
         {form.errors?.map((error, i) => (
           <p key={i}>{error}</p>
         ))}
-        <AuthField
-          meta={fields.email}
-          label="Email"
-          type="email"
-          autoComplete="email"
-        />
+        <AuthField meta={fields.email} label="Email" type="email" autoComplete="email" />
         <Button type="submit" isSubmitting={state === "submitting"}>
           Send reset link
         </Button>

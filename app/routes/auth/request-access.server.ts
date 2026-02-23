@@ -18,13 +18,16 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { email, first_name, last_name } = result.output;
   const supabase = context.get(supabaseContext);
 
-  const { error } = await supabase
-    .from("waitlist")
-    .insert({ email, first_name, last_name });
+  const { error } = await supabase.from("waitlist").insert({ email, first_name, last_name });
 
   if (error) {
-    return report(submission, { error: { formErrors: ["Something went wrong. Please try again."] } });
+    return report(submission, {
+      error: { formErrors: ["Something went wrong. Please try again."] },
+    });
   }
 
-  return redirectWithSuccess(href("/login"), "Your account is being verified. We'll be in touch soon.");
+  return redirectWithSuccess(
+    href("/login"),
+    "Your account is being verified. We'll be in touch soon.",
+  );
 }

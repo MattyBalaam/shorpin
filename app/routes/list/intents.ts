@@ -13,22 +13,14 @@ export function isDeleteItemIntent(intent: string | null | undefined): boolean {
   return intent?.startsWith(DELETE_PREFIX) ?? false;
 }
 
-export function isUndeleteItemIntent(
-  intent: string | null | undefined
-): boolean {
+export function isUndeleteItemIntent(intent: string | null | undefined): boolean {
   return intent?.startsWith(UNDELETE_PREFIX) ?? false;
 }
 
-export function parseDeleteItemIntent(
-  intent: string | null | undefined
-): string | undefined {
+export function parseDeleteItemIntent(intent: string | null | undefined): string | undefined {
   return isDeleteItemIntent(intent) ? intent!.slice(DELETE_PREFIX.length) : undefined;
 }
 
-export function parseUndeleteItemIntent(
-  intent: string | null | undefined
-): string | undefined {
-  return isUndeleteItemIntent(intent)
-    ? intent!.slice(UNDELETE_PREFIX.length)
-    : undefined;
+export function parseUndeleteItemIntent(intent: string | null | undefined): string | undefined {
+  return isUndeleteItemIntent(intent) ? intent!.slice(UNDELETE_PREFIX.length) : undefined;
 }

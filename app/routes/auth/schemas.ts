@@ -1,10 +1,6 @@
 import * as v from "valibot";
 
-const email = v.pipe(
-  v.string(),
-  v.minLength(1, "Email is required"),
-  v.email("Invalid email"),
-);
+const email = v.pipe(v.string(), v.minLength(1, "Email is required"), v.email("Invalid email"));
 
 export const zLogin = v.object({
   email,
@@ -14,10 +10,7 @@ export const zLogin = v.object({
 export const zForgotPassword = v.object({ email });
 
 export const zSetPassword = v.object({
-  password: v.pipe(
-    v.string(),
-    v.minLength(8, "Password must be at least 8 characters"),
-  ),
+  password: v.pipe(v.string(), v.minLength(8, "Password must be at least 8 characters")),
   "confirm-password": v.pipe(
     v.string(),
     v.minLength(8, "Confirmation must be at least 8 characters"),

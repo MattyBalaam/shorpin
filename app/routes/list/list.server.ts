@@ -1,10 +1,7 @@
 import type { Route } from "./+types/list";
 
 import { dataWithError } from "remix-toast";
-import {
-  parseDeleteItemIntent,
-  parseUndeleteItemIntent,
-} from "./intents";
+import { parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
 
 import { type Items, sortData, zItems, zList } from "./data";
 
@@ -118,10 +115,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
   );
 
   const getNextSortOrder = () => {
-    const maxOrder = Math.max(
-      0,
-      ...Object.values(existingMap).map((i) => i.sortOrder),
-    );
+    const maxOrder = Math.max(0, ...Object.values(existingMap).map((i) => i.sortOrder));
     return maxOrder + 1;
   };
 
@@ -240,20 +234,16 @@ export async function action({ request, params: { list }, context }: Route.Actio
   supabase.removeChannel(channel);
 
   return {
-    lastDeleted: sortData(
-      allItems.filter(({ state }) => state === "deleted"),
-    ).at(-1),
+    lastDeleted: sortData(allItems.filter(({ state }) => state === "deleted")).at(-1),
     lastResult: report(submission, {
       reset: Boolean(newValue),
       value: {
         ...result.output,
         new: Boolean(newValue) ? "" : (result.output.new ?? ""),
-        items: sortData(allItems.filter(({ state }) => state === "active")).map(
-          (item) => ({
-            id: item.id,
-            value: item.value,
-          }),
-        ),
+        items: sortData(allItems.filter(({ state }) => state === "active")).map((item) => ({
+          id: item.id,
+          value: item.value,
+        })),
       },
     }),
   };

@@ -5,23 +5,6 @@ export const listWrapper = style({
   display: "contents",
 });
 
-// extract this out mate
-export const listLoader = style({
-  gridColumn: "content",
-  gridRow: "content",
-  outline: "1px sold red",
-  paddingBlock: vars.spacing.baseline,
-  ":before": {
-    content: " ",
-    display: "inline-block",
-    width: "1em",
-    height: "1em",
-    border: `3px solid ${vars.palette.primary}`,
-    borderBottom: "none",
-    borderRadius: "50%",
-  },
-});
-
 export const list = style({
   listStyle: "none",
   padding: 0,

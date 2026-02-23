@@ -48,10 +48,12 @@ const routes: Record<RouteName, string> = { home: "/", login: "/login" };
 Look for opportunities to use discriminated unions and generics where they genuinely reduce mistakes or remove duplication — but only when the added complexity pays for itself.
 
 Good candidates:
+
 - **Discriminated unions** — when two or more props are semantically coupled and certain combinations are invalid (e.g. `type`/`autoComplete`, `status`/`errorMessage`)
 - **Generics** — when the same logic applies to multiple types and the type parameter carries meaningful information to the caller (e.g. a typed `fetchJson<T>` helper or a `report<Schema>` function)
 
 Skip them when:
+
 - The code is used in one place and the type is obvious from context
 - The union would have only one member (just use a plain type)
 - A generic parameter would be `any` or `unknown` in practice

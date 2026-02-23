@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -10,9 +11,8 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
-import type { Route } from "./+types/root";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
-import { useEffect } from "react";
+import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
 import { Toaster, toast } from "sonner";
@@ -52,10 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" className={themeClass}>
       <head>
         <meta charSet="utf-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#A9CBB7" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -74,9 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App({
-  loaderData: { toast: notification },
-}: Route.ComponentProps) {
+export default function App({ loaderData: { toast: notification } }: Route.ComponentProps) {
   const { pathname } = useLocation();
 
   useEffect(
@@ -109,8 +104,7 @@ export function ErrorBoundary() {
   const error = useRouteError();
 
   if (isRouteErrorResponse(error)) {
-    const message =
-      typeof error.data === "string" ? error.data : error.data?.message;
+    const message = typeof error.data === "string" ? error.data : error.data?.message;
 
     return (
       <main className={styles.main}>

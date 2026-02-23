@@ -21,9 +21,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     throw new Response("Invalid or expired link", { status: 400 });
   }
 
-  const destination = PASSWORD_SETUP_TYPES.includes(type)
-    ? href("/set-password")
-    : href("/");
+  const destination = PASSWORD_SETUP_TYPES.includes(type) ? href("/set-password") : href("/");
 
   throw redirect(destination);
 }

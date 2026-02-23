@@ -30,12 +30,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
         {form.errors?.map((error, i) => (
           <p key={i}>{error}</p>
         ))}
-        <AuthField
-          meta={fields.email}
-          label="Email"
-          type="email"
-          autoComplete="email"
-        />
+        <AuthField meta={fields.email} label="Email" type="email" autoComplete="email" />
         <AuthField
           meta={fields.password}
           label="Password"

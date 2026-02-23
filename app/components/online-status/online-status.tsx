@@ -50,9 +50,7 @@ export function OnlineStatusProvider({ children }: OnlineStatusProviderProps) {
     return () => controller.abort();
   }, []);
 
-  return (
-    <OnlineContext.Provider value={isOnline}>{children}</OnlineContext.Provider>
-  );
+  return <OnlineContext.Provider value={isOnline}>{children}</OnlineContext.Provider>;
 }
 
 export function OnlineStatusIndicator() {

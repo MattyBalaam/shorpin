@@ -1,7 +1,9 @@
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
-import { ServerRouter } from "react-router";
 import type { EntryContext } from "react-router";
+import { ServerRouter } from "react-router";
+
+import "./instrument.server.mjs";
 
 // In preview builds, intercept all Supabase calls with MSW so the Netlify
 // Function doesn't need a real Supabase project. Runs once on cold start;
@@ -51,5 +53,8 @@ export default async function handleRequest(
   }
 
   responseHeaders.set("Content-Type", "text/html");
-  return new Response(body, { headers: responseHeaders, status: responseStatusCode });
+  return new Response(body, {
+    headers: responseHeaders,
+    status: responseStatusCode,
+  });
 }

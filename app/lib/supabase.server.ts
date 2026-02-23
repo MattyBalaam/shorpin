@@ -1,8 +1,4 @@
-import {
-  createServerClient,
-  parseCookieHeader,
-  serializeCookieHeader,
-} from "@supabase/ssr";
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import type { Database } from "./database.types";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -26,10 +22,7 @@ export function createSupabaseClient(request: Request) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) =>
-          cookieHeaders.append(
-            "Set-Cookie",
-            serializeCookieHeader(name, value, options),
-          ),
+          cookieHeaders.append("Set-Cookie", serializeCookieHeader(name, value, options)),
         );
       },
     },

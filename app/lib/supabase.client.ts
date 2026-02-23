@@ -1,5 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
+import { RealtimeClient } from "@supabase/realtime-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
@@ -10,10 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
+export const realtimeClient = new RealtimeClient(`${supabaseUrl}/realtime/v1`, {
+  params: { apikey: supabaseAnonKey, eventsPerSecond: 10 },
 });

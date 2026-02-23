@@ -7,10 +7,7 @@ export function slugify(input: string) {
     .replace(/^-|-$/g, "");
 }
 
-export function resolveSlug(
-  baseSlug: string,
-  existingSlugs: string[],
-) {
+export function resolveSlug(baseSlug: string, existingSlugs: string[]) {
   const slugSet = new Set(existingSlugs);
   if (!slugSet.has(baseSlug)) return baseSlug;
 

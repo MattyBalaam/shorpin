@@ -26,7 +26,5 @@ test("owner can delete a list", async ({ page, ctx }) => {
   await page.waitForURL("/");
 
   // Owner Empty should no longer be in the list
-  await expect(
-    page.getByRole("link", { name: "Owner Empty" }),
-  ).not.toBeVisible();
+  await expect(page.getByRole("link", { name: "Owner Empty" })).not.toBeVisible();
 });

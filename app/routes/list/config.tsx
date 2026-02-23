@@ -25,13 +25,7 @@ function UsersList({ usersPromise }: { usersPromise: Promise<User[]> }) {
       <fieldset>
         <legend>Select collaborators</legend>
         {users.map(({ id, email, isMember }) => (
-          <CheckboxField
-            key={id}
-            id={id}
-            name="member-ids"
-            value={id}
-            defaultChecked={isMember}
-          >
+          <CheckboxField key={id} id={id} name="member-ids" value={id} defaultChecked={isMember}>
             {email}
           </CheckboxField>
         ))}

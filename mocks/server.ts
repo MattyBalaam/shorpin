@@ -1,8 +1,10 @@
 import { createServer } from "node:http";
+import { WebSocketServer, type WebSocket } from "ws";
 import { setupServer } from "msw/node";
-import { seed } from "./seed";
-import { handlers } from "./handlers";
-import { users, lists, listItems, listMembers, waitlist } from "./db";
+import { seed } from "./seed.ts";
+import { handlers } from "./handlers.ts";
+import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
 
 // Seed fixed dev users at startup so pnpm dev works without any setup.
 // No waitlistEmail here — the demo entry is created separately below so it
@@ -22,8 +24,8 @@ const port = Number(process.env.MOCK_SERVER_PORT ?? "9001");
 const msw = setupServer(...handlers);
 msw.listen({
   onUnhandledRequest: (request, print) => {
-    // Silently ignore Supabase Realtime WebSocket connections — the app
-    // subscribes for live updates but the mock doesn't need to support them.
+    // WebSocket upgrade requests for Supabase Realtime are handled by the
+    // upgrade event on httpServer below — not by MSW fetch interception.
     if (request.url.includes("/realtime/")) return;
     print.error();
   },
@@ -120,10 +122,103 @@ const httpServer = createServer(async (req, res) => {
   } catch {
     // No matching handler — return 404 rather than crashing the server
     res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "No mock handler", url: req.url, method: req.method }));
+    res.end(
+      JSON.stringify({
+        error: "No mock handler",
+        url: req.url,
+        method: req.method,
+      }),
+    );
   }
 }).listen(port, () => {
   console.log(`[MSW] Mock server running on http://localhost:${port}`);
+});
+
+// WebSocket server for Supabase Realtime — implements enough of the Phoenix
+// channel protocol for the app's broadcast subscription to work in mock mode.
+// Tracks which WebSocket connections have joined which channel topics so that
+// incoming broadcast events can be relayed to the right subscribers.
+const wss = new WebSocketServer({ noServer: true });
+
+// topic -> set of WebSocket connections subscribed to that topic
+const channelSubscribers = new Map<string, Set<WebSocket>>();
+
+httpServer.on("upgrade", (req, socket, head) => {
+  if (req.url?.includes("/realtime/")) {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws);
+    });
+  } else {
+    socket.destroy();
+  }
+});
+
+wss.on("connection", (ws) => {
+  const clientTopics = new Set<string>();
+
+  ws.on("message", (data) => {
+    // Skip binary frames — only control messages (heartbeat/join/leave) arrive as JSON
+    if (typeof data !== "string" && !Buffer.isBuffer(data)) return;
+    const raw = Array.isArray(data) ? Buffer.concat(data).toString() : data.toString();
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return; // ignore malformed frames
+    }
+
+    // Supabase realtime uses Phoenix v2 array wire format: [join_ref, ref, topic, event, payload]
+    const [join_ref, ref, topic, event] = parsed as [string | null, string | null, string, string];
+
+    const ok = () =>
+      ws.send(JSON.stringify([join_ref, ref, topic, "phx_reply", { status: "ok", response: {} }]));
+
+    if (event === "heartbeat") {
+      ws.send(JSON.stringify([null, ref, "phoenix", "phx_reply", { status: "ok", response: {} }]));
+    } else if (event === "phx_join") {
+      // Supabase's httpSend uses subTopic (strips "realtime:" prefix), so normalise here to match
+      const channelName = topic.replace(/^realtime:/i, "");
+      clientTopics.add(channelName);
+      if (!channelSubscribers.has(channelName)) {
+        channelSubscribers.set(channelName, new Set());
+      }
+      channelSubscribers.get(channelName)!.add(ws);
+      ok();
+    } else if (event === "phx_leave") {
+      const channelName = topic.replace(/^realtime:/i, "");
+      clientTopics.delete(channelName);
+      channelSubscribers.get(channelName)?.delete(ws);
+      ok();
+    }
+  });
+
+  ws.on("close", () => {
+    for (const channelName of clientTopics) {
+      channelSubscribers.get(channelName)?.delete(ws);
+    }
+  });
+});
+
+// Relay broadcast events from the HTTP broadcast handler to all WebSocket
+// clients subscribed to the matching channel topic.
+broadcastEmitter.on("message", (message: BroadcastMessage) => {
+  const subscribers = channelSubscribers.get(message.topic);
+  if (!subscribers?.size) return;
+
+  // Phoenix v2 array format: [join_ref, ref, topic, event, payload]
+  // The channel was joined with the full "realtime:" prefix — restore it here
+  const frame = JSON.stringify([
+    null,
+    null,
+    `realtime:${message.topic}`,
+    "broadcast",
+    { type: "broadcast", event: message.event, payload: message.payload },
+  ]);
+
+  for (const ws of subscribers) {
+    if (ws.readyState === ws.OPEN) ws.send(frame);
+  }
 });
 
 function shutdown() {

@@ -32,11 +32,11 @@ Tests run with `fullyParallel: true`. Each test gets its own isolated slice of t
 
 1. **UUID-namespaced users** — `createTestContext()` generates unique emails per test:
 
-   | Field           | Example                           |
-   |-----------------|-----------------------------------|
-   | `ownerEmail`    | `owner-3f2a1b…@test.com`         |
-   | `collabEmail`   | `collab-3f2a1b…@test.com`        |
-   | `waitlistEmail` | `pending-3f2a1b…@test.com`       |
+   | Field           | Example                    |
+   | --------------- | -------------------------- |
+   | `ownerEmail`    | `owner-3f2a1b…@test.com`   |
+   | `collabEmail`   | `collab-3f2a1b…@test.com`  |
+   | `waitlistEmail` | `pending-3f2a1b…@test.com` |
 
 2. **Per-test DB reset** — the `ctx` fixture calls `POST /test/reset` before each test, which deletes and re-seeds only that worker's users and their data.
 
@@ -67,22 +67,22 @@ The `ctx` fixture forwards all browser console messages and uncaught page errors
 
 ## Test files
 
-| File | What it covers |
-|------|----------------|
-| `auth.spec.ts` | Sign-out flow |
-| `config.spec.ts` | Admin config modal — open, view collaborators, add collaborator |
-| `delete.spec.ts` | Soft-delete a list via the config modal |
-| `home.spec.ts` | Home page — create list, list visibility per role, admin link counts |
-| `list.spec.ts` | List detail — display items, add item, delete item with undo |
-| `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled |
+| File               | What it covers                                                       |
+| ------------------ | -------------------------------------------------------------------- |
+| `auth.spec.ts`     | Sign-out flow                                                        |
+| `config.spec.ts`   | Admin config modal — open, view collaborators, add collaborator      |
+| `delete.spec.ts`   | Soft-delete a list via the config modal                              |
+| `home.spec.ts`     | Home page — create list, list visibility per role, admin link counts |
+| `list.spec.ts`     | List detail — display items, add item, delete item with undo         |
+| `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled          |
 
 ## Helpers (`helpers.ts`)
 
-| Export | Purpose |
-|--------|---------|
+| Export                | Purpose                                                             |
+| --------------------- | ------------------------------------------------------------------- |
 | `createTestContext()` | Generate unique `{ownerEmail, collabEmail, waitlistEmail}` per test |
-| `login(page, email)` | Navigate to `/login`, sign in, and wait for hydration at `/` |
-| `resetDb(page, ctx)` | POST to `/test/reset` to wipe and re-seed this worker's data |
+| `login(page, email)`  | Navigate to `/login`, sign in, and wait for hydration at `/`        |
+| `resetDb(page, ctx)`  | POST to `/test/reset` to wipe and re-seed this worker's data        |
 
 ## CI
 

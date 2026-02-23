@@ -31,13 +31,9 @@ test("owner sees admin link for both their lists", async ({ page, ctx }) => {
 test("collaborator sees their lists plus the shared list", async ({ page, ctx }) => {
   await login(page, ctx.collabEmail);
 
-  await expect(
-    page.getByRole("link", { name: "Collab Shopping" }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Collab Shopping" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Collab Empty" })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Shopping", exact: true }),
-  ).toBeVisible(); // shared from owner
+  await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible(); // shared from owner
 });
 
 test("collaborator sees admin only for their own lists, not the shared one", async ({
@@ -62,7 +58,5 @@ test("shows an error message when list creation fails", async ({ page, ctx }) =>
   await page.getByLabel("New list").fill("__fail__");
   await page.getByRole("button", { name: "Add" }).click();
 
-  await expect(
-    page.getByText("Failed to create list. Please try again."),
-  ).toBeVisible();
+  await expect(page.getByText("Failed to create list. Please try again.")).toBeVisible();
 });
