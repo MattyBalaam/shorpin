@@ -5,6 +5,7 @@ const spin = keyframes({
 });
 
 export const spinner = style({
+  display: "inline-block",
   width: "1em",
   height: "1em",
   border: "2px solid currentColor",
