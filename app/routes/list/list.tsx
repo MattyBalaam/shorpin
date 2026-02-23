@@ -34,11 +34,6 @@ let cachedLoaderData: Awaited<
 > | null = null;
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  console.log("clientLoader", {
-    isOnline: navigator.onLine,
-    hasCache: !!cachedLoaderData,
-  });
-
   if (!navigator.onLine && cachedLoaderData) {
     return cachedLoaderData;
   }
@@ -122,7 +117,6 @@ export async function clientAction({
   return serverAction();
 }
 
-import { supabase } from "~/lib/supabase.client";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import * as styles from "./list.css";
@@ -194,18 +188,28 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     function subscribeToBroadcast() {
       if (!loaderData.listId) return;
 
-      const channel = supabase
-        .channel(`list-${loaderData.listId}`)
-        .on("broadcast", { event: "changed" }, ({ payload }) => {
-          if (payload.clientId !== clientId) {
-            toast.info("List updated by another user");
-            revalidate();
-          }
-        })
-        .subscribe();
+      let cancelled = false;
+      let cleanup: (() => void) | undefined;
+
+      import("~/lib/supabase.client").then(({ supabase }) => {
+        if (cancelled) return;
+
+        const channel = supabase
+          .channel(`list-${loaderData.listId}`)
+          .on("broadcast", { event: "changed" }, ({ payload }) => {
+            if (payload.clientId !== clientId) {
+              toast.info("List updated by another user");
+              revalidate();
+            }
+          })
+          .subscribe();
+
+        cleanup = () => supabase.removeChannel(channel);
+      });
 
       return () => {
-        supabase.removeChannel(channel);
+        cancelled = true;
+        cleanup?.();
       };
     },
     [loaderData.listId, clientId, revalidate],
