@@ -28,7 +28,12 @@ const LOADING_PAGE = `<!DOCTYPE html>
     fetch(location.href, { cache: 'no-store' })
       .then(function(r) {
         if (!r.ok) { setTimeout(poll, 200); return; }
-        if (document.documentElement.dataset.hydratedPath) return;
+        if (document.readyState === 'complete') return;
+        document.addEventListener('DOMContentLoaded', function onDCL() {
+          document.removeEventListener('DOMContentLoaded', onDCL);
+          if (document.documentElement.dataset.hydratedPath) return;
+          location.replace(location.href);
+        });
       })
       .catch(function() { setTimeout(poll, 200); });
   })();
