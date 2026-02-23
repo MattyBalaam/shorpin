@@ -28,11 +28,14 @@ const LOADING_PAGE = `<!DOCTYPE html>
     fetch(location.href, { cache: 'no-store' })
       .then(function(r) {
         if (!r.ok) { setTimeout(poll, 200); return; }
-        if (document.readyState === 'complete') return;
+        if (document.readyState === 'complete') {
+          if (document.documentElement.dataset.hydratedPath) return;
+          setTimeout(function() { location.replace(location.href); }, 100);
+          return;
+        }
         document.addEventListener('DOMContentLoaded', function onDCL() {
           document.removeEventListener('DOMContentLoaded', onDCL);
-          if (document.documentElement.dataset.hydratedPath) return;
-          location.replace(location.href);
+          setTimeout(function() { location.replace(location.href); }, 100);
         });
       })
       .catch(function() { setTimeout(poll, 200); });
