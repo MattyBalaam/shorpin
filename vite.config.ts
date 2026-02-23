@@ -7,6 +7,7 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vite";
 import devtoolsJson from "vite-plugin-devtools-json";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -25,5 +26,8 @@ export default defineConfig(({ mode }) => ({
     netlifyReactRouter(),
     netlify(),
     tsconfigPaths(),
+    ...(mode === "analyse"
+      ? [visualizer({ open: true, filename: "dist/stats.html", gzipSize: true, brotliSize: true })]
+      : []),
   ],
 }));
