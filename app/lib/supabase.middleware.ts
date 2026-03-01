@@ -24,9 +24,7 @@ function tokenSecondsLeft(cookieHeader: string): number | null {
     if (!tokenMatch) return null;
     const parts = tokenMatch[1].split(".");
     if (parts.length !== 3) return null; // not a real JWT (e.g. mock token)
-    const { exp } = JSON.parse(
-      Buffer.from(parts[1], "base64url").toString(),
-    ) as { exp: number };
+    const { exp } = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as { exp: number };
     return exp - Math.floor(Date.now() / 1000);
   } catch {
     return null;

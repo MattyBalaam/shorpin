@@ -11,7 +11,7 @@ const LOADING_PAGE = `<!DOCTYPE html>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0 }
     html, body { height: 100dvh; background: #A9CBB7 }
-    body { display: flex; align-items: center; justify-content: center }
+    body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif }
     .spinner {
       width: 2rem; height: 2rem; border-radius: 50%;
       border: 3px solid rgba(0,0,0,.15);
@@ -19,39 +19,50 @@ const LOADING_PAGE = `<!DOCTYPE html>
       animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg) } }
+    .error { display: none; text-align: center; color: rgba(0,0,0,.7) }
+    .error p { margin-bottom: 1rem; font-size: .9rem }
+    .error button {
+      padding: .5rem 1.25rem; border: none; border-radius: 6px;
+      background: rgba(0,0,0,.15); cursor: pointer; font-size: .9rem;
+    }
+    .error button:hover { background: rgba(0,0,0,.25) }
   </style>
 </head>
 <body>
   <div class="spinner"></div>
+  <div class="error">
+    <p>Taking longer than expected to start.</p>
+    <button id="retry">Try again</button>
+  </div>
   <script>
-  // Poll for the real page to load. When it does, replace the loading page
-  // with the real HTML to let React hydrate. This handles the cold-start case
-  // where Netlify Functions take time to boot.
-  (function poll() {
-    fetch(location.href + (location.href.includes('?') ? '&' : '?') + '__sw__=1', { cache: 'no-store' })
-      .then(function(r) {
-        // Server still booting, keep polling
-        if (!r.ok) { setTimeout(poll, 200); return; }
+  // Poll for the real page to load. When it does, navigate to the same URL so
+  // the SW can serve the real HTML and React can hydrate. This handles the
+  // cold-start case where Netlify Functions take time to boot.
+  const MAX_ATTEMPTS = 30; // ~6 seconds at 200ms intervals
+  let attempts = 0;
 
-        // Got real HTML — replace the loading page with it
-        r.text().then(function(html) {
-          document.open();
-          document.write(html);
-          document.close();
-        });
-      })
-      // Network error, keep polling
-      .catch(function() { setTimeout(poll, 200); });
-  })();
-</script>
+  const poll = () => {
+    if (attempts >= MAX_ATTEMPTS) {
+      document.querySelector('.spinner').style.display = 'none';
+      document.querySelector('.error').style.display = 'block';
+      return;
+    }
+    attempts++;
+    // X-SW-Poll header tells the server this is a readiness probe (keeps URLs clean)
+    fetch(location.href, { cache: 'no-store', headers: { 'X-SW-Poll': '1' } })
+      .then((r) => r.ok ? location.replace(location.href) : setTimeout(poll, 200))
+      .catch(() => setTimeout(poll, 200));
+  };
+
+  document.querySelector('#retry').addEventListener('click', () => location.replace(location.href));
+
+  poll();
+  </script>
 </body>
 </html>`;
 
 self.addEventListener("fetch", (event) => {
   if (event.request.mode !== "navigate") return;
-
-  // Skip the loading page for our own polling requests to prevent loops
-  if (event.request.url.includes("__sw__=1")) return;
 
   // For form submissions (POST etc.) pass the request straight through with
   // manual redirect handling so the browser follows any server-side redirect
@@ -63,18 +74,37 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // In-app navigations (same-origin referrer) already have React Router's
+  // own loading states — skip the splash screen and let the browser fetch normally.
+  try {
+    if (event.request.referrer && new URL(event.request.referrer).origin === self.location.origin) {
+      return;
+    }
+  } catch {
+    /* malformed referrer — fall through to splash screen */
+  }
+
   event.respondWith(
-    Promise.race([
-      fetch(event.request),
-      new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(
-            new Response(LOADING_PAGE, {
-              headers: { "Content-Type": "text/html; charset=utf-8" },
-            }),
-          );
-        }, 500);
-      }),
-    ]),
+    new Promise((resolve) => {
+      const controller = new AbortController();
+
+      const timer = setTimeout(() => {
+        controller.abort();
+        resolve(
+          new Response(LOADING_PAGE, {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          }),
+        );
+      }, 500);
+
+      fetch(event.request, { signal: controller.signal })
+        .then((r) => {
+          clearTimeout(timer);
+          resolve(r);
+        })
+        .catch(() => {
+          /* aborted or network error — timer will resolve */
+        });
+    }),
   );
 });

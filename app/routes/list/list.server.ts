@@ -21,7 +21,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     .single();
 
   if (error || !data) {
-    console.log("error", error);
+    if (error) console.error("Error loading list:", error);
 
     throw await dataWithError(
       {
@@ -89,6 +89,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     .single();
 
   if (listError || !data) {
+    if (listError) console.error("Error fetching list for action:", listError);
     return {
       result: report(submission, {
         error: {
@@ -134,7 +135,9 @@ export async function action({ request, params: { list }, context }: Route.Actio
       sort_order: newSortOrder,
     });
 
-    if (!insertError) {
+    if (insertError) {
+      console.error("Error inserting new item:", insertError);
+    } else {
       existingMap[newId] = {
         id: newId,
         value: result.output.new,
@@ -153,7 +156,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     const orderChanged = existingMap[id].sortOrder !== index;
 
     if (valueChanged || orderChanged) {
-      await supabase
+      const { error: updateError } = await supabase
         .from("list_items")
         .update({
           ...(valueChanged && { value }),
@@ -162,16 +165,20 @@ export async function action({ request, params: { list }, context }: Route.Actio
         })
         .eq("id", id);
 
-      existingMap[id].value = value;
-      existingMap[id].updatedAt = updatedAt;
-      existingMap[id].sortOrder = index;
+      if (updateError) {
+        console.error("Error updating item:", updateError);
+      } else {
+        existingMap[id].value = value;
+        existingMap[id].updatedAt = updatedAt;
+        existingMap[id].sortOrder = index;
+      }
     }
   }
 
   // Handle undelete - put item at bottom of list
   if (toUndelete && existingMap[toUndelete]) {
     const undeleteSortOrder = getNextSortOrder();
-    await supabase
+    const { error: undeleteError } = await supabase
       .from("list_items")
       .update({
         state: "active",
@@ -180,49 +187,68 @@ export async function action({ request, params: { list }, context }: Route.Actio
       })
       .eq("id", toUndelete);
 
-    existingMap[toUndelete].state = "active";
-    existingMap[toUndelete].updatedAt = updatedAt;
-    existingMap[toUndelete].sortOrder = undeleteSortOrder;
+    if (undeleteError) {
+      console.error("Error restoring item:", undeleteError);
+    } else {
+      existingMap[toUndelete].state = "active";
+      existingMap[toUndelete].updatedAt = updatedAt;
+      existingMap[toUndelete].sortOrder = undeleteSortOrder;
+    }
   }
 
   // Handle delete
   if (toDelete && existingMap[toDelete]) {
-    await supabase
+    const { error: deleteError } = await supabase
       .from("list_items")
       .update({ state: "deleted", updated_at: updatedAt })
       .eq("id", toDelete);
 
-    existingMap[toDelete].state = "deleted";
-    existingMap[toDelete].updatedAt = updatedAt;
+    if (deleteError) {
+      console.error("Error deleting item:", deleteError);
+    } else {
+      existingMap[toDelete].state = "deleted";
+      existingMap[toDelete].updatedAt = updatedAt;
 
-    // Keep only the 10 most recent deleted items, hard delete the rest
-    const maxDeletedItems = 10;
-    const { data: deletedItems } = await supabase
-      .from("list_items")
-      .select("id")
-      .eq("list_id", listId)
-      .eq("state", "deleted")
-      .order("updated_at", { ascending: false });
+      // Keep only the 10 most recent deleted items, hard delete the rest
+      const maxDeletedItems = 10;
+      const { data: deletedItems } = await supabase
+        .from("list_items")
+        .select("id")
+        .eq("list_id", listId)
+        .eq("state", "deleted")
+        .order("updated_at", { ascending: false });
 
-    if (deletedItems && deletedItems.length > maxDeletedItems) {
-      const idsToRemove = deletedItems.slice(maxDeletedItems).map((i) => i.id);
-      await supabase.from("list_items").delete().in("id", idsToRemove);
+      if (deletedItems && deletedItems.length > maxDeletedItems) {
+        const idsToRemove = deletedItems.slice(maxDeletedItems).map((i) => i.id);
+        const { error: purgeError } = await supabase
+          .from("list_items")
+          .delete()
+          .in("id", idsToRemove);
 
-      for (const id of idsToRemove) {
-        delete existingMap[id];
+        if (purgeError) {
+          console.error("Error purging old deleted items:", purgeError);
+        } else {
+          for (const id of idsToRemove) {
+            delete existingMap[id];
+          }
+        }
       }
     }
   }
 
   // Update theme colors if provided
   if (result.output.themePrimary && result.output.themeSecondary) {
-    await supabase
+    const { error: themeError } = await supabase
       .from("lists")
       .update({
         theme_primary: result.output.themePrimary,
         theme_secondary: result.output.themeSecondary,
       })
       .eq("id", listId);
+
+    if (themeError) {
+      console.error("Error updating theme:", themeError);
+    }
   }
 
   const allItems = v.parse(zItems, Object.values(existingMap));

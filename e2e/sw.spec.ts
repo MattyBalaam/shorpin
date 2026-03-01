@@ -45,9 +45,7 @@ test.describe("service worker cold start", () => {
     void page.goto("/login");
     await expect(page.locator(".spinner")).toBeVisible({ timeout: 2000 });
     // Poll with X-SW-Poll header succeeds → location.replace fires → SW serves real HTML
-    await expect(
-      page.locator("html[data-hydrated-path='/login']"),
-    ).toBeAttached({ timeout: 5000 });
+    await expect(page.locator("html[data-hydrated-path='/login']")).toBeAttached({ timeout: 5000 });
   });
 
   test("shows error state after max retries", async ({ page, context }) => {
@@ -66,29 +64,22 @@ test.describe("service worker cold start", () => {
     await expect(page.locator(".error")).toBeVisible({ timeout: 8000 });
     await context.setOffline(false);
     await page.locator("#retry").click();
-    await expect(
-      page.locator("html[data-hydrated-path='/login']"),
-    ).toBeAttached({ timeout: 5000 });
+    await expect(page.locator("html[data-hydrated-path='/login']")).toBeAttached({ timeout: 5000 });
   });
 
-  test("location.replace keeps loading page out of browser history", async ({
-    page,
-    context,
-  }) => {
+  test("location.replace keeps loading page out of browser history", async ({ page, context }) => {
     // beforeEach lands on /login. Cold-start a navigation to /forgot-password.
     // After the spinner resolves via location.replace, pressing back should
     // return to /login — not the loading page, which was replaced not pushed.
     await simulateColdStart(context);
     void page.goto("/forgot-password");
     await expect(page.locator(".spinner")).toBeVisible({ timeout: 2000 });
-    await expect(
-      page.locator("html[data-hydrated-path='/forgot-password']"),
-    ).toBeAttached({ timeout: 5000 });
+    await expect(page.locator("html[data-hydrated-path='/forgot-password']")).toBeAttached({
+      timeout: 5000,
+    });
 
     await page.goBack();
     await expect(page.locator(".spinner")).not.toBeVisible({ timeout: 1000 });
-    await expect(
-      page.locator("html[data-hydrated-path='/login']"),
-    ).toBeAttached({ timeout: 2000 });
+    await expect(page.locator("html[data-hydrated-path='/login']")).toBeAttached({ timeout: 2000 });
   });
 });

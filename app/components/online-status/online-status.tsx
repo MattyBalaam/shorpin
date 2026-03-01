@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useEffectEvent, useRef, useState } from "react";
 import * as styles from "./online-status.css";
 
 const OnlineContext = createContext<boolean>(true);
@@ -12,21 +12,21 @@ export function useIsOnline({ onOnline, onOffline }: UseIsOnlineOptions = {}) {
   const isOnline = useContext(OnlineContext);
   const wasOfflineRef = useRef(false);
 
-  // Keep callbacks current without adding them to the effect dependency array
-  const onOnlineRef = useRef(onOnline);
-  const onOfflineRef = useRef(onOffline);
-  onOnlineRef.current = onOnline;
-  onOfflineRef.current = onOffline;
+  const handleOnline = useEffectEvent(() => onOnline?.());
+  const handleOffline = useEffectEvent(() => onOffline?.());
 
-  useEffect(() => {
-    if (!isOnline) {
-      wasOfflineRef.current = true;
-      onOfflineRef.current?.();
-    } else if (wasOfflineRef.current) {
-      wasOfflineRef.current = false;
-      onOnlineRef.current?.();
-    }
-  }, [isOnline]);
+  useEffect(
+    function syncOnlineCallbacks() {
+      if (!isOnline) {
+        wasOfflineRef.current = true;
+        handleOffline();
+      } else if (wasOfflineRef.current) {
+        wasOfflineRef.current = false;
+        handleOnline();
+      }
+    },
+    [isOnline],
+  );
 
   return isOnline;
 }

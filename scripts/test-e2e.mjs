@@ -21,18 +21,14 @@ const appPort = await findFreePort(5174);
 
 console.log(`[test:e2e] mock :${mockPort}  app :${appPort}`);
 
-const result = spawnSync(
-  "pnpm",
-  ["exec", "playwright", "test", ...process.argv.slice(2)],
-  {
-    env: {
-      ...process.env,
-      MOCK_SERVER_PORT: String(mockPort),
-      APP_SERVER_PORT: String(appPort),
-    },
-    stdio: "inherit",
-    shell: process.platform === "win32",
+const result = spawnSync("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], {
+  env: {
+    ...process.env,
+    MOCK_SERVER_PORT: String(mockPort),
+    APP_SERVER_PORT: String(appPort),
   },
-);
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
 
 process.exit(result.status ?? 1);

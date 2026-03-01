@@ -11,7 +11,10 @@ export async function loader({ context }: Route.LoaderArgs) {
     .select("id, email, first_name, last_name, created_at")
     .order("created_at", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error loading sign-ups:", error);
+    throw error;
+  }
 
   return { signUps: data ?? [] };
 }
@@ -26,7 +29,10 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const { error } = await supabase.from("waitlist").delete().in("id", ids);
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error deleting sign-ups:", error);
+    throw error;
+  }
 
   return redirectWithSuccess(href("/"), "Sign-ups handled.");
 }

@@ -18,6 +18,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     .single();
 
   if (error || !data) {
+    if (error) console.error("Error loading list config:", error);
     throw new Response("List not found", { status: 404 });
   }
 
@@ -75,15 +76,29 @@ export async function action({ params: { list }, request, context }: Route.Actio
   // Add newly checked users
   const toAdd = [...submittedIds].filter((id) => !currentIds.has(id));
   if (toAdd.length > 0) {
-    await supabase
+    const { error: addError } = await supabase
       .from("list_members")
       .insert(toAdd.map((user_id) => ({ list_id: listData.id, user_id })));
+
+    if (addError) {
+      console.error("Error adding list members:", addError);
+      throw redirectWithError(href("/"), "Failed to update collaborators. Please try again.");
+    }
   }
 
   // Remove unchecked users
   const toRemove = [...currentIds].filter((id) => !submittedIds.has(id));
   if (toRemove.length > 0) {
-    await supabase.from("list_members").delete().eq("list_id", listData.id).in("user_id", toRemove);
+    const { error: removeError } = await supabase
+      .from("list_members")
+      .delete()
+      .eq("list_id", listData.id)
+      .in("user_id", toRemove);
+
+    if (removeError) {
+      console.error("Error removing list members:", removeError);
+      throw redirectWithError(href("/"), "Failed to update collaborators. Please try again.");
+    }
   }
 
   return redirectWithSuccess(href("/"), "changed collaborators");

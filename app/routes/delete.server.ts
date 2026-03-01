@@ -56,6 +56,7 @@ export async function action({ params: { list }, context }: Route.ActionArgs) {
 
   if (error) {
     console.error("Error deleting list:", error);
+    throw redirectWithError(href("/"), "Failed to delete list. Please try again.");
   }
 
   return redirectWithSuccess(href("/"), "List " + list + " deleted successfully");

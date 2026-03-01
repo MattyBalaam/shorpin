@@ -52,7 +52,10 @@ export async function loader({ context }: Route.LoaderArgs) {
       .eq("state", "active")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (error) throw error;
+        if (error) {
+          console.error("Error loading lists:", error);
+          throw error;
+        }
         return data ?? [];
       }),
     waitlistCount: supabase

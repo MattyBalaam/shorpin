@@ -97,6 +97,33 @@ throw redirect(`/lists/${slug}`);
 
 ## React Patterns
 
+### useEffectEvent
+
+Use `useEffectEvent` to read the latest props or state inside a `useEffect` without making them reactive dependencies. This replaces the manual ref-sync pattern:
+
+```tsx
+// Good
+const handleOffline = useEffectEvent(() => onOffline?.());
+
+useEffect(
+  function syncOnlineCallbacks() {
+    if (!isOnline) handleOffline();
+  },
+  [isOnline],
+);
+
+// Avoid — manual ref boilerplate
+const onOfflineRef = useRef(onOffline);
+onOfflineRef.current = onOffline;
+
+useEffect(
+  function syncOnlineCallbacks() {
+    if (!isOnline) onOfflineRef.current?.();
+  },
+  [isOnline],
+);
+```
+
 ### useEffect
 
 Always use named functions in useEffect callbacks to describe intent:

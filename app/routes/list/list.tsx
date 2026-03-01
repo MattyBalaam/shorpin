@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
 
 import { Items } from "~/components/items";
+import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 
 import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
 import * as v from "valibot";
@@ -66,7 +67,10 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     const result = v.safeParse(zList, submission.payload);
 
     if (!result.success) {
-      throw new Error("fix me");
+      return {
+        lastDeleted: undefined,
+        lastResult: report(submission, { error: { issues: result.issues } }),
+      };
     }
 
     // Get current items from form
@@ -125,9 +129,9 @@ export function HydrateFallback() {
 }
 
 export const handle = {
-  breadcrumb: {
-    label: (data: any) => data?.defaultValue?.name || "List",
-  },
+  breadcrumb: breadcrumb<Route.ComponentProps["loaderData"]>({
+    label: (data) => data?.defaultValue?.name ?? "List",
+  }),
 };
 
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
@@ -171,21 +175,25 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       let cancelled = false;
       let cleanup: (() => void) | undefined;
 
-      import("~/lib/supabase.client").then(({ realtimeClient }) => {
-        if (cancelled) return;
+      import("~/lib/supabase.client")
+        .then(({ realtimeClient }) => {
+          if (cancelled) return;
 
-        const channel = realtimeClient
-          .channel(`list-${loaderData.listId}`)
-          .on("broadcast", { event: "changed" }, ({ payload }) => {
-            if (payload.clientId !== clientId) {
-              toast.info("List updated by another user");
-              revalidate();
-            }
-          })
-          .subscribe();
+          const channel = realtimeClient
+            .channel(`list-${loaderData.listId}`)
+            .on("broadcast", { event: "changed" }, ({ payload }) => {
+              if (payload.clientId !== clientId) {
+                toast.info("List updated by another user");
+                revalidate();
+              }
+            })
+            .subscribe();
 
-        cleanup = () => realtimeClient.removeChannel(channel);
-      });
+          cleanup = () => realtimeClient.removeChannel(channel);
+        })
+        .catch((error) => {
+          console.error("Failed to load Supabase realtime client:", error);
+        });
 
       return () => {
         cancelled = true;

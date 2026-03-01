@@ -17,7 +17,7 @@ function useThemeContext() {
   return context;
 }
 
-function generateComplementaryColors(): { primary: string; secondary: string } {
+function generateComplementaryColors() {
   // Random hue between 0-360
   const hue = Math.floor(Math.random() * 360);
   // Complementary hue is 180 degrees away
@@ -35,7 +35,7 @@ function generateComplementaryColors(): { primary: string; secondary: string } {
 
 // Extract CSS variable name from vanilla-extract var reference
 // e.g., "var(--abc123)" -> "--abc123"
-function extractVarName(varRef: string): string {
+function extractVarName(varRef: string) {
   const match = varRef.match(/var\((--[^)]+)\)/);
   return match ? match[1] : varRef;
 }
