@@ -9,6 +9,12 @@ This is partly for me and my friends to use (product need), but also for me to g
 - **Testing**: Playwright with accessibility testing
 - **Package Manager**: pnpm
 
+## Docs
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
+- [e2e/README.md](e2e/README.md) — running e2e tests, architecture, CI
+- [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
+
 ## Architecture
 
 ### Routing Structure
@@ -20,11 +26,6 @@ The app uses React Router 7's file-based routing with explicit route definitions
 /lists/:list                          → app/routes/list/list.tsx
 /lists/:list/confirm-delete           → app/routes/delete.tsx
 ```
-
-**TypeScript**
-
-- Prefer using satisfies keyword over inline declarations
-- Prefer leaning on TypeScript inference over defining types
 
 **Route Hierarchy:**
 

@@ -4,6 +4,9 @@
 
 Apply the guidelines below with pragmatism. A one-off internal helper does not need the same rigour as a public component API. The goal is to catch real mistakes at compile time, not to over-engineer simple code.
 
+- Prefer using `satisfies` keyword over inline type declarations
+- Prefer leaning on TypeScript inference over defining types explicitly
+
 ### String unions over `string`
 
 Prefer a string union over a bare `string` type when only a finite set of values is valid:
