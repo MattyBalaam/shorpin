@@ -1,6 +1,15 @@
 import type { Route } from "./+types/home";
 
-import { href, Form as RouterForm, Outlet, useNavigation, type MetaFunction } from "react-router";
+import {
+  href,
+  Form as RouterForm,
+  isRouteErrorResponse,
+  Outlet,
+  useNavigation,
+  useRevalidator,
+  useRouteError,
+  type MetaFunction,
+} from "react-router";
 import { useForm } from "@conform-to/react/future";
 import * as v from "valibot";
 
@@ -221,5 +230,24 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
       </Actions>
       <Outlet />
     </>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const { revalidate, state } = useRevalidator();
+
+  const message =
+    isRouteErrorResponse(error) && error.status === 503
+      ? "Couldn't reach the server."
+      : "Something went wrong.";
+
+  return (
+    <div className={styles.errorState}>
+      <p>{message}</p>
+      <Button onClick={revalidate} isSubmitting={state === "loading"}>
+        Retry
+      </Button>
+    </div>
   );
 }

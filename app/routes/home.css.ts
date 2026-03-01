@@ -114,3 +114,15 @@ export const formError = style({
   color: vars.palette.error,
   margin: 0,
 });
+
+export const errorState = style({
+  gridColumn: "content",
+  gridRow: "content / -1",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: vars.spacing.lg,
+  textAlign: "center",
+  paddingInline: vars.spacing.appMargin,
+});

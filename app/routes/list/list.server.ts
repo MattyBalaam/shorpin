@@ -23,6 +23,12 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   if (error || !data) {
     if (error) console.error("Error loading list:", error);
 
+    // Network/connectivity errors (e.g. Supabase unreachable) should not
+    // masquerade as 404s — throw 503 so the client can distinguish them.
+    if (error && !error.code && error.message?.includes("fetch")) {
+      throw new Response("Service unavailable", { status: 503 });
+    }
+
     throw await dataWithError(
       {
         message: error

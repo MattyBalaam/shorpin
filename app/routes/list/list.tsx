@@ -1,7 +1,14 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
+import {
+  href,
+  isRouteErrorResponse,
+  useNavigation,
+  useRevalidator,
+  useRouteError,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { Items } from "~/components/items";
 import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
@@ -32,10 +39,12 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   } catch (error) {
     console.error("Error in clientLoader", error);
 
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      if (cachedLoaderData) {
-        return cachedLoaderData;
-      }
+    const isNetworkOrServerError =
+      (error instanceof TypeError && error.message.includes("fetch")) ||
+      (isRouteErrorResponse(error) && error.status >= 500);
+
+    if (isNetworkOrServerError && cachedLoaderData) {
+      return cachedLoaderData;
     }
     throw error;
   }
@@ -369,5 +378,33 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         </Actions>
       </Form>
     </Theme>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const { revalidate, state } = useRevalidator();
+
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <div className={styles.errorState}>
+        <p>{error.data?.message ?? "List not found."}</p>
+        <Link to={href("/")}>Back to home</Link>
+      </div>
+    );
+  }
+
+  const message =
+    isRouteErrorResponse(error) && error.status === 503
+      ? "Couldn't reach the server."
+      : "Something went wrong.";
+
+  return (
+    <div className={styles.errorState}>
+      <p>{message}</p>
+      <Button onClick={revalidate} isSubmitting={state === "loading"}>
+        Retry
+      </Button>
+    </div>
   );
 }

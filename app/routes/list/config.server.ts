@@ -19,7 +19,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
 
   if (error || !data) {
     if (error) console.error("Error loading list config:", error);
-    throw new Response("List not found", { status: 404 });
+    throw redirectWithError(href("/"), "List not found.");
   }
 
   if (data.user_id !== user?.id) {
@@ -59,7 +59,7 @@ export async function action({ params: { list }, request, context }: Route.Actio
     .single();
 
   if (!listData || listData.user_id !== user?.id) {
-    throw new Response("Forbidden", { status: 403 });
+    throw redirectWithError(href("/"), "Only the list owner can manage settings.");
   }
 
   const formData = await request.formData();
