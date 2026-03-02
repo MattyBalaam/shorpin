@@ -1,3 +1,4 @@
+export const ADD_ITEM_INTENT = "add-item";
 const DELETE_PREFIX = "delete-item-";
 const UNDELETE_PREFIX = "undelete-item-";
 
@@ -7,6 +8,10 @@ export function deleteItemIntent(id: string) {
 
 export function undeleteItemIntent(id: string) {
   return `${UNDELETE_PREFIX}${id}`;
+}
+
+export function isAddItemIntent(intent: string | null | undefined) {
+  return intent === ADD_ITEM_INTENT;
 }
 
 export function isDeleteItemIntent(intent: string | null | undefined) {

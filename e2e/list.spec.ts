@@ -55,6 +55,51 @@ test("owner can delete an item from a list", async ({ page, ctx }) => {
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
 });
 
+test("edited icon does not appear on unedited items while another item is being deleted", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Shopping" }).click();
+
+  // Edit Milk without submitting, giving it edited=true
+  await page.getByLabel("Edit Milk").fill("Oat Milk");
+
+  // Intercept the revalidation loader so the navigation stays in "loading" state
+  // long enough to assert — this is when navigation.formData becomes null and
+  // isSavingEdit incorrectly flips true for all edited items
+  let releaseLoader!: () => void;
+  await page.route("**/lists/shopping", async (route, request) => {
+    if (request.method() === "GET") {
+      await new Promise<void>((resolve) => {
+        releaseLoader = resolve;
+      });
+    }
+    await route.continue();
+  });
+
+  // Delete a different item
+  await page.getByRole("button", { name: "Delete Bread" }).click();
+
+  // While in "loading" state no saving indicator should appear — we are not
+  // persisting any edit, we are only deleting Bread
+  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Milk") })).not.toContainText(
+    "saving",
+  );
+
+  releaseLoader();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+
+  // At idle the edited icon should appear only for the item the user changed
+  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Milk") })).toContainText(
+    " edited",
+  );
+  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Eggs") })).not.toContainText(
+    " edited",
+  );
+});
+
 test("collab sees real-time update when owner adds an item", async ({ browser, ctx }) => {
   // Two isolated browser contexts simulate two separate users
   const ownerContext = await browser.newContext({ baseURL });

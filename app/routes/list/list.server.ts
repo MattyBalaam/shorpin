@@ -1,7 +1,7 @@
 import type { Route } from "./+types/list";
 
 import { dataWithError } from "remix-toast";
-import { parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
+import { isAddItemIntent, parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
 
 import { type Items, sortData, zItems, zList } from "./data";
 
@@ -126,10 +126,10 @@ export async function action({ request, params: { list }, context }: Route.Actio
     return maxOrder + 1;
   };
 
-  const newValue = formData.get("new");
+  const toAdd = isAddItemIntent(result.output["new-submit"]);
 
   // Handle new item
-  if (result.output.new) {
+  if (result.output.new && toAdd) {
     const newId = crypto.randomUUID();
     const newSortOrder = getNextSortOrder();
     const { error: insertError } = await supabase.from("list_items").insert({
@@ -268,10 +268,10 @@ export async function action({ request, params: { list }, context }: Route.Actio
   return {
     lastDeleted: sortData(allItems.filter(({ state }) => state === "deleted")).at(-1),
     lastResult: report(submission, {
-      reset: Boolean(newValue),
+      reset: toAdd && Boolean(result.output.new),
       value: {
         ...result.output,
-        new: Boolean(newValue) ? "" : (result.output.new ?? ""),
+        new: toAdd ? "" : (result.output.new ?? ""),
         items: sortData(allItems.filter(({ state }) => state === "active")).map((item) => ({
           id: item.id,
           value: item.value,

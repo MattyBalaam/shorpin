@@ -1,11 +1,11 @@
-import { type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 
 import * as styles from "./item.css";
 import { type FieldMetadata } from "@conform-to/react/future";
 import { useNavigation } from "react-router";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
 import { Button } from "./button/button";
-import { deleteItemIntent } from "~/routes/list/intents";
+import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
 
 export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
@@ -20,9 +20,30 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
 
   const fieldset = fieldsetMetadata.getFieldset();
 
+  const intent = navigation.formData?.get("__INTENT__") as string | null;
+
+  // Persist the last known intent through the full navigation cycle.
+  // navigation.formData (and therefore intent) is only populated during
+  // "submitting" — it becomes null during "loading". Without this ref,
+  // isSavingEdit incorrectly flips true for any edited item while a delete
+  // navigates through its loading phase.
+  const lastIntentRef = useRef<string | null>(null);
+  if (navigation.state === "submitting") {
+    lastIntentRef.current = intent;
+  } else if (navigation.state === "idle") {
+    lastIntentRef.current = null;
+  }
+  const effectiveIntent = navigation.state === "submitting" ? intent : lastIntentRef.current;
+
   const isDeleting =
     navigation.state === "submitting" &&
-    navigation.formData?.get("__INTENT__") === deleteItemIntent(fieldset.id.defaultValue ?? "");
+    intent === deleteItemIntent(fieldset.id.defaultValue ?? "");
+
+  const isSavingEdit =
+    edited &&
+    navigation.state !== "idle" &&
+    !isDeleteItemIntent(effectiveIntent) &&
+    !isUndeleteItemIntent(effectiveIntent);
 
   return (
     <div className={styles.itemContainer} data-dismissing={isDismissing} data-deleting={isDeleting}>
@@ -41,17 +62,17 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
           }}
         />
 
-        {edited ? (
+        {edited && (isSavingEdit || navigation.state === "idle") ? (
           <span className={styles.state}>
-            {navigation.state === "idle" ? (
-              <>
-                <VisuallyHidden> edited</VisuallyHidden>
-                <span aria-hidden>✏️</span>
-              </>
-            ) : (
+            {isSavingEdit ? (
               <>
                 <VisuallyHidden>saving</VisuallyHidden>
                 <span aria-hidden className={styles.saving}></span>
+              </>
+            ) : (
+              <>
+                <VisuallyHidden> edited</VisuallyHidden>
+                <span aria-hidden>✏️</span>
               </>
             )}
           </span>
@@ -59,7 +80,7 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
 
         <span className={styles.dragHandle}>
           <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
-          <span aria-hidden>||||||||||</span>
+          <span aria-hidden>|-|-|-|-|</span>
         </span>
 
         <span className={styles.deleteButton}>

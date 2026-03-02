@@ -7,6 +7,7 @@ import {
   useNavigation,
   useRevalidator,
   useRouteError,
+  useSubmit,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 
@@ -22,7 +23,13 @@ export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
-import { isDeleteItemIntent, isUndeleteItemIntent, undeleteItemIntent } from "./intents";
+import {
+  ADD_ITEM_INTENT,
+  isAddItemIntent,
+  isDeleteItemIntent,
+  isUndeleteItemIntent,
+  undeleteItemIntent,
+} from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -85,8 +92,10 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     // Get current items from form
     const currentItems = result.output.items;
 
+    const toAdd = isAddItemIntent(result.output["new-submit"]);
+
     // Add new item if present
-    if (result.output.new) {
+    if (result.output.new && toAdd) {
       currentItems.push({
         id: crypto.randomUUID(),
         value: result.output.new,
@@ -98,10 +107,10 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     return {
       lastDeleted: undefined,
       lastResult: report(submission, {
-        reset: Boolean(result.output.new),
+        reset: toAdd && Boolean(result.output.new),
         value: {
           ...submission.payload,
-          new: "",
+          new: toAdd ? "" : (result.output.new ?? ""),
           items: currentItems,
         },
       }),
@@ -164,7 +173,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     return id;
   });
 
-  const reorderSubmitRef = useRef<HTMLButtonElement>(null);
+  const submit = useSubmit();
   const formRef = useRef<HTMLFormElement>(null);
   const isOnline = useIsOnline({
     onOffline: () => {
@@ -273,6 +282,17 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         return [];
       }
 
+      // Guard: AnimatePresence keeps a deleted item's <input> elements in the
+      // DOM during its exit animation. Conform re-numbers the remaining items
+      // into those same positions, causing two inputs to share the same name
+      // (e.g. items[1][id]). parseSubmission stores an array for that field,
+      // UUID validation fails, v.fallback fires → items becomes [].
+      // When that happens every defaultValue item looks "edited". Return []
+      // instead so we don't show false indicators during the brief animation.
+      if (result.output.items.length === 0 && defaultValue.items.length > 0) {
+        return [];
+      }
+
       return defaultValue.items
         .filter(
           ({ value, id }) => result.output.items?.find((item) => item?.id === id)?.value !== value,
@@ -296,16 +316,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         method="POST"
         className={styles.form}
       >
-        {/* hidden submit button which will be used if a user presses enter or reorders */}
-        <button
-          ref={reorderSubmitRef}
-          type="submit"
-          value="new"
-          name="new-submit"
-          className={styles.hiddenSubmit}
-        >
-          Update
-        </button>
+        {/* hidden submit button captures Enter key presses to add a new item */}
+        <VisuallyHidden>
+          <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
+            Update
+          </button>
+        </VisuallyHidden>
 
         <input
           name={fields.name.name}
@@ -326,7 +342,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             fieldMetadata={fields.items}
             edited={edited}
             pendingItem={
-              state === "submitting" && formData?.get("new-submit") === "new"
+              state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
                 ? (formData.get(fields.new.name) as string)
                 : null
             }
@@ -343,7 +359,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             onReorderComplete={() => {
               // Wait for React to flush the intent.update() before submitting
               requestAnimationFrame(() => {
-                reorderSubmitRef.current?.click();
+                submit(formRef.current);
               });
             }}
           />
@@ -357,7 +373,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <input name={fields.new.name} id={fields.new.id} autoFocus autoComplete="off" />
             <Button
               type="submit"
-              value="new"
+              value={ADD_ITEM_INTENT}
               name="new-submit"
               isSubmitting={state === "submitting"}
             >

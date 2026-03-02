@@ -1,4 +1,5 @@
-import { redirect, href } from "react-router";
+import { href } from "react-router";
+import { redirectWithSuccess } from "remix-toast";
 import type { Route } from "./+types/login";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
@@ -24,5 +25,5 @@ export async function action({ request, context }: Route.ActionArgs) {
     });
   }
 
-  throw redirect(href("/"));
+  throw await redirectWithSuccess(href("/"), "Welcome back!");
 }
