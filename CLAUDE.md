@@ -17,30 +17,44 @@ React Router v7 SSR · TypeScript · Vanilla Extract · Playwright · pnpm · Su
 - Prefer web standards and "use the platform" unless a third-party library solves something the platform cannot.
 - Document new architectural decisions in [README.md](README.md) before committing.
 
-## Pre-commit checks
+## Hooks
+
+### PostToolUse — after every file edit
+
+A `PostToolUse` hook (`.claude/hooks/post-edit-checks.sh`) runs automatically after every `Write`, `Edit`, or `NotebookEdit`. It:
+
+1. Runs `pnpm typecheck` — blocks if there are type errors
+2. Runs `pnpm lint` — blocks if there are lint errors
+3. Runs `pnpm fmt` — formats files in place
+
+### PreToolUse — before every `git commit`
 
 A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically before every `git commit`. It:
 
-1. Runs `pnpm typecheck` — blocks the commit if there are type errors
-2. Runs `pnpx oxfmt` — formats files in place, then blocks if any files changed (so you can re-stage them before retrying)
+1. Runs `pnpm typecheck`, `pnpm lint`, `pnpm fmt` (same as above)
+2. Runs scoped e2e tests based on what is staged:
+
+| Staged files                                                                                      | E2e action                                                       |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                             |
+| Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:e2e`)                                     |
+| `app/routes/home*`                                                                                | `e2e/home.spec.ts`                                               |
+| `app/routes/list/**`                                                                              | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
+| `app/routes/delete*`                                                                              | `e2e/delete.spec.ts`                                             |
+| `app/routes/auth/**`                                                                              | `e2e/auth.spec.ts`                                               |
+| `app/routes/sign-ups*`                                                                            | `e2e/sign-ups.spec.ts`                                           |
+| `e2e/*.spec.ts` changed                                                                           | That spec                                                        |
+| Anything else unmatched                                                                           | Full suite (safe fallback)                                       |
 
 **If hooks are not supported** in your environment, run these steps manually before committing:
 
 ```sh
 pnpm typecheck           # fix any type errors first
-pnpx oxfmt               # format changed files
-git add <changed files>  # re-stage if oxfmt modified anything
+pnpm lint                # fix any lint errors
+pnpm fmt                 # format changed files
+git add <changed files>  # re-stage if fmt modified anything
+pnpm test:e2e            # run appropriate e2e tests
 ```
-
-### E2e tests (always manual — requires scope judgement)
-
-Run after the above, based on what changed:
-
-| Change scope                                            | Command                                        |
-| ------------------------------------------------------- | ---------------------------------------------- |
-| CSS, types, docs, config only                           | skip                                           |
-| A specific route or component                           | `pnpm exec playwright test e2e/<name>.spec.ts` |
-| Shared infra (mocks, handlers, seed, helpers, fixtures) | `pnpm exec playwright test`                    |
 
 Do not commit if tests are failing or if the user has indicated the work is incomplete.
 
@@ -49,3 +63,5 @@ Do not commit if tests are failing or if the user has indicated the work is inco
 Always use `pnpx` instead of `npx`. Use pnpm scripts over direct tool commands:
 
 - `pnpm typecheck` — TypeScript type checking
+- `pnpm lint` — oxlint (enforces rules such as no non-null assertions)
+- `pnpm fmt` — oxfmt formatter

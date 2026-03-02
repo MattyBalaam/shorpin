@@ -23,9 +23,11 @@ export function isUndeleteItemIntent(intent: string | null | undefined) {
 }
 
 export function parseDeleteItemIntent(intent: string | null | undefined) {
-  return isDeleteItemIntent(intent) ? intent!.slice(DELETE_PREFIX.length) : undefined;
+  if (typeof intent !== "string") return undefined;
+  return isDeleteItemIntent(intent) ? intent.slice(DELETE_PREFIX.length) : undefined;
 }
 
 export function parseUndeleteItemIntent(intent: string | null | undefined) {
-  return isUndeleteItemIntent(intent) ? intent!.slice(UNDELETE_PREFIX.length) : undefined;
+  if (typeof intent !== "string") return undefined;
+  return isUndeleteItemIntent(intent) ? intent.slice(UNDELETE_PREFIX.length) : undefined;
 }

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
+import type { Route } from "@playwright/test";
 
 export interface TestContext {
   ownerEmail: string;
@@ -39,6 +40,39 @@ export async function login(page: Page, email: string) {
   await page.getByLabel("Password").fill("any-password"); // mock ignores the password
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("/");
+}
+
+/**
+ * Intercepts the first GET matching `urlPattern` and holds it until the
+ * returned `release()` is called. Subsequent matching GETs pass through
+ * immediately so they don't accumulate after the test releases.
+ *
+ * Usage:
+ *   const { intercepted, release } = await holdLoader(page, /\/lists\/shopping\.data/);
+ *   await triggerSomething();
+ *   await intercepted; // wait until the request is actually held
+ *   // assert loading state...
+ *   release();
+ */
+export async function holdLoader(
+  page: Page,
+  urlPattern: RegExp,
+): Promise<{ intercepted: Promise<void>; release: () => void }> {
+  let release!: () => void;
+  let blocked = false;
+  const intercepted = new Promise<void>((resolveIntercepted) => {
+    void page.route(urlPattern, async (route: Route, request) => {
+      if (request.method() === "GET" && !blocked) {
+        blocked = true;
+        await new Promise<void>((r) => {
+          release = r;
+          resolveIntercepted();
+        });
+      }
+      await route.continue();
+    });
+  });
+  return { intercepted, release: () => release() };
 }
 
 /**

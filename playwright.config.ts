@@ -21,7 +21,7 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      command: `pnpm react-router build --mode mock && pnpm react-router-serve ./build/server/server-build.js`,
+      command: `pnpm react-router build --mode mock && pnpm react-router-serve ./build/server/index.js`,
       url: `http://localhost:${appPort}`,
       env: {
         VITE_SUPABASE_URL: `http://localhost:${mockPort}`,

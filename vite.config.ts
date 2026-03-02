@@ -1,5 +1,3 @@
-import netlify from "@netlify/vite-plugin";
-import netlifyReactRouter from "@netlify/vite-plugin-react-router";
 import { reactRouter } from "@react-router/dev/vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
@@ -23,8 +21,6 @@ export default defineConfig(({ mode }) => ({
     // reactRouterDevTools(),
     vanillaExtractPlugin(),
     reactRouter(),
-    netlifyReactRouter(),
-    netlify(),
     tsconfigPaths(),
     sentryVitePlugin({
       org: process.env.SENTRY_ORG,

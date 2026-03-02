@@ -20,6 +20,7 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
+import { requireUser } from "~/lib/supabase.server";
 import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
@@ -90,9 +91,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await requireUser(supabase);
 
   const { data: matches } = await supabase
     .from("lists")
@@ -105,7 +104,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { error } = await supabase.from("lists").insert({
     name: listName,
     slug,
-    user_id: user!.id,
+    user_id: user.id,
   });
 
   if (error) {

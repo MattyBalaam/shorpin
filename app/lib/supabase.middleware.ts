@@ -56,13 +56,14 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
   const url = new URL(request.url);
 
   if (!publicRoutes.includes(url.pathname)) {
-    const hasAuthCookie = request.headers.get("Cookie")?.includes("sb-") ?? false;
+    const cookie = request.headers.get("Cookie");
+    const hasAuthCookie = cookie?.includes("sb-") ?? false;
 
     if (!hasAuthCookie) {
       throw redirect(href("/login"), { headers: cookieHeaders });
     }
 
-    const secs = tokenSecondsLeft(request.headers.get("Cookie")!);
+    const secs = tokenSecondsLeft(cookie ?? "");
     console.log(
       `[Supabase Middleware] token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
     );

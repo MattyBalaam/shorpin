@@ -180,10 +180,12 @@ wss.on("connection", (ws) => {
       // Supabase's httpSend uses subTopic (strips "realtime:" prefix), so normalise here to match
       const channelName = topic.replace(/^realtime:/i, "");
       clientTopics.add(channelName);
-      if (!channelSubscribers.has(channelName)) {
-        channelSubscribers.set(channelName, new Set());
+      let subscribers = channelSubscribers.get(channelName);
+      if (!subscribers) {
+        subscribers = new Set();
+        channelSubscribers.set(channelName, subscribers);
       }
-      channelSubscribers.get(channelName)!.add(ws);
+      subscribers.add(ws);
       ok();
     } else if (event === "phx_leave") {
       const channelName = topic.replace(/^realtime:/i, "");

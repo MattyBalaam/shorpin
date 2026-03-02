@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { login } from "./helpers";
+import { login, holdLoader } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -66,35 +66,36 @@ test("edited icon does not appear on unedited items while another item is being 
   // Edit Milk without submitting, giving it edited=true
   await page.getByLabel("Edit Milk").fill("Oat Milk");
 
-  // Intercept the revalidation loader so the navigation stays in "loading" state
+  // Hold the revalidation loader so the navigation stays in "loading" state
   // long enough to assert — this is when navigation.formData becomes null and
-  // isSavingEdit incorrectly flips true for all edited items
-  let releaseLoader!: () => void;
-  await page.route("**/lists/shopping", async (route, request) => {
-    if (request.method() === "GET") {
-      await new Promise<void>((resolve) => {
-        releaseLoader = resolve;
-      });
-    }
-    await route.continue();
-  });
+  // isSavingEdit incorrectly flips true for all edited items.
+  //
+  // React Router v7 uses a .data suffix for loader/action fetches and fires two
+  // concurrent revalidation GETs (one per route segment). holdLoader blocks only
+  // the first GET; subsequent ones pass through immediately.
+  const { intercepted, release } = await holdLoader(page, /\/lists\/shopping\.data/);
 
   // Delete a different item
   await page.getByRole("button", { name: "Delete Bread" }).click();
 
+  // Wait until the GET revalidation is actually intercepted before asserting
+  await intercepted;
+
   // While in "loading" state no saving indicator should appear — we are not
   // persisting any edit, we are only deleting Bread
-  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Milk") })).not.toContainText(
-    "saving",
-  );
+  await expect(
+    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
+  ).not.toContainText("saving");
 
-  releaseLoader();
+  release();
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
 
-  // At idle the edited icon should appear only for the item the user changed
-  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Milk") })).toContainText(
-    " edited",
-  );
+  // The delete form submission also saves all current item values (including
+  // "Oat Milk"), so at idle there is no pending unsaved edit — the edited
+  // indicator should not appear for any item.
+  await expect(
+    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
+  ).not.toContainText(" edited");
   await expect(page.locator("li").filter({ has: page.getByLabel("Edit Eggs") })).not.toContainText(
     " edited",
   );

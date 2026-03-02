@@ -51,7 +51,8 @@ export function Breadcrumbs() {
         );
       }
 
-      return resolveBreadcrumb(handle.breadcrumb!, match.loaderData, match.pathname);
+      if (!handle.breadcrumb) return [];
+      return resolveBreadcrumb(handle.breadcrumb, match.loaderData, match.pathname);
     });
 
   // If we're on the home page, only show "Home" as current page
