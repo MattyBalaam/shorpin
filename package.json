@@ -65,6 +65,9 @@
     "vitest": "4.0.18",
     "ws": "8.19.0"
   },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.5"
+  },
   "browserslist": [
     ">0.2%",
     "not dead",

@@ -53,6 +53,10 @@ importers:
       valibot:
         specifier: 1.2.0
         version: 1.2.0(typescript@5.9.3)
+    optionalDependencies:
+      '@rolldown/binding-linux-x64-gnu':
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5
     devDependencies:
       '@msw/data':
         specifier: 1.1.2
