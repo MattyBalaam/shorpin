@@ -11,3 +11,4 @@ playwright-report
 .DS_Store
 public/mockServiceWorker.js
 build/
+supabase/.temp/
