@@ -6,8 +6,8 @@
 # Blocks the commit if:
 #   - pnpm typecheck reports type errors
 #   - pnpm lint reports lint errors
-#   - pnpm fmt reformatted files (agent must re-stage before retrying)
 #   - scoped e2e tests fail
+# Formatter changes are auto-staged so retries are not needed.
 
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -32,15 +32,11 @@ if ! pnpm lint >&2; then
   deny "Lint errors found — see output above. Fix before committing."
 fi
 
-# 3. Format — modifies files in place
+# 3. Format — modifies files in place, then auto-stage any changes
 pnpm fmt >&2
+git add -u
 
-# 4. If formatter changed tracked files, block so agent can re-stage them
-if ! git diff --quiet; then
-  deny "Formatter changed files. Stage the changes with \`git add\` and retry the commit."
-fi
-
-# 5. Scoped e2e tests based on staged files
+# 4. Scoped e2e tests based on staged files (re-read after auto-staging fmt changes)
 STAGED=$(git diff --cached --name-only)
 
 # Skip e2e if all staged files are trivial (styles, types, docs, Claude config)
@@ -63,8 +59,8 @@ if [ -n "$NON_TRIVIAL" ]; then
     echo "$STAGED" | grep -qE '^app/routes/delete'    && SPECS="$SPECS e2e/delete.spec.ts"
     echo "$STAGED" | grep -qE '^app/routes/auth/'     && SPECS="$SPECS e2e/auth.spec.ts"
     echo "$STAGED" | grep -qE '^app/routes/sign-ups'  && SPECS="$SPECS e2e/sign-ups.spec.ts"
-    # Add any changed spec files themselves
-    CHANGED_SPECS=$(echo "$STAGED" | grep -E '^e2e/.*\.spec\.ts$')
+    # Add any changed spec files themselves (exclude supabase-* which needs its own runner)
+    CHANGED_SPECS=$(echo "$STAGED" | grep -E '^e2e/.*\.spec\.ts$' | grep -v 'supabase-')
     [ -n "$CHANGED_SPECS" ] && SPECS="$SPECS $CHANGED_SPECS"
 
     if [ -z "$SPECS" ]; then
