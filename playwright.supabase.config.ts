@@ -1,4 +1,11 @@
+import { loadEnvFile } from "node:process";
 import { defineConfig } from "@playwright/test";
+
+try {
+  loadEnvFile(".env");
+} catch {
+  // .env is optional in CI (vars come from secrets)
+}
 
 const appPort = "5175";
 

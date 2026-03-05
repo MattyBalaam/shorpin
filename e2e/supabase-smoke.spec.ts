@@ -41,7 +41,7 @@ test("supabase smoke", async ({ page }) => {
   });
 
   await test.step("clean up: delete the list", async () => {
-    await page.getByRole("link", { name: "Home" }).click();
+    await page.getByRole("link", { name: "Back to index" }).click();
     await page
       .locator("li")
       .filter({ has: page.getByRole("link", { name: listName }) })
