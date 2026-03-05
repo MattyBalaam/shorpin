@@ -16,7 +16,7 @@ export function Button({
   children,
   isSubmitting,
   disabled,
-  variant = "outline",
+  variant = "primary",
   ...props
 }: ButtonProps) {
   return (

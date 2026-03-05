@@ -15,7 +15,11 @@ function ModalActions({ children }: { children: ReactNode }) {
 }
 
 function ModalClose({ children }: { children: ReactNode }) {
-  return <Button type="submit">{children}</Button>;
+  return (
+    <Button variant="outline" type="submit">
+      {children}
+    </Button>
+  );
 }
 
 function ModalSubmit({ children, formId }: { children: ReactNode; formId: string }) {
