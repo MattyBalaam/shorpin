@@ -10,7 +10,7 @@ test("owner can create a new list", async ({ page, ctx }) => {
   await page.waitForURL("/lists/groceries");
   await expect(page).toHaveURL("/lists/groceries");
 
-  await page.getByRole("link", { name: "Home" }).click();
+  await page.getByRole("link", { name: "Back to index" }).click();
 
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
