@@ -1,5 +1,5 @@
 [phases.install]
-cmds = []
+cmds = ["pnpm install --prod --frozen-lockfile"]
 
 [phases.build]
 cmds = []
