@@ -24,6 +24,10 @@ const buttonBase = {
 } as const;
 
 export const variant = styleVariants({
+  primary: {
+    ...buttonBase,
+    background: vars.palette.primary,
+  },
   outline: {
     ...buttonBase,
     border: "2px solid currentColor",

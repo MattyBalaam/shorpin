@@ -1,25 +1,27 @@
+import type { ReactNode } from "react";
 import { useMatches, useLocation } from "react-router";
 import { Link } from "~/components/link/link";
 import * as styles from "./breadcrumbs.css";
+import { VisuallyHidden } from "../visually-hidden/visually-hidden";
 
 export interface BreadcrumbDef {
-  label: string | ((data: unknown) => string);
+  label: ReactNode | ((data: unknown) => ReactNode);
   to?: string | ((data: unknown, pathname: string) => string);
 }
 
 // Helper for route handles to declare typed breadcrumb callbacks.
-// Functions are contravariant in their parameters, so `(data: T) => string`
-// isn't directly assignable to `(data: unknown) => string`. The cast is sound
+// Functions are contravariant in their parameters, so `(data: T) => ReactNode`
+// isn't directly assignable to `(data: unknown) => ReactNode`. The cast is sound
 // because the breadcrumb system always passes the matching route's loader data.
 export function breadcrumb<TData>(def: {
-  label: string | ((data: TData) => string);
+  label: ReactNode | ((data: TData) => ReactNode);
   to?: string | ((data: TData, pathname: string) => string);
 }): BreadcrumbDef {
   return def as unknown as BreadcrumbDef;
 }
 
 interface BreadcrumbItem {
-  label: string;
+  label: ReactNode;
   to: string;
 }
 
@@ -60,7 +62,18 @@ export function Breadcrumbs() {
 
   const breadcrumbs = isHomePage
     ? breadcrumbsFromRoutes
-    : [{ label: "Home", to: "/" }, ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/")];
+    : [
+        {
+          label: (
+            <>
+              <VisuallyHidden>Back to index</VisuallyHidden>
+              <span aria-hidden>&#10229;</span>
+            </>
+          ),
+          to: "/",
+        },
+        ...breadcrumbsFromRoutes.filter((crumb) => crumb.to !== "/"),
+      ];
 
   if (breadcrumbs.length === 0) {
     return null;
@@ -79,14 +92,9 @@ export function Breadcrumbs() {
                   {crumb.label}
                 </h1>
               ) : (
-                <>
-                  <Link to={crumb.to} className={styles.link}>
-                    {crumb.label}
-                  </Link>
-                  <span className={styles.separator} aria-hidden="true">
-                    →
-                  </span>
-                </>
+                <Link variant="primary" to={crumb.to} className={styles.link}>
+                  {crumb.label}
+                </Link>
               )}
             </li>
           );

@@ -1,7 +1,6 @@
 node_modules
 
 /.cache
-/build
 .env
 .react-router
 
@@ -11,3 +10,5 @@ test-results
 playwright-report
 .DS_Store
 public/mockServiceWorker.js
+build/
+supabase/.temp/

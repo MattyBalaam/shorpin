@@ -243,10 +243,40 @@ export const handlers = [
     return HttpResponse.json(items.map((item) => ({ id: item.id })));
   }),
 
-  // List items — POST for list action (add new item)
+  // List items — POST for list action (add new item or upsert batch)
   http.post("*/rest/v1/list_items", async ({ request }) => {
     await delay();
-    const body = (await request.json()) as {
+    const isUpsert = (request.headers.get("Prefer") ?? "").includes("resolution=merge-duplicates");
+    const rawBody = await request.json();
+
+    if (isUpsert) {
+      const items = (Array.isArray(rawBody) ? rawBody : [rawBody]) as Array<{
+        id: string;
+        list_id: string;
+        value: string;
+        state: "active" | "deleted";
+        sort_order: number;
+        updated_at: number;
+      }>;
+      for (const body of items) {
+        const existing = listItems.findFirst((q) => q.where({ id: body.id }));
+        if (existing) {
+          await listItems.update((q) => q.where({ id: body.id }), {
+            data(draft) {
+              draft.value = body.value;
+              draft.state = body.state;
+              draft.sort_order = body.sort_order;
+              draft.updated_at = body.updated_at;
+            },
+          });
+        } else {
+          await listItems.create(body);
+        }
+      }
+      return HttpResponse.json([]);
+    }
+
+    const body = rawBody as {
       id?: string;
       list_id: string;
       value: string;

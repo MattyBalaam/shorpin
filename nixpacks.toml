@@ -1,8 +1,8 @@
 [phases.install]
-cmds = ["pnpm install"]
+cmds = []
 
 [phases.build]
-cmds = ["pnpm build"]
+cmds = []
 
 [start]
 cmd = "pnpm start"

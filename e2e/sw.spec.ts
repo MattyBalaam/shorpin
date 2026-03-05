@@ -36,16 +36,18 @@ test.describe("service worker cold start", () => {
 
   test("shows loading spinner when server is slow", async ({ page, context }) => {
     await simulateColdStart(context);
-    void page.goto("/login");
+    void page.goto("/forgot-password");
     await expect(page.locator(".spinner")).toBeVisible({ timeout: 2000 });
   });
 
   test("loads real page after cold-start spinner", async ({ page, context }) => {
     await simulateColdStart(context);
-    void page.goto("/login");
+    void page.goto("/forgot-password");
     await expect(page.locator(".spinner")).toBeVisible({ timeout: 2000 });
     // Poll with X-SW-Poll header succeeds → location.replace fires → SW serves real HTML
-    await expect(page.locator("html[data-hydrated-path='/login']")).toBeAttached({ timeout: 5000 });
+    await expect(page.locator("html[data-hydrated-path='/forgot-password']")).toBeAttached({
+      timeout: 5000,
+    });
   });
 
   test("shows error state after max retries", async ({ page, context }) => {

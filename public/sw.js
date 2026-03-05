@@ -74,14 +74,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // In-app navigations (same-origin referrer) already have React Router's
-  // own loading states — skip the splash screen and let the browser fetch normally.
-  try {
-    if (event.request.referrer && new URL(event.request.referrer).origin === self.location.origin) {
-      return;
-    }
-  } catch {
-    /* malformed referrer — fall through to splash screen */
+  // Skip the splash for same-URL navigations: this covers (1) page reloads
+  // (F5) and (2) the location.replace(location.href) the loading page fires
+  // after its readiness poll succeeds. Both would loop back through this handler
+  // if we served the splash again. React Router's own loading states handle
+  // client-side navigations — those never trigger a SW fetch event at all.
+  if (event.request.referrer && event.request.referrer === event.request.url) {
+    return;
   }
 
   event.respondWith(

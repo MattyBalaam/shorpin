@@ -21,6 +21,7 @@
     "shorpin",
     "subgrid",
     "supabase",
+    "Teardown",
     "tsgo",
     "vitest",
     "waitlist"

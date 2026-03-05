@@ -155,25 +155,29 @@ export async function action({ request, params: { list }, context }: Route.Actio
   }
 
   // Handle updates to existing items and sort order changes
-  for (const [index, { id, value }] of result.output.items.entries()) {
-    if (!existingMap[id]) continue;
+  const itemsToUpdate = result.output.items
+    .map(({ id, value }, index) => ({ id, value, index }))
+    .filter(({ id, value, index }) => {
+      if (!existingMap[id]) return false;
+      return existingMap[id].value !== value || existingMap[id].sortOrder !== index;
+    });
 
-    const valueChanged = existingMap[id].value !== value;
-    const orderChanged = existingMap[id].sortOrder !== index;
+  if (itemsToUpdate.length > 0) {
+    const { error: updateError } = await supabase.from("list_items").upsert(
+      itemsToUpdate.map(({ id, value, index }) => ({
+        id,
+        list_id: listId,
+        value,
+        sort_order: index,
+        updated_at: updatedAt,
+        state: existingMap[id].state,
+      })),
+    );
 
-    if (valueChanged || orderChanged) {
-      const { error: updateError } = await supabase
-        .from("list_items")
-        .update({
-          ...(valueChanged && { value }),
-          ...(orderChanged && { sort_order: index }),
-          updated_at: updatedAt,
-        })
-        .eq("id", id);
-
-      if (updateError) {
-        console.error("Error updating item:", updateError);
-      } else {
+    if (updateError) {
+      console.error("Error updating items:", updateError);
+    } else {
+      for (const { id, value, index } of itemsToUpdate) {
         existingMap[id].value = value;
         existingMap[id].updatedAt = updatedAt;
         existingMap[id].sortOrder = index;
@@ -259,11 +263,10 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const allItems = v.parse(zItems, Object.values(existingMap));
 
-  // Broadcast change to other clients
+  // Broadcast change to other clients (fire-and-forget)
   const clientId = formData.get("clientId");
   const channel = supabase.channel(`list-${listId}`);
-  await channel.httpSend("changed", { clientId });
-  supabase.removeChannel(channel);
+  void channel.httpSend("changed", { clientId }).finally(() => supabase.removeChannel(channel));
 
   return {
     lastDeleted: sortData(allItems.filter(({ state }) => state === "deleted")).at(-1),
