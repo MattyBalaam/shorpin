@@ -5,6 +5,7 @@ const appPort = process.env.APP_SERVER_PORT ?? "5174";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: ["**/supabase-*.spec.ts"],
   fullyParallel: true,
   reporter: [["html", { open: "never" }]],
   use: {
