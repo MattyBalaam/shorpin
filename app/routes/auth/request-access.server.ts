@@ -21,6 +21,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { error } = await supabase.from("waitlist").insert({ email, first_name, last_name });
 
   if (error) {
+    console.error("Error adding to waitlist:", error);
     return report(submission, {
       error: { formErrors: ["Something went wrong. Please try again."] },
     });

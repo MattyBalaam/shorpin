@@ -1,6 +1,15 @@
 import type { Route } from "./+types/home";
 
-import { href, Form as RouterForm, Outlet, useNavigation, type MetaFunction } from "react-router";
+import {
+  href,
+  Form as RouterForm,
+  isRouteErrorResponse,
+  Outlet,
+  useNavigation,
+  useRevalidator,
+  useRouteError,
+  type MetaFunction,
+} from "react-router";
 import { useForm } from "@conform-to/react/future";
 import * as v from "valibot";
 
@@ -11,6 +20,7 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { parseSubmission, report } from "@conform-to/react/future";
 
 import { redirectWithSuccess } from "remix-toast";
+import { requireUser } from "~/lib/supabase.server";
 import { slugify, resolveSlug } from "~/lib/slugify";
 import { Button } from "~/components/button/button";
 
@@ -52,7 +62,10 @@ export async function loader({ context }: Route.LoaderArgs) {
       .eq("state", "active")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (error) throw error;
+        if (error) {
+          console.error("Error loading lists:", error);
+          throw error;
+        }
         return data ?? [];
       }),
     waitlistCount: supabase
@@ -78,9 +91,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await requireUser(supabase);
 
   const { data: matches } = await supabase
     .from("lists")
@@ -93,7 +104,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const { error } = await supabase.from("lists").insert({
     name: listName,
     slug,
-    user_id: user!.id,
+    user_id: user.id,
   });
 
   if (error) {
@@ -218,5 +229,24 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
       </Actions>
       <Outlet />
     </>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const { revalidate, state } = useRevalidator();
+
+  const message =
+    isRouteErrorResponse(error) && error.status === 503
+      ? "Couldn't reach the server."
+      : "Something went wrong.";
+
+  return (
+    <div className={styles.errorState}>
+      <p>{message}</p>
+      <Button onClick={revalidate} isSubmitting={state === "loading"}>
+        Retry
+      </Button>
+    </div>
   );
 }

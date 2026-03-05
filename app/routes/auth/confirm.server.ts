@@ -18,6 +18,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const { error } = await supabase.auth.verifyOtp({ token_hash, type });
 
   if (error) {
+    console.error("Error verifying OTP:", error);
     throw new Response("Invalid or expired link", { status: 400 });
   }
 

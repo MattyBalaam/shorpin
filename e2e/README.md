@@ -65,6 +65,16 @@ If this fails it means React has not taken over the page within 300ms of navigat
 
 The `ctx` fixture forwards all browser console messages and uncaught page errors to the test runner's stdout, prefixed with `[browser][type]`. On CI these appear in the Actions log alongside the Playwright webServer output (which is piped via `stdout: "pipe"`).
 
+### Service worker (`sw.spec.ts`)
+
+The SW only registers in production builds (`import.meta.env.PROD`). Since the e2e tests use `--mode mock` (which Vite treats as a production build), the SW is active during tests.
+
+**Simulating a cold start** — `simulateColdStart` uses `context.route()` (not `page.route()`) to delay the first non-navigation, non-poll fetch by 700ms. `page.route()` intercepts the browser's navigate event before the SW sees it; `context.route()` also covers sub-requests the SW makes to the origin, which is the fetch we need to slow. Navigation requests are skipped (via `isNavigationRequest()`) so the SW receives the navigation event immediately and only its own outbound fetch is delayed. Poll requests (identified by the `x-sw-poll` header) are never delayed so the loading page can recover once the SW starts serving real HTML.
+
+**SW registration in `beforeEach`** — Each test first does a plain navigation to register and activate the SW (`skipWaiting` + `clients.claim`). It then waits for `navigator.serviceWorker.controller !== null` before setting up any route interceptors. This ensures the SW controls the page before the test exercises its behaviour.
+
+**Offline mode** — `context.setOffline(true)` is used for the error-state and retry tests. With no network, the poll requests all fail, exhausting the 30-attempt limit (~6s). These tests are marked `test.slow()` to extend their timeout.
+
 ## Test files
 
 | File               | What it covers                                                       |
@@ -75,6 +85,7 @@ The `ctx` fixture forwards all browser console messages and uncaught page errors
 | `home.spec.ts`     | Home page — create list, list visibility per role, admin link counts |
 | `list.spec.ts`     | List detail — display items, add item, delete item with undo         |
 | `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled          |
+| `sw.spec.ts`       | Service worker — cold-start spinner, error state, retry, history     |
 
 ## Helpers (`helpers.ts`)
 

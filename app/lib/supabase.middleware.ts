@@ -24,9 +24,7 @@ function tokenSecondsLeft(cookieHeader: string): number | null {
     if (!tokenMatch) return null;
     const parts = tokenMatch[1].split(".");
     if (parts.length !== 3) return null; // not a real JWT (e.g. mock token)
-    const { exp } = JSON.parse(
-      Buffer.from(parts[1], "base64url").toString(),
-    ) as { exp: number };
+    const { exp } = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as { exp: number };
     return exp - Math.floor(Date.now() / 1000);
   } catch {
     return null;
@@ -58,13 +56,14 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
   const url = new URL(request.url);
 
   if (!publicRoutes.includes(url.pathname)) {
-    const hasAuthCookie = request.headers.get("Cookie")?.includes("sb-") ?? false;
+    const cookie = request.headers.get("Cookie");
+    const hasAuthCookie = cookie?.includes("sb-") ?? false;
 
     if (!hasAuthCookie) {
       throw redirect(href("/login"), { headers: cookieHeaders });
     }
 
-    const secs = tokenSecondsLeft(request.headers.get("Cookie")!);
+    const secs = tokenSecondsLeft(cookie ?? "");
     console.log(
       `[Supabase Middleware] token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
     );

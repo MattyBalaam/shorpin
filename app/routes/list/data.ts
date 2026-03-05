@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { ADD_ITEM_INTENT } from "./intents";
 
 const zItem = v.object({
   id: v.pipe(v.string(), v.uuid()),
@@ -28,6 +29,7 @@ type ListData = v.InferOutput<typeof zListData>;
 export const zList = v.object({
   name: v.string(),
   new: v.optional(v.string()),
+  "new-submit": v.optional(v.literal(ADD_ITEM_INTENT)),
   items: v.fallback(v.array(zItem), []),
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),

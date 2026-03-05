@@ -1,3 +1,4 @@
+export const ADD_ITEM_INTENT = "add-item";
 const DELETE_PREFIX = "delete-item-";
 const UNDELETE_PREFIX = "undelete-item-";
 
@@ -9,18 +10,24 @@ export function undeleteItemIntent(id: string) {
   return `${UNDELETE_PREFIX}${id}`;
 }
 
-export function isDeleteItemIntent(intent: string | null | undefined): boolean {
+export function isAddItemIntent(intent: string | null | undefined) {
+  return intent === ADD_ITEM_INTENT;
+}
+
+export function isDeleteItemIntent(intent: string | null | undefined) {
   return intent?.startsWith(DELETE_PREFIX) ?? false;
 }
 
-export function isUndeleteItemIntent(intent: string | null | undefined): boolean {
+export function isUndeleteItemIntent(intent: string | null | undefined) {
   return intent?.startsWith(UNDELETE_PREFIX) ?? false;
 }
 
-export function parseDeleteItemIntent(intent: string | null | undefined): string | undefined {
-  return isDeleteItemIntent(intent) ? intent!.slice(DELETE_PREFIX.length) : undefined;
+export function parseDeleteItemIntent(intent: string | null | undefined) {
+  if (typeof intent !== "string") return undefined;
+  return isDeleteItemIntent(intent) ? intent.slice(DELETE_PREFIX.length) : undefined;
 }
 
-export function parseUndeleteItemIntent(intent: string | null | undefined): string | undefined {
-  return isUndeleteItemIntent(intent) ? intent!.slice(UNDELETE_PREFIX.length) : undefined;
+export function parseUndeleteItemIntent(intent: string | null | undefined) {
+  if (typeof intent !== "string") return undefined;
+  return isUndeleteItemIntent(intent) ? intent.slice(UNDELETE_PREFIX.length) : undefined;
 }

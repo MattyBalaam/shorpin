@@ -1,9 +1,18 @@
 import type { Route } from "./+types/list";
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigation, useRevalidator, type ShouldRevalidateFunctionArgs } from "react-router";
+import {
+  href,
+  isRouteErrorResponse,
+  useNavigation,
+  useRevalidator,
+  useRouteError,
+  useSubmit,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { Items } from "~/components/items";
+import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 
 import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
 import * as v from "valibot";
@@ -14,7 +23,13 @@ export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
-import { isDeleteItemIntent, isUndeleteItemIntent, undeleteItemIntent } from "./intents";
+import {
+  ADD_ITEM_INTENT,
+  isAddItemIntent,
+  isDeleteItemIntent,
+  isUndeleteItemIntent,
+  undeleteItemIntent,
+} from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -31,10 +46,12 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   } catch (error) {
     console.error("Error in clientLoader", error);
 
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      if (cachedLoaderData) {
-        return cachedLoaderData;
-      }
+    const isNetworkOrServerError =
+      (error instanceof TypeError && error.message.includes("fetch")) ||
+      (isRouteErrorResponse(error) && error.status >= 500);
+
+    if (isNetworkOrServerError && cachedLoaderData) {
+      return cachedLoaderData;
     }
     throw error;
   }
@@ -66,14 +83,19 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     const result = v.safeParse(zList, submission.payload);
 
     if (!result.success) {
-      throw new Error("fix me");
+      return {
+        lastDeleted: undefined,
+        lastResult: report(submission, { error: { issues: result.issues } }),
+      };
     }
 
     // Get current items from form
     const currentItems = result.output.items;
 
+    const toAdd = isAddItemIntent(result.output["new-submit"]);
+
     // Add new item if present
-    if (result.output.new) {
+    if (result.output.new && toAdd) {
       currentItems.push({
         id: crypto.randomUUID(),
         value: result.output.new,
@@ -85,10 +107,10 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     return {
       lastDeleted: undefined,
       lastResult: report(submission, {
-        reset: Boolean(result.output.new),
+        reset: toAdd && Boolean(result.output.new),
         value: {
           ...submission.payload,
-          new: "",
+          new: toAdd ? "" : (result.output.new ?? ""),
           items: currentItems,
         },
       }),
@@ -125,9 +147,9 @@ export function HydrateFallback() {
 }
 
 export const handle = {
-  breadcrumb: {
-    label: (data: any) => data?.defaultValue?.name || "List",
-  },
+  breadcrumb: breadcrumb<Route.ComponentProps["loaderData"]>({
+    label: (data) => data?.defaultValue?.name ?? "List",
+  }),
 };
 
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
@@ -151,7 +173,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     return id;
   });
 
-  const reorderSubmitRef = useRef<HTMLButtonElement>(null);
+  const submit = useSubmit();
   const formRef = useRef<HTMLFormElement>(null);
   const isOnline = useIsOnline({
     onOffline: () => {
@@ -171,21 +193,25 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       let cancelled = false;
       let cleanup: (() => void) | undefined;
 
-      import("~/lib/supabase.client").then(({ realtimeClient }) => {
-        if (cancelled) return;
+      import("~/lib/supabase.client")
+        .then(({ realtimeClient }) => {
+          if (cancelled) return;
 
-        const channel = realtimeClient
-          .channel(`list-${loaderData.listId}`)
-          .on("broadcast", { event: "changed" }, ({ payload }) => {
-            if (payload.clientId !== clientId) {
-              toast.info("List updated by another user");
-              revalidate();
-            }
-          })
-          .subscribe();
+          const channel = realtimeClient
+            .channel(`list-${loaderData.listId}`)
+            .on("broadcast", { event: "changed" }, ({ payload }) => {
+              if (payload.clientId !== clientId) {
+                toast.info("List updated by another user");
+                revalidate();
+              }
+            })
+            .subscribe();
 
-        cleanup = () => realtimeClient.removeChannel(channel);
-      });
+          cleanup = () => realtimeClient.removeChannel(channel);
+        })
+        .catch((error) => {
+          console.error("Failed to load Supabase realtime client:", error);
+        });
 
       return () => {
         cancelled = true;
@@ -256,6 +282,17 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         return [];
       }
 
+      // Guard: AnimatePresence keeps a deleted item's <input> elements in the
+      // DOM during its exit animation. Conform re-numbers the remaining items
+      // into those same positions, causing two inputs to share the same name
+      // (e.g. items[1][id]). parseSubmission stores an array for that field,
+      // UUID validation fails, v.fallback fires → items becomes [].
+      // When that happens every defaultValue item looks "edited". Return []
+      // instead so we don't show false indicators during the brief animation.
+      if (result.output.items.length === 0 && defaultValue.items.length > 0) {
+        return [];
+      }
+
       return defaultValue.items
         .filter(
           ({ value, id }) => result.output.items?.find((item) => item?.id === id)?.value !== value,
@@ -279,16 +316,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         method="POST"
         className={styles.form}
       >
-        {/* hidden submit button which will be used if a user presses enter or reorders */}
-        <button
-          ref={reorderSubmitRef}
-          type="submit"
-          value="new"
-          name="new-submit"
-          className={styles.hiddenSubmit}
-        >
-          Update
-        </button>
+        {/* hidden submit button captures Enter key presses to add a new item */}
+        <VisuallyHidden>
+          <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
+            Update
+          </button>
+        </VisuallyHidden>
 
         <input
           name={fields.name.name}
@@ -309,7 +342,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             fieldMetadata={fields.items}
             edited={edited}
             pendingItem={
-              state === "submitting" && formData?.get("new-submit") === "new"
+              state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
                 ? (formData.get(fields.new.name) as string)
                 : null
             }
@@ -326,7 +359,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             onReorderComplete={() => {
               // Wait for React to flush the intent.update() before submitting
               requestAnimationFrame(() => {
-                reorderSubmitRef.current?.click();
+                submit(formRef.current);
               });
             }}
           />
@@ -340,7 +373,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <input name={fields.new.name} id={fields.new.id} autoFocus autoComplete="off" />
             <Button
               type="submit"
-              value="new"
+              value={ADD_ITEM_INTENT}
               name="new-submit"
               isSubmitting={state === "submitting"}
             >
@@ -361,5 +394,33 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         </Actions>
       </Form>
     </Theme>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const { revalidate, state } = useRevalidator();
+
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <div className={styles.errorState}>
+        <p>{error.data?.message ?? "List not found."}</p>
+        <Link to={href("/")}>Back to home</Link>
+      </div>
+    );
+  }
+
+  const message =
+    isRouteErrorResponse(error) && error.status === 503
+      ? "Couldn't reach the server."
+      : "Something went wrong.";
+
+  return (
+    <div className={styles.errorState}>
+      <p>{message}</p>
+      <Button onClick={revalidate} isSubmitting={state === "loading"}>
+        Retry
+      </Button>
+    </div>
   );
 }

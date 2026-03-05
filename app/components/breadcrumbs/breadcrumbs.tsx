@@ -2,12 +2,20 @@ import { useMatches, useLocation } from "react-router";
 import { Link } from "~/components/link/link";
 import * as styles from "./breadcrumbs.css";
 
-interface BreadcrumbDef {
-  // data is unknown here — each route passes its own loader data shape.
-  // Route handles that need to access properties should use `data: any` in
-  // their callbacks (pragmatic for polymorphic data) or cast to their Route type.
+export interface BreadcrumbDef {
   label: string | ((data: unknown) => string);
   to?: string | ((data: unknown, pathname: string) => string);
+}
+
+// Helper for route handles to declare typed breadcrumb callbacks.
+// Functions are contravariant in their parameters, so `(data: T) => string`
+// isn't directly assignable to `(data: unknown) => string`. The cast is sound
+// because the breadcrumb system always passes the matching route's loader data.
+export function breadcrumb<TData>(def: {
+  label: string | ((data: TData) => string);
+  to?: string | ((data: TData, pathname: string) => string);
+}): BreadcrumbDef {
+  return def as unknown as BreadcrumbDef;
 }
 
 interface BreadcrumbItem {
@@ -38,10 +46,13 @@ export function Breadcrumbs() {
       };
 
       if (handle.breadcrumbs) {
-        return handle.breadcrumbs.map((def) => resolveBreadcrumb(def, match.data, match.pathname));
+        return handle.breadcrumbs.map((def) =>
+          resolveBreadcrumb(def, match.loaderData, match.pathname),
+        );
       }
 
-      return resolveBreadcrumb(handle.breadcrumb!, match.data, match.pathname);
+      if (!handle.breadcrumb) return [];
+      return resolveBreadcrumb(handle.breadcrumb, match.loaderData, match.pathname);
     });
 
   // If we're on the home page, only show "Home" as current page

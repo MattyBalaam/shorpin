@@ -11,8 +11,10 @@
   "editor.defaultFormatter": "oxc.oxc-vscode",
 
   "cSpell.words": [
+    "apikey",
     "collab",
     "oxfmt",
+    "oxlint",
     "picklist",
     "Reorderable",
     "Revalidator",
@@ -21,7 +23,6 @@
     "supabase",
     "tsgo",
     "vitest",
-    "apikey",
     "waitlist"
   ],
   "[typescriptreact]": {

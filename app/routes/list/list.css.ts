@@ -10,10 +10,6 @@ export const form = style({
   overflow: "hidden",
 });
 
-export const hiddenSubmit = style({
-  display: "none",
-});
-
 export const undoButton = style({
   gridColumnStart: "input",
   gridColumnEnd: "done",
@@ -37,4 +33,16 @@ export const topActions = style({
 
 export const deleteLink = style({
   color: vars.palette.error,
+});
+
+export const errorState = style({
+  gridColumn: "content",
+  gridRow: "content / -1",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: vars.spacing.lg,
+  textAlign: "center",
+  paddingInline: vars.spacing.appMargin,
 });
