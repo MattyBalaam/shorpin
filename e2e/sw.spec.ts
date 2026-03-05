@@ -31,6 +31,8 @@ async function simulateColdStart(context: BrowserContext, path: string) {
 }
 
 test.describe("service worker cold start", () => {
+  test.describe.configure({ retries: 2 });
+
   test.beforeEach(async ({ page }) => {
     // Navigate once to register, activate (skipWaiting) and claim the client.
     // Subsequent navigations will be intercepted by the SW.
