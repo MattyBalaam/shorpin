@@ -61,12 +61,6 @@ clientLoader.hydrate = true as const;
 
 // Prevent revalidation when offline, but allow initial navigation to this route
 export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
-  console.log("shouldRevalidate", {
-    currentUrl,
-    nextUrl,
-    isOnline: navigator.onLine,
-  });
-
   const isRevalidation = currentUrl.pathname === nextUrl.pathname;
   if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
     return false;
