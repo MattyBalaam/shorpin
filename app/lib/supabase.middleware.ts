@@ -88,6 +88,17 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
     response.headers.append(key, value);
   }
 
+  // Cache authenticated HTML navigations in the browser — stale-while-revalidate
+  // means back-navigations and repeat visits feel instant while a fresh copy is
+  // fetched in the background. Scoped to navigation requests on non-public routes
+  // so data fetches and the SW's offline error-state logic are unaffected.
+  if (
+    !publicRoutes.includes(url.pathname) &&
+    request.headers.get("Sec-Fetch-Mode") === "navigate"
+  ) {
+    response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=30");
+  }
+
   console.log(`[Supabase Middleware] return full flow  in ${performance.now() - start}ms`);
 
   return response;
