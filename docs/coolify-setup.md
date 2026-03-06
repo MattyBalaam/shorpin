@@ -4,15 +4,15 @@ Docker images are built by GitHub Actions and pushed to GHCR (GitHub Container R
 
 ## One-time setup
 
-### 1. Add GHCR credentials to Coolify
+### 1. Add GHCR credentials to the server
 
-Coolify needs read access to pull the image from `ghcr.io`.
+Coolify 4 has no registry UI — credentials are set by logging in to Docker on the server directly, and Coolify picks them up automatically.
 
 1. Create a GitHub Personal Access Token (PAT) with the `read:packages` scope at <https://github.com/settings/tokens>
-2. In Coolify → **Sources** (or **Private Registries**), add a new registry:
-   - Registry URL: `ghcr.io`
-   - Username: your GitHub username
-   - Password: the PAT from above
+2. SSH into your Coolify server and run:
+   ```sh
+   echo YOUR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+   ```
 
 ### 2. Switch the app to use the pre-built image
 
@@ -22,7 +22,6 @@ Coolify needs read access to pull the image from `ghcr.io`.
    ```
    ghcr.io/mattybalaam/shorpin:latest
    ```
-4. Attach the GHCR registry credential added above
 
 ### 3. Set runtime environment variables
 
