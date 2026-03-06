@@ -6,16 +6,20 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("lists")
-    .select("id, name, user_id")
-    .eq("slug", list)
-    .eq("state", "active")
-    .single();
+  const [
+    {
+      data: { user },
+    },
+    { data, error },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("lists")
+      .select("id, name, user_id")
+      .eq("slug", list)
+      .eq("state", "active")
+      .single(),
+  ]);
 
   if (error || !data) {
     if (error) console.error("Error loading list config:", error);
