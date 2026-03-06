@@ -4,6 +4,7 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { reactRouterDevTools } from "react-router-devtools";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
+import babel from "vite-plugin-babel";
 import devtoolsJson from "vite-plugin-devtools-json";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -20,6 +21,7 @@ export default defineConfig(({ mode }) => ({
     devtoolsJson(),
     // reactRouterDevTools(),
     vanillaExtractPlugin(),
+    babel({ babelConfig: { plugins: ["babel-plugin-react-compiler"] } }),
     reactRouter(),
     tsconfigPaths(),
     sentryVitePlugin({
