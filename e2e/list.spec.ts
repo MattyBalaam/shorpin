@@ -101,6 +101,25 @@ test("edited icon does not appear on unedited items while another item is being 
   );
 });
 
+test("when offline, the offline indicator appears and cached list data remains visible", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await page.getByRole("link", { name: "Shopping" }).click();
+  await page.waitForURL("/lists/shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+  // Items should remain visible from the clientLoader cache
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  await expect(page.getByLabel("Edit Bread")).toBeVisible();
+  await expect(page.getByLabel("Edit Eggs")).toBeVisible();
+});
+
 test("collab sees real-time update when owner adds an item", async ({ browser, ctx }) => {
   // Two isolated browser contexts simulate two separate users
   const ownerContext = await browser.newContext({ baseURL });
