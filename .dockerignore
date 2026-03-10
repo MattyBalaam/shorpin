@@ -1,0 +1,10 @@
+node_modules
+build
+.git
+.github
+playwright-report
+test-results
+supabase/.branches
+supabase/.temp
+.env*
+*.local
