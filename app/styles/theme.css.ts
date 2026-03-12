@@ -55,4 +55,10 @@ export const [themeClass, vars] = createTheme({
     semibold: "600",
     bold: "700",
   },
+  radius: {
+    // 9999px clamps to half the element's shortest side, giving a true pill
+    // shape regardless of content width. 50% would produce an ellipse on
+    // non-square elements, so a large fixed value is the correct approach.
+    pill: "9999px",
+  },
 });

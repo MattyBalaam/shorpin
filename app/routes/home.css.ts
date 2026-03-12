@@ -65,7 +65,7 @@ export const unreadBadge = style({
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
   color: vars.palette.text,
-  borderRadius: "9999px",
+  borderRadius: vars.radius.pill,
   paddingInline: vars.spacing.sm,
   minWidth: "1.5em",
   textAlign: "center",
