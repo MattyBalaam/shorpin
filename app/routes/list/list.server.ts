@@ -12,13 +12,16 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
-  const { data, error } = await supabase
-    .from("lists")
-    .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
-    .eq("slug", list)
-    .eq("state", "active")
-    .order("sort_order", { referencedTable: "list_items", ascending: true })
-    .single();
+  const [{ data, error }, { data: authData }] = await Promise.all([
+    supabase
+      .from("lists")
+      .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
+      .eq("slug", list)
+      .eq("state", "active")
+      .order("sort_order", { referencedTable: "list_items", ascending: true })
+      .single(),
+    supabase.auth.getUser(),
+  ]);
 
   if (error || !data) {
     if (error) console.error("Error loading list:", error);
@@ -40,6 +43,17 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
       "List does not exist",
       { status: 404 },
     );
+  }
+
+  // Record that this user viewed the list — awaited so the home page reflects
+  // the updated viewed_at on the very next navigation.
+  if (authData.user) {
+    await supabase
+      .from("list_views")
+      .upsert(
+        { list_id: data.id, user_id: authData.user.id, viewed_at: Date.now() },
+        { onConflict: "list_id,user_id" },
+      );
   }
 
   const items = data.list_items.map((item) => ({

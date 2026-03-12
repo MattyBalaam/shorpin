@@ -44,6 +44,13 @@ const waitlistSchema = v.object({
   created_at: v.optional(v.string()),
 });
 
+const listViewsSchema = v.object({
+  id: v.string(), // synthetic PK for @msw/data — not in the real DB schema
+  list_id: v.string(),
+  user_id: v.string(),
+  viewed_at: v.number(),
+});
+
 // ── Collections ───────────────────────────────────────────────────────────────
 
 export const users = new Collection({ schema: usersSchema });
@@ -51,6 +58,7 @@ export const lists = new Collection({ schema: listsSchema });
 export const listMembers = new Collection({ schema: listMembersSchema });
 export const listItems = new Collection({ schema: listItemsSchema });
 export const waitlist = new Collection({ schema: waitlistSchema });
+export const listViews = new Collection({ schema: listViewsSchema });
 
 // ── Contract checks ───────────────────────────────────────────────────────────
 // Each field must be `true`. If a mock schema field diverges from the real
@@ -63,6 +71,7 @@ void ({
   listMembers: true,
   listItems: true,
   waitlist: true,
+  listViews: true,
 } satisfies {
   users: InferOutput<typeof usersSchema> extends Partial<Tables<"profiles">> ? true : false;
   lists: InferOutput<typeof listsSchema> extends Partial<Tables<"lists">> ? true : false;
@@ -73,4 +82,7 @@ void ({
     ? true
     : false;
   waitlist: InferOutput<typeof waitlistSchema> extends Partial<Tables<"waitlist">> ? true : false;
+  listViews: InferOutput<typeof listViewsSchema> extends Partial<Tables<"list_views">>
+    ? true
+    : false;
 });

@@ -120,6 +120,43 @@ test("when offline, the offline indicator appears and cached list data remains v
   await expect(page.getByLabel("Edit Eggs")).toBeVisible();
 });
 
+test("item added by collaborator appears as unread for owner on home page", async ({
+  browser,
+  ctx,
+}) => {
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    // Owner opens the list — records viewed_at covering all current items
+    await ownerPage.goto("/lists/shopping");
+    await ownerPage.waitForURL("/lists/shopping");
+    await expect(ownerPage.getByLabel("Edit Milk")).toBeVisible();
+
+    // Owner goes back home — no unread badge because viewed_at > all item timestamps
+    await ownerPage.goto("/");
+    await expect(ownerPage.getByLabel(/unread/)).not.toBeVisible();
+
+    // Collab adds a new item to the same list
+    await collabPage.goto("/lists/shopping");
+    await collabPage.getByLabel("New item").fill("Butter");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
+
+    // Owner refreshes home — the new item's updated_at is after owner's viewed_at
+    await ownerPage.reload();
+    await expect(ownerPage.getByLabel("1 unread")).toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
 test("collab sees real-time update when owner adds an item", async ({ browser, ctx }) => {
   // Two isolated browser contexts simulate two separate users
   const ownerContext = await browser.newContext({ baseURL });

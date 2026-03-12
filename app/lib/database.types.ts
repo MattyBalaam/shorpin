@@ -69,6 +69,32 @@ export type Database = {
           },
         ];
       };
+      list_views: {
+        Row: {
+          list_id: string;
+          user_id: string;
+          viewed_at: number;
+        };
+        Insert: {
+          list_id: string;
+          user_id: string;
+          viewed_at: number;
+        };
+        Update: {
+          list_id?: string;
+          user_id?: string;
+          viewed_at?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "list_views_list_id_fkey";
+            columns: ["list_id"];
+            isOneToOne: false;
+            referencedRelation: "lists";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       list_members: {
         Row: {
           created_at: string | null;

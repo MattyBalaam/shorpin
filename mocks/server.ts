@@ -3,7 +3,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { setupServer } from "msw/node";
 import { seed } from "./seed.ts";
 import { handlers } from "./handlers.ts";
-import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { users, lists, listItems, listMembers, waitlist, listViews } from "./db.ts";
 import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
 
 // Seed fixed dev users at startup so pnpm dev works without any setup.
@@ -76,6 +76,10 @@ const httpServer = createServer(async (req, res) => {
       // Remove memberships where this user is a collaborator on other lists
       const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
       memberships.forEach((m) => listMembers.delete((q) => q.where({ id: m.id })));
+
+      // Remove list_views for this user
+      const views = listViews.findMany((q) => q.where({ user_id: user.id }));
+      views.forEach((v) => listViews.delete((q) => q.where({ id: v.id })));
 
       users.delete((q) => q.where({ id: user.id }));
     }

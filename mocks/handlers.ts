@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from "msw";
-import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { users, lists, listItems, listMembers, waitlist, listViews } from "./db.ts";
 import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
 
 function emailFromRequest(request: Request): string | null {
@@ -163,7 +163,22 @@ export const handlers = [
       .findMany((q) => q.where({ state: "active" }))
       .filter((l) => memberListIds.has(l.id) && l.user_id !== user.id);
 
-    return HttpResponse.json([...ownedLists, ...sharedLists]);
+    const allLists = [...ownedLists, ...sharedLists];
+
+    // Embed list_items when the select param requests them (home page unread count query)
+    const selectParam = url.searchParams.get("select") ?? "";
+    if (!selectParam.includes("list_items")) {
+      return HttpResponse.json(allLists);
+    }
+
+    return HttpResponse.json(
+      allLists.map((l) => ({
+        ...l,
+        list_items: listItems
+          .findMany((q) => q.where({ list_id: l.id }))
+          .map((item) => ({ updated_at: item.updated_at, state: item.state })),
+      })),
+    );
   }),
 
   // Lists — POST for home action (create new list)
@@ -328,6 +343,43 @@ export const handlers = [
     if (inMatch) {
       const ids = inMatch[1].split(",");
       ids.forEach((id) => listItems.delete((q) => q.where({ id })));
+    }
+    return HttpResponse.json([]);
+  }),
+
+  // List views — GET (returns the current user's viewed_at records)
+  http.get("*/rest/v1/list_views", async ({ request }) => {
+    await delay();
+    const email = emailFromRequest(request);
+    const user = email ? users.findFirst((q) => q.where({ email })) : null;
+    if (!user) return HttpResponse.json([], { status: 401 });
+    const views = listViews.findMany((q) => q.where({ user_id: user.id }));
+    return HttpResponse.json(views.map((v) => ({ list_id: v.list_id, viewed_at: v.viewed_at })));
+  }),
+
+  // List views — POST (upsert viewed_at when a user opens a list)
+  http.post("*/rest/v1/list_views", async ({ request }) => {
+    await delay();
+    const email = emailFromRequest(request);
+    const user = email ? users.findFirst((q) => q.where({ email })) : null;
+    if (!user) return HttpResponse.json([], { status: 401 });
+    const body = (await request.json()) as { list_id: string; user_id: string; viewed_at: number };
+    const existing = listViews.findFirst((q) =>
+      q.where({ list_id: body.list_id, user_id: user.id }),
+    );
+    if (existing) {
+      await listViews.update((q) => q.where({ id: existing.id }), {
+        data(draft) {
+          draft.viewed_at = body.viewed_at;
+        },
+      });
+    } else {
+      await listViews.create({
+        id: crypto.randomUUID(),
+        list_id: body.list_id,
+        user_id: user.id,
+        viewed_at: body.viewed_at,
+      });
     }
     return HttpResponse.json([]);
   }),
