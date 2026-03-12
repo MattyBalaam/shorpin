@@ -53,6 +53,14 @@ export const itemConfig = style({
   zIndex: 1,
 });
 
+export const itemTotal = style({
+  fontSize: vars.fontSize.xs,
+  opacity: 0.6,
+  flexShrink: 0,
+  zIndex: 1,
+  alignSelf: "center",
+});
+
 export const unreadBadge = style({
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,

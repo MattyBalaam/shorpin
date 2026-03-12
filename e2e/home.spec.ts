@@ -65,7 +65,7 @@ test("shows unread badge for lists not yet opened", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Shopping has 3 seeded items and has never been opened — all 3 are unread
-  await expect(page.getByLabel("3 of 3 unread")).toBeVisible();
+  await expect(page.getByLabel("3 unread")).toBeVisible();
 });
 
 test("empty list shows no unread badge", async ({ page, ctx }) => {
@@ -82,7 +82,7 @@ test("unread badge clears after opening the list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Badge visible before opening
-  await expect(page.getByLabel("3 of 3 unread")).toBeVisible();
+  await expect(page.getByLabel("3 unread")).toBeVisible();
 
   // Open the list — loader upserts a list_view
   await page.getByRole("link", { name: "Shopping" }).click();
@@ -93,7 +93,7 @@ test("unread badge clears after opening the list", async ({ page, ctx }) => {
   await page.waitForURL("/");
 
   // Badge should be gone — viewed_at is now newer than all item timestamps
-  await expect(page.getByLabel("3 of 3 unread")).not.toBeVisible();
+  await expect(page.getByLabel("3 unread")).not.toBeVisible();
 });
 
 test("collaborator sees unread badge for shared list not yet opened", async ({ page, ctx }) => {
