@@ -53,6 +53,19 @@ export const itemConfig = style({
   zIndex: 1,
 });
 
+export const unreadBadge = style({
+  fontSize: vars.fontSize.xs,
+  background: vars.palette.primary,
+  color: vars.palette.text,
+  borderRadius: "9999px",
+  paddingInline: vars.spacing.sm,
+  minWidth: "1.5em",
+  textAlign: "center",
+  flexShrink: 0,
+  zIndex: 1,
+  alignSelf: "center",
+});
+
 const shimmer = keyframes({
   "0%, 100%": { opacity: 1 },
   "50%": { opacity: 0.4 },

@@ -54,20 +54,34 @@ export async function loader({ context }: Route.LoaderArgs) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const listsPromise = supabase
+    .from("lists")
+    .select("id, name, slug, user_id, list_items(updated_at, state)")
+    .eq("state", "active")
+    .order("created_at", { ascending: false })
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Error loading lists:", error);
+        throw error;
+      }
+      return data ?? [];
+    });
+
+  const viewsPromise = supabase
+    .from("list_views")
+    .select("list_id, viewed_at")
+    .then(({ data }) => Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at])));
+
   return {
     userId: user?.id,
-    lists: supabase
-      .from("lists")
-      .select("id, name, slug, user_id")
-      .eq("state", "active")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Error loading lists:", error);
-          throw error;
-        }
-        return data ?? [];
-      }),
+    lists: Promise.all([listsPromise, viewsPromise]).then(([lists, viewedAtMap]) =>
+      lists.map(({ list_items, ...list }) => ({
+        ...list,
+        unreadCount: list_items.filter(
+          (item) => item.state === "active" && item.updated_at > (viewedAtMap[list.id] ?? 0),
+        ).length,
+      })),
+    ),
     waitlistCount: supabase
       .from("waitlist")
       .select("*", { count: "exact", head: true })
@@ -120,7 +134,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   );
 }
 
-type ListItem = { id: string; name: string; slug: string; user_id: string };
+type ListItem = { id: string; name: string; slug: string; user_id: string; unreadCount: number };
 
 function ListsSkeleton() {
   return (
@@ -155,7 +169,7 @@ function Lists({
 
   return (
     <ul className={styles.list}>
-      {lists.map(({ id, name, slug, user_id }) => {
+      {lists.map(({ id, name, slug, user_id, unreadCount }) => {
         const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
@@ -163,6 +177,11 @@ function Lists({
               <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
                 {name}
               </Link>
+              {unreadCount > 0 && (
+                <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
+                  {unreadCount}
+                </span>
+              )}
               {isOwner && (
                 <Link
                   className={styles.itemConfig}

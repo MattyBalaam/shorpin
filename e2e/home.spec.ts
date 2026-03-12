@@ -60,3 +60,48 @@ test("shows an error message when list creation fails", async ({ page, ctx }) =>
 
   await expect(page.getByText("Failed to create list. Please try again.")).toBeVisible();
 });
+
+test("shows unread badge for lists not yet opened", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  // Shopping has 3 seeded items and has never been opened — all 3 are unread
+  await expect(page.getByLabel("3 unread")).toBeVisible();
+});
+
+test("empty list shows no unread badge", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  // Owner Empty has no items so no badge
+  const emptyRow = page
+    .locator("li")
+    .filter({ has: page.getByRole("link", { name: "Owner Empty" }) });
+  await expect(emptyRow.getByLabel(/unread/)).not.toBeVisible();
+});
+
+test("unread badge clears after opening the list", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  // Badge visible before opening
+  await expect(page.getByLabel("3 unread")).toBeVisible();
+
+  // Open the list — loader upserts a list_view
+  await page.getByRole("link", { name: "Shopping" }).click();
+  await page.waitForURL("/lists/shopping");
+
+  // Navigate back to home
+  await page.getByRole("link", { name: "Back to index" }).click();
+  await page.waitForURL("/");
+
+  // Badge should be gone — viewed_at is now newer than all item timestamps
+  await expect(page.getByLabel("3 unread")).not.toBeVisible();
+});
+
+test("collaborator sees unread badge for shared list not yet opened", async ({ page, ctx }) => {
+  await login(page, ctx.collabEmail);
+
+  // Shopping is shared with collab and collab has never opened it
+  const shoppingRow = page
+    .locator("li")
+    .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
+  await expect(shoppingRow.getByLabel(/unread/)).toBeVisible();
+});
