@@ -150,7 +150,7 @@ test("item added by collaborator appears as unread for owner on home page", asyn
 
     // Owner refreshes home — the new item's updated_at is after owner's viewed_at
     await ownerPage.reload();
-    await expect(ownerPage.getByLabel("1 unread")).toBeVisible();
+    await expect(ownerPage.getByLabel("1 of 4 unread")).toBeVisible();
   } finally {
     await ownerContext.close();
     await collabContext.close();

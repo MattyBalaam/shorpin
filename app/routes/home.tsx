@@ -75,12 +75,15 @@ export async function loader({ context }: Route.LoaderArgs) {
   return {
     userId: user?.id,
     lists: Promise.all([listsPromise, viewsPromise]).then(([lists, viewedAtMap]) =>
-      lists.map(({ list_items, ...list }) => ({
-        ...list,
-        unreadCount: list_items.filter(
-          (item) => item.state === "active" && item.updated_at > (viewedAtMap[list.id] ?? 0),
-        ).length,
-      })),
+      lists.map(({ list_items, ...list }) => {
+        const activeItems = list_items.filter((item) => item.state === "active");
+        return {
+          ...list,
+          totalCount: activeItems.length,
+          unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
+            .length,
+        };
+      }),
     ),
     waitlistCount: supabase
       .from("waitlist")
@@ -134,7 +137,14 @@ export async function action({ request, context }: Route.ActionArgs) {
   );
 }
 
-type ListItem = { id: string; name: string; slug: string; user_id: string; unreadCount: number };
+type ListItem = {
+  id: string;
+  name: string;
+  slug: string;
+  user_id: string;
+  unreadCount: number;
+  totalCount: number;
+};
 
 function ListsSkeleton() {
   return (
@@ -169,7 +179,7 @@ function Lists({
 
   return (
     <ul className={styles.list}>
-      {lists.map(({ id, name, slug, user_id, unreadCount }) => {
+      {lists.map(({ id, name, slug, user_id, unreadCount, totalCount }) => {
         const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
@@ -178,8 +188,11 @@ function Lists({
                 {name}
               </Link>
               {unreadCount > 0 && (
-                <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
-                  {unreadCount}
+                <span
+                  className={styles.unreadBadge}
+                  aria-label={`${unreadCount} of ${totalCount} unread`}
+                >
+                  {unreadCount}/{totalCount}
                 </span>
               )}
               {isOwner && (
