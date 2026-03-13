@@ -187,14 +187,17 @@ function Lists({
               <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
                 {name}
               </Link>
-              <span className={styles.itemTotal} aria-label={`${totalCount} items`}>
-                {totalCount}
-              </span>
+
               {unreadCount > 0 && (
-                <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
+                <span className={styles.unreadBadge}>
                   {unreadCount}
+                  <VisuallyHidden> unread</VisuallyHidden>
                 </span>
               )}
+              <span className={styles.itemTotal}>
+                {totalCount}
+                <VisuallyHidden> items</VisuallyHidden>
+              </span>
               {isOwner && (
                 <Link
                   className={styles.itemConfig}

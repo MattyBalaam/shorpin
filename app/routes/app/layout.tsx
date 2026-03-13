@@ -1,4 +1,5 @@
-import { Form, Outlet, href } from "react-router";
+import { useEffect } from "react";
+import { Form, Outlet, href, useRouteLoaderData } from "react-router";
 import { Breadcrumbs } from "~/components/breadcrumbs/breadcrumbs";
 import {
   OnlineStatusIndicator,
@@ -7,10 +8,24 @@ import {
 import { Button } from "~/components/button/button";
 import * as styles from "./layout.css";
 import { LazyMotion } from "motion/react";
+import { Toaster, toast } from "sonner";
+import type { loader as rootLoader } from "~/root";
 
 const loadFeatures = () => import("~/motion-features").then((m) => m.default);
 
 export default function AppLayout() {
+  const rootData = useRouteLoaderData<typeof rootLoader>("root");
+  const notification = rootData?.toast;
+
+  useEffect(
+    function showNewToast() {
+      if (notification) {
+        toast[notification.type](notification.message);
+      }
+    },
+    [notification],
+  );
+
   return (
     <LazyMotion features={loadFeatures} strict>
       <OnlineStatusProvider>
@@ -25,6 +40,7 @@ export default function AppLayout() {
           </Button>
         </Form>
         <Outlet />
+        <Toaster position="top-right" />
       </OnlineStatusProvider>
     </LazyMotion>
   );

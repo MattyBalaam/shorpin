@@ -15,8 +15,6 @@ import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
-import { Toaster, toast } from "sonner";
-
 import "./app.css";
 import "~/styles/typography.css";
 
@@ -71,7 +69,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App({ loaderData: { toast: notification } }: Route.ComponentProps) {
+export default function App() {
   const { pathname } = useLocation();
 
   useEffect(
@@ -81,22 +79,10 @@ export default function App({ loaderData: { toast: notification } }: Route.Compo
     [pathname],
   );
 
-  useEffect(
-    function showNewToast() {
-      if (notification) {
-        toast[notification.type](notification.message);
-      }
-    },
-    [notification],
-  );
-
   return (
-    <>
-      <main className={styles.main}>
-        <Outlet />
-      </main>
-      <Toaster position="top-right" />
-    </>
+    <main className={styles.main}>
+      <Outlet />
+    </main>
   );
 }
 
