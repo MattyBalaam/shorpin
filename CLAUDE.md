@@ -58,6 +58,29 @@ pnpm test:e2e            # run appropriate e2e tests
 
 Do not commit if tests are failing or if the user has indicated the work is incomplete.
 
+## Commit Messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) with this format:
+
+```
+<type>(<scope>): <subject>
+
+- <bullet point description>
+- <another bullet point>
+
+Closes #<issue>
+```
+
+Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `chore`, `test`, `style`, `revert`
+
+Guidelines:
+
+- Keep subject under 50 characters
+- Use imperative mood: "Add feature" not "Added feature"
+- Explain "what" and "why", not "how"
+- Use `!` after type for breaking changes: `feat(api)!:` or include `BREAKING CHANGE:` footer
+- Group changes by intent (e.g., don't mix refactors with new features)
+
 ## Scripts
 
 Always use `pnpx` instead of `npx`. Use pnpm scripts over direct tool commands:
