@@ -187,6 +187,27 @@ await expect(page.locator('input[value="Milk"]')).toBeVisible();
 
 Prefer improving accessibility in the component (adding a `<label>` or `aria-label`) over reaching for an attribute selector.
 
+### Accessibility
+
+#### Prefer screen reader-only text over `aria-label`
+
+When an element has visible text and you need to augment it for screen readers, prefer a `VisuallyHidden` component over `aria-label` to keep the accessible text visible in the DOM:
+
+```tsx
+// Good — text remains in the DOM for accessibility tools
+<span className={styles.unreadBadge}>
+  {unreadCount}
+  <VisuallyHidden>unread</VisuallyHidden>
+</span>
+
+// Avoid — aria-label is harder to maintain and debug
+<span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
+  {unreadCount}
+</span>
+```
+
+Use `aria-label` only when there's no visible text to augment (e.g., icon-only buttons).
+
 ### Event Listeners
 
 Use `AbortController` for event listener cleanup instead of manual `removeEventListener`:

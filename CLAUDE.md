@@ -39,7 +39,7 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically be
 | Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                             |
 | Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:e2e`)                                     |
 | `app/routes/home*`                                                                                | `e2e/home.spec.ts`                                               |
-| `app/routes/list/**`                                                                              | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
+| `app/routes/list*`                                                                                | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
 | `app/routes/delete*`                                                                              | `e2e/delete.spec.ts`                                             |
 | `app/routes/auth/**`                                                                              | `e2e/auth.spec.ts`                                               |
 | `app/routes/sign-ups*`                                                                            | `e2e/sign-ups.spec.ts`                                           |

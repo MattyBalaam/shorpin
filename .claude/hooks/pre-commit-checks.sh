@@ -55,7 +55,7 @@ if [ -n "$NON_TRIVIAL" ]; then
     # Accumulate matching specs
     SPECS=""
     echo "$STAGED" | grep -qE '^app/routes/home'      && SPECS="$SPECS e2e/home.spec.ts"
-    echo "$STAGED" | grep -qE '^app/routes/list/'     && SPECS="$SPECS e2e/list.spec.ts e2e/delete.spec.ts e2e/config.spec.ts"
+    echo "$STAGED" | grep -qE '^app/routes/list'     && SPECS="$SPECS e2e/list.spec.ts e2e/delete.spec.ts e2e/config.spec.ts"
     echo "$STAGED" | grep -qE '^app/routes/delete'    && SPECS="$SPECS e2e/delete.spec.ts"
     echo "$STAGED" | grep -qE '^app/routes/auth/'     && SPECS="$SPECS e2e/auth.spec.ts"
     echo "$STAGED" | grep -qE '^app/routes/sign-ups'  && SPECS="$SPECS e2e/sign-ups.spec.ts"
