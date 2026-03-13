@@ -12,6 +12,17 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("@supabase/")) return "vendor-supabase";
+          if (id.includes("@sentry/")) return "vendor-sentry";
+          if (id.includes("/sonner/")) return "vendor-sonner";
+        },
+      },
+    },
+  },
   // Bundle mock packages into the SSR function for preview builds so they are
   // available at runtime without requiring devDependencies to be installed.
   ...(mode === "preview" && {
