@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -24,6 +24,7 @@ import { Link } from "./components/link/link";
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
+import { Spinner } from "./components/spinner/spinner";
 
 export const middleware = [toastMiddleware(), supabaseMiddleware];
 
@@ -80,9 +81,17 @@ export default function App() {
   );
 
   return (
-    <main className={styles.main}>
-      <Outlet />
-    </main>
+    <Suspense
+      fallback={
+        <main className={styles.loading}>
+          <Spinner />
+        </main>
+      }
+    >
+      <main className={styles.main}>
+        <Outlet />
+      </main>
+    </Suspense>
   );
 }
 

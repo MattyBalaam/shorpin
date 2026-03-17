@@ -13,8 +13,6 @@ const zData = v.object({
   sortOrder: v.number(),
 });
 
-type Data = v.InferOutput<typeof zData>;
-
 export const zItems = v.array(zData);
 
 export type Items = v.InferOutput<typeof zItems>;
@@ -24,8 +22,6 @@ const zListData = v.object({
   items: zItems,
 });
 
-type ListData = v.InferOutput<typeof zListData>;
-
 export const zList = v.object({
   name: v.string(),
   new: v.optional(v.string()),
@@ -34,7 +30,5 @@ export const zList = v.object({
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),
 });
-
-type List = v.InferOutput<typeof zList>;
 
 export const sortData = (items: Items) => items.sort((a, b) => a.sortOrder - b.sortOrder);

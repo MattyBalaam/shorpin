@@ -44,7 +44,6 @@ export const itemLink = style({
     content: "",
     position: "absolute",
     zIndex: 0,
-    // background: "red",
     inset: 0,
   },
 });

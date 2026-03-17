@@ -20,10 +20,6 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
 });
 
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(console.error);
-}
-
 startTransition(() => {
   hydrateRoot(
     document,

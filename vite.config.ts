@@ -1,7 +1,6 @@
 import { reactRouter } from "@react-router/dev/vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
-import { reactRouterDevTools } from "react-router-devtools";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 import babel from "vite-plugin-babel";
