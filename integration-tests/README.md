@@ -11,7 +11,7 @@ pnpm test:integration --headed        # headed browser
 pnpm test:integration integration-tests/home.spec.ts  # single file
 ```
 
-`pnpm test:integration` runs [`scripts/test-e2e.mjs`](../scripts/test-e2e.mjs) which probes for free ports starting at `9001` (mock) and `5174` (app) before handing off to Playwright. This means you can run tests while `pnpm dev` is already using those ports.
+`pnpm test:integration` runs [`scripts/test-integration.mjs`](../scripts/test-integration.mjs) which probes for free ports starting at `9001` (mock) and `5174` (app) before handing off to Playwright. This means you can run tests while `pnpm dev` is already using those ports.
 
 ## Architecture
 
