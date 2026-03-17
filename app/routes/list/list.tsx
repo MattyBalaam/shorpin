@@ -18,7 +18,7 @@ import { parseSubmission, useForm, useFormData } from "@conform-to/react/future"
 import * as v from "valibot";
 import { zList } from "./data";
 import { Link } from "~/components/link/link";
-import { Form } from "~/react-aria/Form";
+import { Form } from "~/components/form/form";
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
@@ -306,7 +306,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
       <Form
         {...form.props}
         ref={formRef}
-        validationErrors={form.fieldErrors}
+        // validationErrors={form.fieldErrors}
         method="POST"
         className={styles.form}
       >

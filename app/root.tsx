@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -15,8 +15,6 @@ import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
-import { Toaster, toast } from "sonner";
-
 import "./app.css";
 import "~/styles/typography.css";
 
@@ -26,6 +24,7 @@ import { Link } from "./components/link/link";
 
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
+import { Spinner } from "./components/spinner/spinner";
 
 export const middleware = [toastMiddleware(), supabaseMiddleware];
 
@@ -71,7 +70,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App({ loaderData: { toast: notification } }: Route.ComponentProps) {
+export default function App() {
   const { pathname } = useLocation();
 
   useEffect(
@@ -81,22 +80,18 @@ export default function App({ loaderData: { toast: notification } }: Route.Compo
     [pathname],
   );
 
-  useEffect(
-    function showNewToast() {
-      if (notification) {
-        toast[notification.type](notification.message);
-      }
-    },
-    [notification],
-  );
-
   return (
-    <>
+    <Suspense
+      fallback={
+        <main className={styles.loading}>
+          <Spinner />
+        </main>
+      }
+    >
       <main className={styles.main}>
         <Outlet />
       </main>
-      <Toaster position="top-right" />
-    </>
+    </Suspense>
   );
 }
 

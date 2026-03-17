@@ -1,284 +1,212 @@
-import type { Route } from "./+types/home";
-
-import {
-  href,
-  Form as RouterForm,
-  isRouteErrorResponse,
-  Outlet,
-  useNavigation,
-  useRevalidator,
-  useRouteError,
-  type MetaFunction,
-} from "react-router";
 import { useForm } from "@conform-to/react/future";
-import * as v from "valibot";
+import { Suspense, use } from "react";
+import {
+	href,
+	isRouteErrorResponse,
+	type MetaFunction,
+	Outlet,
+	Form as RouterForm,
+	useNavigation,
+	useRevalidator,
+	useRouteError,
+} from "react-router";
 
-import { Link } from "~/components/link/link";
-
-import { supabaseContext } from "~/lib/supabase.middleware";
-
-import { parseSubmission, report } from "@conform-to/react/future";
-
-import { redirectWithSuccess } from "remix-toast";
-import { requireUser } from "~/lib/supabase.server";
-import { slugify, resolveSlug } from "~/lib/slugify";
-import { Button } from "~/components/button/button";
-
-import * as styles from "./home.css";
-import { use, Suspense } from "react";
 import { Actions } from "~/components/actions/actions";
+import { Button } from "~/components/button/button";
+import { Link } from "~/components/link/link";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
+import type { Route } from "./+types/home";
+import * as styles from "./home.css";
+import { zCreate } from "./home.schema";
+
+export { action, loader } from "./home.server";
+
 export const meta: MetaFunction = () => {
-  return [
-    { title: "Shorpin" },
-    { name: "description", content: "We got lists, they’re multiplying" },
-  ];
+	return [
+		{ title: "Shorpin" },
+		{ name: "description", content: "We got lists, they’re multiplying" },
+	];
 };
 
 export const handle = {
-  breadcrumb: {
-    label: "Home",
-  },
+	breadcrumb: {
+		label: "Home",
+	},
 };
 
-const zCreate = v.object({
-  "new-list": v.pipe(v.string(), v.minLength(1, "List name is required")),
-});
-
-export async function loader({ context }: Route.LoaderArgs) {
-  const supabase = context.get(supabaseContext);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const listsPromise = supabase
-    .from("lists")
-    .select("id, name, slug, user_id, list_items(updated_at, state)")
-    .eq("state", "active")
-    .order("created_at", { ascending: false })
-    .then(({ data, error }) => {
-      if (error) {
-        console.error("Error loading lists:", error);
-        throw error;
-      }
-      return data ?? [];
-    });
-
-  const viewsPromise = supabase
-    .from("list_views")
-    .select("list_id, viewed_at")
-    .then(({ data }) => Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at])));
-
-  return {
-    userId: user?.id,
-    lists: Promise.all([listsPromise, viewsPromise]).then(([lists, viewedAtMap]) =>
-      lists.map(({ list_items, ...list }) => {
-        const activeItems = list_items.filter((item) => item.state === "active");
-        return {
-          ...list,
-          totalCount: activeItems.length,
-          unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
-            .length,
-        };
-      }),
-    ),
-    waitlistCount: supabase
-      .from("waitlist")
-      .select("*", { count: "exact", head: true })
-      .then(({ count }) => count ?? 0),
-  };
-}
-
-export async function action({ request, context }: Route.ActionArgs) {
-  const formData = await request.formData();
-
-  const submission = parseSubmission(formData);
-
-  const result = v.safeParse(zCreate, submission.payload);
-
-  if (!result.success) {
-    return report(submission);
-  }
-
-  const listName = result.output["new-list"];
-  const baseSlug = slugify(listName);
-
-  const supabase = context.get(supabaseContext);
-
-  const user = await requireUser(supabase);
-
-  const { data: matches } = await supabase
-    .from("lists")
-    .select("slug")
-    .like("slug", `${baseSlug}%`)
-    .eq("state", "active");
-
-  const slug = resolveSlug(baseSlug, matches?.map((m: { slug: string }) => m.slug) ?? []);
-
-  const { error } = await supabase.from("lists").insert({
-    name: listName,
-    slug,
-    user_id: user.id,
-  });
-
-  if (error) {
-    console.error("Error creating list:", error);
-    return report(submission, {
-      error: { formErrors: ["Failed to create list. Please try again."] },
-    });
-  }
-
-  return redirectWithSuccess(
-    href("/lists/:list", { list: slug }),
-    `List "${listName}" created successfully!`,
-  );
-}
-
 type ListItem = {
-  id: string;
-  name: string;
-  slug: string;
-  user_id: string;
-  unreadCount: number;
-  totalCount: number;
+	id: string;
+	name: string;
+	slug: string;
+	user_id: string;
+	unreadCount: number;
+	totalCount: number;
 };
 
 function ListsSkeleton() {
-  return (
-    <ul className={styles.list}>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <li key={i} className={styles.skeletonRow}>
-          <div className={styles.skeletonBar} />
-        </li>
-      ))}
-    </ul>
-  );
+	return (
+		<ul className={styles.list}>
+			{Array.from({ length: 3 }).map((_, i) => (
+				<li key={i} className={styles.skeletonRow}>
+					<div className={styles.skeletonBar} />
+				</li>
+			))}
+		</ul>
+	);
 }
 
 function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
-  const count = use(countPromise);
-  if (count === 0) return null;
-  return (
-    <Link to={href("/sign-ups")}>
-      {count} <span className={styles.signUpsLabel}>pending</span>
-    </Link>
-  );
+	const count = use(countPromise);
+	if (count === 0) return null;
+	return (
+		<Link to={href("/sign-ups")}>
+			{count} <span className={styles.signUpsLabel}>pending</span>
+		</Link>
+	);
 }
 
 function Lists({
-  listsPromise,
-  userId,
+	listsPromise,
+	userId,
 }: {
-  listsPromise: Promise<ListItem[]>;
-  userId: string | undefined;
+	listsPromise: Promise<ListItem[]>;
+	userId: Promise<string | undefined>;
 }) {
-  const lists = use(listsPromise);
+	const lists = use(listsPromise);
+	const resolvedUserId = use(userId);
 
-  return (
-    <ul className={styles.list}>
-      {lists.map(({ id, name, slug, user_id, unreadCount, totalCount }) => {
-        const isOwner = user_id === userId;
-        return (
-          <li key={id} role="list" className={styles.itemWrapper}>
-            <span className={styles.item}>
-              <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
-                {name}
-              </Link>
-              <span className={styles.itemTotal} aria-label={`${totalCount} items`}>
-                {totalCount}
-              </span>
-              {unreadCount > 0 && (
-                <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
-                  {unreadCount}
-                </span>
-              )}
-              {isOwner && (
-                <Link
-                  className={styles.itemConfig}
-                  variant="outline"
-                  to={href("/config/:list", { list: slug })}
-                >
-                  admin
-                </Link>
-              )}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
+	return (
+		<ul className={styles.list}>
+			{lists.map(({ id, name, slug, user_id, unreadCount, totalCount }) => {
+				const isOwner = user_id === resolvedUserId;
+				return (
+					<li key={id} role="list" className={styles.itemWrapper}>
+						<span className={styles.item}>
+							<Link
+								className={styles.itemLink}
+								to={href("/lists/:list", { list: slug })}
+							>
+								{name}
+							</Link>
+
+							{isOwner && (
+								<Link
+									className={styles.itemConfig}
+									variant="primary"
+									to={href("/config/:list", { list: slug })}
+								>
+									<VisuallyHidden>Configure</VisuallyHidden>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										width="16"
+										height="16"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.12.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.82 14.52a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.51.41 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.22 1.12-.53 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z" />
+									</svg>
+								</Link>
+							)}
+
+							{unreadCount > 0 && (
+								<span
+									className={styles.unreadBadge}
+									aria-label={`${unreadCount} unread`}
+								>
+									{unreadCount}
+									<VisuallyHidden> unread</VisuallyHidden>
+								</span>
+							)}
+							<span className={styles.itemTotal}>
+								{totalCount}
+								<VisuallyHidden> items</VisuallyHidden>
+							</span>
+						</span>
+					</li>
+				);
+			})}
+		</ul>
+	);
 }
 
-export default function Index({ loaderData, actionData }: Route.ComponentProps) {
-  const { form, fields } = useForm(zCreate, {
-    lastResult: actionData,
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
-  });
+export default function Index({
+	loaderData,
+	actionData,
+}: Route.ComponentProps) {
+	const { form, fields } = useForm(zCreate, {
+		lastResult: actionData,
+		shouldValidate: "onBlur",
+		shouldRevalidate: "onInput",
+	});
 
-  const { state } = useNavigation();
-  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
+	const { state } = useNavigation();
+	// TODO fix types
+	const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
-  return (
-    <>
-      <div className={styles.pendingSignUps}>
-        <Suspense fallback={null}>
-          <PendingSignUps countPromise={pendingCount} />
-        </Suspense>
-      </div>
-      <ScrollArea>
-        <nav className={styles.listWrapper}>
-          <Suspense fallback={<ListsSkeleton />}>
-            <Lists
-              listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
-              userId={loaderData.userId}
-            />
-          </Suspense>
-        </nav>
-      </ScrollArea>
+	return (
+		<>
+			<div className={styles.pendingSignUps}>
+				<Suspense fallback={null}>
+					<PendingSignUps countPromise={pendingCount} />
+				</Suspense>
+			</div>
+			<ScrollArea>
+				<nav className={styles.listWrapper}>
+					<Suspense fallback={<ListsSkeleton />}>
+						<Lists
+							listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
+							userId={loaderData.userId}
+						/>
+					</Suspense>
+				</nav>
+			</ScrollArea>
 
-      <Actions>
-        <RouterForm {...form.props} method="POST" className={styles.actions}>
-          {form.errors?.map((error, i) => (
-            <p key={i} className={styles.formError}>
-              {error}
-            </p>
-          ))}
-          <div className={styles.newList}>
-            <VisuallyHidden>
-              <label htmlFor={fields["new-list"].id}>New list</label>
-            </VisuallyHidden>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
+			<Actions>
+				<RouterForm {...form.props} method="POST" className={styles.actions}>
+					{form.errors?.map((error, i) => (
+						<p key={i} className={styles.formError}>
+							{error}
+						</p>
+					))}
+					<div className={styles.newList}>
+						<VisuallyHidden>
+							<label htmlFor={fields["new-list"].id}>New list</label>
+						</VisuallyHidden>
+						<input
+							name={fields["new-list"].name}
+							id={fields["new-list"].id}
+							autoComplete="off"
+						/>
 
-            <Button type="submit" isSubmitting={state === "submitting"}>
-              Add
-            </Button>
-          </div>
-        </RouterForm>
-      </Actions>
-      <Outlet />
-    </>
-  );
+						<Button type="submit" isSubmitting={state === "submitting"}>
+							Add
+						</Button>
+					</div>
+				</RouterForm>
+			</Actions>
+			<Outlet />
+		</>
+	);
 }
 
 export function ErrorBoundary() {
-  const error = useRouteError();
-  const { revalidate, state } = useRevalidator();
+	const error = useRouteError();
+	const { revalidate, state } = useRevalidator();
 
-  const message =
-    isRouteErrorResponse(error) && error.status === 503
-      ? "Couldn't reach the server."
-      : "Something went wrong.";
+	const message =
+		isRouteErrorResponse(error) && error.status === 503
+			? "Couldn't reach the server."
+			: "Something went wrong.";
 
-  return (
-    <div className={styles.errorState}>
-      <p>{message}</p>
-      <Button onClick={revalidate} isSubmitting={state === "loading"}>
-        Retry
-      </Button>
-    </div>
-  );
+	return (
+		<div className={styles.errorState}>
+			<p>{message}</p>
+			<Button onClick={revalidate} isSubmitting={state === "loading"}>
+				Retry
+			</Button>
+		</div>
+	);
 }

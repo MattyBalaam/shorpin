@@ -11,6 +11,15 @@ export const main = style({
     "[left] minmax(20px, 1fr) [content] minmax(auto, 60ch) [right] minmax(20px, 1fr)",
 });
 
+export const loading = style({
+  display: "grid",
+  placeItems: "center",
+  background: vars.palette.secondary,
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%",
+});
+
 globalStyle("body, h1", {
   margin: 0,
 });

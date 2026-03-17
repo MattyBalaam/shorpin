@@ -39,7 +39,7 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically be
 | Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                             |
 | Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:e2e`)                                     |
 | `app/routes/home*`                                                                                | `e2e/home.spec.ts`                                               |
-| `app/routes/list/**`                                                                              | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
+| `app/routes/list*`                                                                                | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
 | `app/routes/delete*`                                                                              | `e2e/delete.spec.ts`                                             |
 | `app/routes/auth/**`                                                                              | `e2e/auth.spec.ts`                                               |
 | `app/routes/sign-ups*`                                                                            | `e2e/sign-ups.spec.ts`                                           |
@@ -57,6 +57,29 @@ pnpm test:e2e            # run appropriate e2e tests
 ```
 
 Do not commit if tests are failing or if the user has indicated the work is incomplete.
+
+## Commit Messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) with this format:
+
+```
+<type>(<scope>): <subject>
+
+- <bullet point description>
+- <another bullet point>
+
+Closes #<issue>
+```
+
+Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `chore`, `test`, `style`, `revert`
+
+Guidelines:
+
+- Keep subject under 50 characters
+- Use imperative mood: "Add feature" not "Added feature"
+- Explain "what" and "why", not "how"
+- Use `!` after type for breaking changes: `feat(api)!:` or include `BREAKING CHANGE:` footer
+- Group changes by intent (e.g., don't mix refactors with new features)
 
 ## Scripts
 

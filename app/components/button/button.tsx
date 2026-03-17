@@ -15,7 +15,7 @@ export function Button({
   className,
   children,
   isSubmitting,
-  disabled,
+  disabled: _toDoTEstIfWeNeedToDisable,
   variant = "primary",
   ...props
 }: ButtonProps) {
