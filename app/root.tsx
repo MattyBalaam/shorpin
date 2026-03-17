@@ -89,6 +89,26 @@ export default function App() {
     }
   }, []);
 
+  useEffect(function handleRouteModuleErrors() {
+    const handleError = (event: ErrorEvent) => {
+      if (
+        event.message.includes("Error loading route module") ||
+        event.message.includes("Importing a module script failed")
+      ) {
+        console.error("Route module load error, clearing caches and reloading...");
+        if ("caches" in window) {
+          window.caches.keys().then((names) => {
+            names.forEach((name) => window.caches.delete(name));
+          });
+        }
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
+  }, []);
+
   return (
     <Suspense
       fallback={
