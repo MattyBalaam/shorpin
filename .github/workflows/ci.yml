@@ -25,7 +25,7 @@ jobs:
 
       - run: pnpm vitest run
 
-  e2e:
+  integration:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -44,7 +44,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm test:e2e
+      - run: pnpm test:integration
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -81,7 +81,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm test:e2e:supabase
+      - run: pnpm test:e2e
         env:
           VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
@@ -96,7 +96,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [test, e2e, e2e-supabase]
+    needs: [test, integration, e2e-supabase]
     if: github.ref == 'refs/heads/master'
     permissions:
       contents: read
