@@ -105,3 +105,22 @@ test("collaborator sees unread badge for shared list not yet opened", async ({ p
     .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
   await expect(shoppingRow.getByText(/unread/)).toBeVisible();
 });
+
+test("unread count is scoped to user - user A's views don't affect user B", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Shopping" }).click();
+  await page.waitForURL("/lists/shopping");
+  await page.getByRole("link", { name: "Back to index" }).click();
+
+  await expect(page.getByText("3 unread")).not.toBeVisible();
+
+  await login(page, ctx.collabEmail);
+  const shoppingRow = page
+    .locator("li")
+    .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
+  await expect(shoppingRow.getByText("3 unread")).toBeVisible();
+});

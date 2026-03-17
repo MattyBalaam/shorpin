@@ -12,7 +12,8 @@ This is partly for me and my friends to use (product need), but also for me to g
 ## Docs
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
-- [e2e/README.md](e2e/README.md) — running e2e tests, architecture, CI
+- [integration-tests/README.md](integration-tests/README.md) — running integration tests, architecture, CI
+- [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
 
 ## Architecture

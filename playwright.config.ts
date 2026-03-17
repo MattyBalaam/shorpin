@@ -4,7 +4,7 @@ const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
 const appPort = process.env.APP_SERVER_PORT ?? "5174";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./integration-tests",
   testIgnore: ["**/supabase-*.spec.ts"],
   fullyParallel: true,
   reporter: [["html", { open: "never" }]],

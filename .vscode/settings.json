@@ -12,9 +12,12 @@
 
   "cSpell.words": [
     "apikey",
+    "Buildx",
     "collab",
+    "Coolify",
     "oxfmt",
     "oxlint",
+    "peaceiris",
     "picklist",
     "Reorderable",
     "Revalidator",
@@ -23,6 +26,7 @@
     "supabase",
     "Teardown",
     "tsgo",
+    "VITE",
     "vitest",
     "waitlist"
   ],
