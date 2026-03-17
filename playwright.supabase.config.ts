@@ -11,9 +11,6 @@ const appPort = "5175";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "supabase-smoke.spec.ts",
-  globalSetup: "./e2e/supabase-setup.ts",
-  globalTeardown: "./e2e/supabase-teardown.ts",
   fullyParallel: false,
   workers: 1,
   reporter: [["html", { open: "never" }]],

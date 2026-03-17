@@ -13,13 +13,17 @@ import { zCreate } from "./home.schema";
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
+  const user = await requireUser(supabase);
+  const userId = user.id;
+
   const viewsPromise = supabase
     .from("list_views")
     .select("list_id, viewed_at")
+    .eq("user_id", userId)
     .then(({ data }) => Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at])));
 
   return {
-    userId: supabase.auth.getUser().then(({ data }) => data.user?.id),
+    userId,
     lists: supabase
       .from("lists")
       .select("id, name, slug, user_id, list_items(updated_at, state)")

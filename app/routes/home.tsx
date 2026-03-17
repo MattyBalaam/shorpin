@@ -67,20 +67,13 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   );
 }
 
-function Lists({
-  listsPromise,
-  userId,
-}: {
-  listsPromise: Promise<ListItem[]>;
-  userId: Promise<string | undefined>;
-}) {
+function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; userId: string }) {
   const lists = use(listsPromise);
-  const resolvedUserId = use(userId);
 
   return (
     <ul className={styles.list}>
       {lists.map(({ id, name, slug, user_id, unreadCount, totalCount }) => {
-        const isOwner = user_id === resolvedUserId;
+        const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
             <span className={styles.item}>

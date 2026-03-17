@@ -32,19 +32,19 @@ A `PostToolUse` hook (`.claude/hooks/post-edit-checks.sh`) runs automatically af
 A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically before every `git commit`. It:
 
 1. Runs `pnpm typecheck`, `pnpm lint`, `pnpm fmt` (same as above)
-2. Runs scoped e2e tests based on what is staged:
+2. Runs scoped integration tests based on what is staged:
 
-| Staged files                                                                                      | E2e action                                                       |
-| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                             |
-| Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:e2e`)                                     |
-| `app/routes/home*`                                                                                | `e2e/home.spec.ts`                                               |
-| `app/routes/list*`                                                                                | `e2e/list.spec.ts` + `e2e/delete.spec.ts` + `e2e/config.spec.ts` |
-| `app/routes/delete*`                                                                              | `e2e/delete.spec.ts`                                             |
-| `app/routes/auth/**`                                                                              | `e2e/auth.spec.ts`                                               |
-| `app/routes/sign-ups*`                                                                            | `e2e/sign-ups.spec.ts`                                           |
-| `e2e/*.spec.ts` changed                                                                           | That spec                                                        |
-| Anything else unmatched                                                                           | Full suite (safe fallback)                                       |
+| Staged files                                                                                      | Integration action                                                                                         |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                                                                       |
+| Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:integration`)                                                                       |
+| `integration-tests/home*`                                                                         | `integration-tests/home.spec.ts`                                                                           |
+| `integration-tests/list*`                                                                         | `integration-tests/list.spec.ts` + `integration-tests/delete.spec.ts` + `integration-tests/config.spec.ts` |
+| `integration-tests/delete*`                                                                       | `integration-tests/delete.spec.ts`                                                                         |
+| `integration-tests/auth/**`                                                                       | `integration-tests/auth.spec.ts`                                                                           |
+| `integration-tests/sign-ups*`                                                                     | `integration-tests/sign-ups.spec.ts`                                                                       |
+| `integration-tests/*.spec.ts` changed                                                             | That spec                                                                                                  |
+| Anything else unmatched                                                                           | Full suite (safe fallback)                                                                                 |
 
 **If hooks are not supported** in your environment, run these steps manually before committing:
 
@@ -53,7 +53,7 @@ pnpm typecheck           # fix any type errors first
 pnpm lint                # fix any lint errors
 pnpm fmt                 # format changed files
 git add <changed files>  # re-stage if fmt modified anything
-pnpm test:e2e            # run appropriate e2e tests
+pnpm test:integration    # run appropriate integration tests
 ```
 
 Do not commit if tests are failing or if the user has indicated the work is incomplete.

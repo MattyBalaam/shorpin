@@ -2,8 +2,9 @@
  * Finds free ports for the mock and app servers before starting Playwright,
  * so concurrent test runs (e.g. a run already in progress) never collide.
  */
-import { createServer } from "node:net";
+
 import { spawnSync } from "node:child_process";
+import { createServer } from "node:net";
 
 function findFreePort(start) {
   return new Promise((resolve, reject) => {
@@ -19,7 +20,7 @@ function findFreePort(start) {
 const mockPort = await findFreePort(9001);
 const appPort = await findFreePort(5174);
 
-console.log(`[test:e2e] mock :${mockPort}  app :${appPort}`);
+console.log(`[test:integration] mock :${mockPort}  app :${appPort}`);
 
 const result = spawnSync("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], {
   env: {

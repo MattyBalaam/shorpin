@@ -20,8 +20,8 @@
     "db:reset": "supabase db reset",
     "knip": "knip",
     "test": "vitest",
-    "test:e2e": "node scripts/test-e2e.mjs",
-    "test:e2e:supabase": "playwright test --config playwright.supabase.config.ts"
+    "test:e2e": "playwright test --config playwright.supabase.config.ts",
+    "test:integration": "node scripts/test-e2e.mjs"
   },
   "dependencies": {
     "@conform-to/react": "1.17.1",
