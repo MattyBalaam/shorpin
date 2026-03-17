@@ -8,7 +8,7 @@ test("owner can delete a list", async ({ page, ctx }) => {
   await page
     .locator("li")
     .filter({ has: page.getByRole("link", { name: "Owner Empty" }) })
-    .getByRole("link", { name: "admin" })
+    .getByRole("link", { name: "Configure" })
     .click();
 
   await expect(page.getByRole("dialog")).toBeVisible();

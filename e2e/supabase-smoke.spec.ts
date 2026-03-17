@@ -45,7 +45,7 @@ test("supabase smoke", async ({ page }) => {
     await page
       .locator("li")
       .filter({ has: page.getByRole("link", { name: listName }) })
-      .getByRole("link", { name: "admin" })
+      .getByRole("link", { name: "Configure" })
       .click();
     await page.getByRole("link", { name: "Delete list" }).click();
     await page.getByRole("button", { name: "Yes" }).click();
