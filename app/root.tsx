@@ -21,10 +21,9 @@ import "~/styles/typography.css";
 import "~/components/conform-input";
 
 import { Link } from "./components/link/link";
-
+import { Spinner } from "./components/spinner/spinner";
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
-import { Spinner } from "./components/spinner/spinner";
 
 export const middleware = [toastMiddleware(), supabaseMiddleware];
 
@@ -79,6 +78,16 @@ export default function App() {
     },
     [pathname],
   );
+
+  useEffect(function unregisterStaleServiceWorkers() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+  }, []);
 
   return (
     <Suspense
