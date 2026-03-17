@@ -131,6 +131,6 @@ jobs:
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Trigger Coolify deploy
-        run: >
-          curl -fsSL -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}"
-          --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
+        run: |
+          curl --fail --show-error --request GET "${{ secrets.COOLIFY_WEBHOOK_URL }}" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
