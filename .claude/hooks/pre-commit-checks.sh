@@ -36,6 +36,12 @@ fi
 pnpm fmt >&2
 git add -u
 
+# Ensure no staged files still have unstaged edits (including formatter output)
+STAGED_AFTER_FMT=$(git diff --cached --name-only)
+if [ -n "$STAGED_AFTER_FMT" ] && ! git diff --quiet -- $STAGED_AFTER_FMT; then
+  deny "Staged files still have unstaged changes after formatting. Re-stage and retry."
+fi
+
 # 4. Scoped e2e tests based on staged files (re-read after auto-staging fmt changes)
 STAGED=$(git diff --cached --name-only)
 

@@ -16,40 +16,45 @@ export async function loader({ context }: Route.LoaderArgs) {
   const user = await requireUser(supabase);
   const userId = user.id;
 
-  const viewsPromise = supabase
+  const listsPromise = supabase
+    .from("lists")
+    .select("id, name, slug, user_id, list_items(updated_at, state)")
+    .eq("state", "active")
+    .order("created_at", { ascending: false })
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Error loading lists:", error);
+        throw error;
+      }
+      return data ?? [];
+    });
+
+  const viewedAtMapPromise = supabase
     .from("list_views")
     .select("list_id, viewed_at")
     .eq("user_id", userId)
-    .then(({ data }) => Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at])));
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Error loading list views:", error);
+        throw error;
+      }
+
+      return Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at]));
+    });
 
   return {
     userId,
-    lists: supabase
-      .from("lists")
-      .select("id, name, slug, user_id, list_items(updated_at, state)")
-      .eq("state", "active")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Error loading lists:", error);
-          throw error;
-        }
-        return data ?? [];
-      })
-      .then((lists) =>
-        viewsPromise.then((viewedAtMap) =>
-          lists.map(({ list_items, ...list }) => {
-            const activeItems = list_items.filter((item) => item.state === "active");
-            return {
-              ...list,
-              totalCount: activeItems.length,
-              unreadCount: activeItems.filter(
-                (item) => item.updated_at > (viewedAtMap[list.id] ?? 0),
-              ).length,
-            };
-          }),
-        ),
-      ),
+    lists: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) =>
+      lists.map(({ list_items, ...list }) => {
+        const activeItems = list_items.filter((item) => item.state === "active");
+        return {
+          ...list,
+          totalCount: activeItems.length,
+          unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
+            .length,
+        };
+      }),
+    ),
     waitlistCount: supabase
       .from("waitlist")
       .select("*", { count: "exact", head: true })

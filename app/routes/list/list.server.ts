@@ -1,27 +1,24 @@
-import type { Route } from "./+types/list";
+import { parseSubmission, report } from "@conform-to/react/future";
 
 import { dataWithError } from "remix-toast";
-import { isAddItemIntent, parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
-
-import { type Items, sortData, zItems, zList } from "./data";
-
-import { parseSubmission, report } from "@conform-to/react/future";
 import * as v from "valibot";
 import { supabaseContext } from "~/lib/supabase.middleware";
+import { requireUser } from "~/lib/supabase.server";
+import type { Route } from "./+types/list";
+import { type Items, sortData, zItems, zList } from "./data";
+import { isAddItemIntent, parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
 
-export async function loader({ params: { list }, context }: Route.LoaderArgs) {
+export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
+  const user = await requireUser(supabase);
 
-  const [{ data, error }, { data: authData }] = await Promise.all([
-    supabase
-      .from("lists")
-      .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
-      .eq("slug", list)
-      .eq("state", "active")
-      .order("sort_order", { referencedTable: "list_items", ascending: true })
-      .single(),
-    supabase.auth.getUser(),
-  ]);
+  const { data, error } = await supabase
+    .from("lists")
+    .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
+    .eq("slug", list)
+    .eq("state", "active")
+    .order("sort_order", { referencedTable: "list_items", ascending: true })
+    .single();
 
   if (error || !data) {
     if (error) console.error("Error loading list:", error);
@@ -45,15 +42,33 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     );
   }
 
-  // Record that this user viewed the list — awaited so the home page reflects
-  // the updated viewed_at on the very next navigation.
-  if (authData.user) {
-    await supabase
+  const referer = request.headers.get("referer");
+  const isSameListRevalidation = (() => {
+    if (!referer) {
+      return false;
+    }
+
+    try {
+      return new URL(referer).pathname === `/lists/${list}`;
+    } catch {
+      return false;
+    }
+  })();
+
+  // Record that this user viewed the list on entry, but avoid writing on same-page
+  // revalidation after actions (e.g. adding an item), which would clear unread too soon.
+  if (!isSameListRevalidation) {
+    const { error: viewError } = await supabase
       .from("list_views")
       .upsert(
-        { list_id: data.id, user_id: authData.user.id, viewed_at: Date.now() },
+        { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
         { onConflict: "list_id,user_id" },
       );
+
+    if (viewError) {
+      console.error("Error recording list view:", viewError);
+      throw viewError;
+    }
   }
 
   const items = data.list_items.map((item) => ({

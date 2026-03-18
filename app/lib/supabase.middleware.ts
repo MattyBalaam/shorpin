@@ -8,6 +8,28 @@ import { createSupabaseClient } from "./supabase.server";
 
 export const supabaseContext = createContext<SupabaseClient<Database>>();
 
+let schemaCheckPromise: Promise<void> | null = null;
+
+async function runListViewsSchemaCheck(supabase: SupabaseClient<Database>) {
+  const { error } = await supabase
+    .from("list_views")
+    .select("list_id", { head: true, count: "exact" })
+    .limit(1);
+
+  if (!error) {
+    return;
+  }
+
+  if (error.code === "PGRST205") {
+    console.error(
+      "[Startup check] list_views table is missing. Apply migrations (including supabase/migrations/20260312000000_list_views.sql) in this environment.",
+    );
+    return;
+  }
+
+  console.warn("[Startup check] Unable to verify list_views migration state:", error);
+}
+
 const supabaseStorageKey = `sb-${new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split(".")[0]}-auth-token`;
 
 function tokenSecondsLeft(cookieHeader: string): number | null {
@@ -65,6 +87,12 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
   const url = new URL(request.url);
 
   if (!publicRoutes.includes(url.pathname)) {
+    if (!schemaCheckPromise) {
+      schemaCheckPromise = runListViewsSchemaCheck(supabase).catch((error) => {
+        console.warn("[Startup check] list_views schema check failed:", error);
+      });
+    }
+
     const cookie = request.headers.get("Cookie");
     const hasAuthCookie = cookie?.includes("sb-") ?? false;
 
