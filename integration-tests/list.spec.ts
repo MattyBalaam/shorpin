@@ -157,6 +157,41 @@ test("item added by collaborator appears as unread for owner on home page", asyn
   }
 });
 
+test("new item is marked in the list since last opening", async ({ browser, ctx }) => {
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await ownerPage.goto("/lists/shopping");
+    await ownerPage.waitForURL("/lists/shopping");
+    await expect(ownerPage.getByLabel("Edit Milk")).toBeVisible();
+
+    await ownerPage.goto("/");
+    await expect(ownerPage.getByText(/unread/)).not.toBeVisible();
+
+    await collabPage.goto("/lists/shopping");
+    await collabPage.getByLabel("New item").fill("Butter");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
+
+    await ownerPage.goto("/lists/shopping");
+    await expect(
+      ownerPage.locator('[data-new="true"]').filter({ has: ownerPage.getByLabel("Edit Butter") }),
+    ).toHaveCount(1);
+    await expect(
+      ownerPage.locator('[data-new="true"]').filter({ has: ownerPage.getByLabel("Edit Milk") }),
+    ).toHaveCount(0);
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
 test("collab sees real-time update when owner adds an item", async ({ browser, ctx }) => {
   // Two isolated browser contexts simulate two separate users
   const ownerContext = await browser.newContext({ baseURL });

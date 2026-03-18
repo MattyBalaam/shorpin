@@ -1,28 +1,27 @@
-import type { Route } from "./+types/list";
+import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
 
 import { useEffect, useRef, useState } from "react";
 import {
   href,
   isRouteErrorResponse,
+  type ShouldRevalidateFunctionArgs,
   useNavigation,
   useRevalidator,
   useRouteError,
   useSubmit,
-  type ShouldRevalidateFunctionArgs,
 } from "react-router";
-
-import { Items } from "~/components/items";
-import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
-
-import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
 import * as v from "valibot";
-import { zList } from "./data";
-import { Link } from "~/components/link/link";
+import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
+import { Items } from "~/components/items";
+import { Link } from "~/components/link/link";
+import type { Route } from "./+types/list";
+import { zList } from "./data";
+
 export { action, loader } from "./list.server";
 
-import { toast } from "sonner";
 import { report } from "@conform-to/react/future";
+import { toast } from "sonner";
 import {
   ADD_ITEM_INTENT,
   isAddItemIntent,
@@ -113,14 +112,14 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
   return serverAction();
 }
 
+import { Actions } from "~/components/actions/actions";
+import { Button } from "~/components/button/button";
+import * as itemsStyles from "~/components/items.css";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
-import * as styles from "./list.css";
-import * as itemsStyles from "~/components/items.css";
-import { Button } from "~/components/button/button";
-import { Actions } from "~/components/actions/actions";
 import { Theme } from "~/components/theme/theme";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
+import * as styles from "./list.css";
 
 export function HydrateFallback() {
   return (
@@ -335,6 +334,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           <Items
             fieldMetadata={fields.items}
             edited={edited}
+            newItems={loaderData.newItemIds}
             pendingItem={
               state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
                 ? (formData.get(fields.new.name) as string)

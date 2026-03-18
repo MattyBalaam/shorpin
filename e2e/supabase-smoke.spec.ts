@@ -33,6 +33,9 @@ test("supabase smoke", async ({ page }) => {
     await page.getByLabel("New item").fill("Test item");
     await page.getByRole("button", { name: "Add" }).click();
     await expect(page.getByLabel("Edit Test item")).toBeVisible();
+    await expect(
+      page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Test item") }),
+    ).toHaveCount(1);
   });
 
   await test.step("go back to home - item should be unread", async () => {
@@ -45,6 +48,9 @@ test("supabase smoke", async ({ page }) => {
   await test.step("open the list - this marks items as viewed", async () => {
     await page.getByRole("link", { name: listName }).click();
     await page.waitForURL(`/lists/${listSlug}`);
+    await expect(
+      page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Test item") }),
+    ).toHaveCount(0);
   });
 
   await test.step("go back to home - unread badge should be gone", async () => {

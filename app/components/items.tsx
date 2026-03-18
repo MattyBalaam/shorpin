@@ -1,18 +1,19 @@
-import { AnimatePresence, Reorder, stagger, useAnimate, Variants } from "motion/react";
-import { Item } from "./item";
-import { useRef, useState } from "react";
-
-import * as styles from "./items.css";
 import type { FieldMetadata } from "@conform-to/react/future";
+import { AnimatePresence, Reorder, stagger, useAnimate, type Variants } from "motion/react";
+import { useRef, useState } from "react";
+import { Item } from "./item";
+import * as styles from "./items.css";
 
 function ReorderableItem({
   itemId,
   item,
   edited,
+  isNew,
 }: {
   itemId: string;
   item: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
+  isNew: boolean;
 }) {
   const [swiped, setSwiped] = useState(false);
   const [lockedAxis, setLockedAxis] = useState<"x" | "y" | null>(null);
@@ -69,6 +70,7 @@ function ReorderableItem({
       <Item
         fieldsetMetadata={item}
         edited={edited}
+        isNew={isNew}
         deleteButtonRef={deleteButtonRef}
         isDismissing={lockedAxis === "x"}
       />
@@ -79,6 +81,7 @@ function ReorderableItem({
 interface ItemsProps {
   fieldMetadata: FieldMetadata<Array<{ id: string; value: string }>>;
   edited: Array<string>;
+  newItems: Array<string>;
   pendingItem?: string | null;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: () => void;
@@ -112,6 +115,7 @@ const variants = {
 export function Items({
   fieldMetadata,
   edited,
+  newItems,
   pendingItem,
   onReorder,
   onReorderComplete,
@@ -144,6 +148,7 @@ export function Items({
   const itemRecord = Object.fromEntries(
     items.map((item) => [item.getFieldset().id.defaultValue, item]),
   );
+  const newItemSet = new Set(newItems);
 
   return (
     <Reorder.Group
@@ -168,6 +173,7 @@ export function Items({
               itemId={itemId}
               item={itemRecord[itemId]}
               edited={edited.includes(itemId)}
+              isNew={newItemSet.has(itemId)}
             />
           ))}
       </AnimatePresence>

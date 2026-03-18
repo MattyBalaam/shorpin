@@ -1,21 +1,27 @@
-import { useRef, type RefObject } from "react";
-
-import * as styles from "./item.css";
-import { type FieldMetadata } from "@conform-to/react/future";
+import type { FieldMetadata } from "@conform-to/react/future";
+import { type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
-import { VisuallyHidden } from "./visually-hidden/visually-hidden";
-import { Button } from "./button/button";
 import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
+import { Button } from "./button/button";
+import * as styles from "./item.css";
+import { VisuallyHidden } from "./visually-hidden/visually-hidden";
 
 export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
+  isNew: boolean;
   deleteButtonRef: RefObject<HTMLButtonElement | null>;
   isDismissing: boolean;
 }
 
 // This is a row for an item in the list with an input and a delete button
-export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }: ItemRenderProps) {
+export function Item({
+  fieldsetMetadata,
+  edited,
+  isNew,
+  deleteButtonRef,
+  isDismissing,
+}: ItemRenderProps) {
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
@@ -46,7 +52,12 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
     !isUndeleteItemIntent(effectiveIntent);
 
   return (
-    <div className={styles.itemContainer} data-dismissing={isDismissing} data-deleting={isDeleting}>
+    <div
+      className={styles.itemContainer}
+      data-dismissing={isDismissing}
+      data-deleting={isDeleting}
+      data-new={isNew}
+    >
       <div className={styles.item}>
         <input
           className={styles.input}
@@ -76,6 +87,13 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
               </>
             )}
           </span>
+        ) : isNew ? (
+          <span className={styles.state}>
+            <VisuallyHidden>new since last opening</VisuallyHidden>
+            <span aria-hidden className={styles.newIndicator}>
+              new
+            </span>
+          </span>
         ) : null}
 
         <span className={styles.dragHandle}>
@@ -91,7 +109,8 @@ export function Item({ fieldsetMetadata, edited, deleteButtonRef, isDismissing }
             value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
             ref={deleteButtonRef}
           >
-            <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>☑️
+            <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
+            ☑️
           </Button>
         </span>
 

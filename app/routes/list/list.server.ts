@@ -42,6 +42,22 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     );
   }
 
+  const { data: listView, error: listViewError } = await supabase
+    .from("list_views")
+    .select("viewed_at")
+    .eq("list_id", data.id)
+    .eq("user_id", user.id)
+    .order("viewed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (listViewError) {
+    console.error("Error loading list view:", listViewError);
+    throw listViewError;
+  }
+
+  const lastViewedAt = listView?.viewed_at ?? 0;
+
   const referer = request.headers.get("referer");
   const isSameListRevalidation = (() => {
     if (!referer) {
@@ -58,12 +74,16 @@ export async function loader({ request, params: { list }, context }: Route.Loade
   // Record that this user viewed the list on entry, but avoid writing on same-page
   // revalidation after actions (e.g. adding an item), which would clear unread too soon.
   if (!isSameListRevalidation) {
-    const { error: viewError } = await supabase
-      .from("list_views")
-      .upsert(
-        { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
-        { onConflict: "list_id,user_id" },
-      );
+    const viewedAt = Date.now();
+    const { error: viewError } = listView
+      ? await supabase
+          .from("list_views")
+          .update({ viewed_at: viewedAt })
+          .eq("list_id", data.id)
+          .eq("user_id", user.id)
+      : await supabase
+          .from("list_views")
+          .insert({ list_id: data.id, user_id: user.id, viewed_at: viewedAt });
 
     if (viewError) {
       console.error("Error recording list view:", viewError);
@@ -87,6 +107,9 @@ export async function loader({ request, params: { list }, context }: Route.Loade
       themeSecondary: data.theme_secondary ?? undefined,
     },
     listId: data.id,
+    newItemIds: items
+      .filter(({ state, updatedAt }) => state === "active" && updatedAt > lastViewedAt)
+      .map(({ id }) => id),
     lastDeleted: items.filter(({ state }) => state === "deleted").at(-1),
   };
 }

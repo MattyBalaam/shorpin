@@ -1,4 +1,4 @@
-import { style, keyframes } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const itemContainer = style({
@@ -58,6 +58,23 @@ export const state = style({
   gridRow: 1,
   gridColumn: "state",
   paddingInlineEnd: vars.spacing.md,
+});
+
+export const newIndicator = style({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "1.1rem",
+  paddingInline: vars.spacing.sm,
+  borderRadius: vars.radius.pill,
+  background: vars.palette.primary,
+  color: vars.palette.text,
+  border: `1px solid ${vars.palette.text}`,
+  fontSize: vars.fontSize.xs,
+  lineHeight: 1,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  fontWeight: vars.fontWeight.semibold,
 });
 
 export const dragHandle = style({
