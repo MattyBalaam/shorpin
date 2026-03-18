@@ -1,4 +1,4 @@
-import { style, keyframes } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const itemContainer = style({
@@ -58,6 +58,15 @@ export const state = style({
   gridRow: 1,
   gridColumn: "state",
   paddingInlineEnd: vars.spacing.md,
+});
+
+export const newIndicator = style({
+  display: "inline-block",
+  width: "0.55rem",
+  height: "0.55rem",
+  borderRadius: vars.radius.pill,
+  background: vars.palette.primary,
+  boxShadow: `0 0 0 2px ${vars.palette.secondary}`,
 });
 
 export const dragHandle = style({

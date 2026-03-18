@@ -42,6 +42,20 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     );
   }
 
+  const { data: listView, error: listViewError } = await supabase
+    .from("list_views")
+    .select("viewed_at")
+    .eq("list_id", data.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (listViewError) {
+    console.error("Error loading list view:", listViewError);
+    throw listViewError;
+  }
+
+  const lastViewedAt = listView?.viewed_at ?? 0;
+
   const referer = request.headers.get("referer");
   const isSameListRevalidation = (() => {
     if (!referer) {
@@ -87,6 +101,9 @@ export async function loader({ request, params: { list }, context }: Route.Loade
       themeSecondary: data.theme_secondary ?? undefined,
     },
     listId: data.id,
+    newItemIds: items
+      .filter(({ state, updatedAt }) => state === "active" && updatedAt > lastViewedAt)
+      .map(({ id }) => id),
     lastDeleted: items.filter(({ state }) => state === "deleted").at(-1),
   };
 }
