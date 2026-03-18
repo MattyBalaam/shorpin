@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CREDS_FILE } from "./supabase-setup.ts";
 
 const { email, password } = JSON.parse(readFileSync(CREDS_FILE, "utf-8")) as {
@@ -35,13 +35,35 @@ test("supabase smoke", async ({ page }) => {
     await expect(page.getByLabel("Edit Test item")).toBeVisible();
   });
 
+  await test.step("go back to home - item should be unread", async () => {
+    await page.getByRole("link", { name: "Back to index" }).click();
+    await page.waitForURL("/");
+    const listRow = page.locator("li").filter({ has: page.getByRole("link", { name: listName }) });
+    await expect(listRow.getByText("1 unread")).toBeVisible();
+  });
+
+  await test.step("open the list - this marks items as viewed", async () => {
+    await page.getByRole("link", { name: listName }).click();
+    await page.waitForURL(`/lists/${listSlug}`);
+  });
+
+  await test.step("go back to home - unread badge should be gone", async () => {
+    await page.getByRole("link", { name: "Back to index" }).click();
+    await page.waitForURL("/");
+    const listRow = page.locator("li").filter({ has: page.getByRole("link", { name: listName }) });
+    await expect(listRow.getByText("unread")).not.toBeVisible();
+  });
+
   await test.step("delete the item", async () => {
+    await page.getByRole("link", { name: listName }).click();
+    await page.waitForURL(`/lists/${listSlug}`);
     await page.getByRole("button", { name: "Delete Test item" }).click();
     await expect(page.getByLabel("Edit Test item")).not.toBeVisible();
   });
 
   await test.step("clean up: delete the list", async () => {
     await page.getByRole("link", { name: "Back to index" }).click();
+    await page.waitForURL("/");
     await page
       .locator("li")
       .filter({ has: page.getByRole("link", { name: listName }) })
