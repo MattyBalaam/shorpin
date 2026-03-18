@@ -154,3 +154,17 @@ pnpx supabase gen types typescript --local > app/lib/database.types.ts
 
 - `lists` - Shopping lists with name, slug, state, theme colors
 - `list_items` - Items belonging to lists with value, state, sort_order
+
+### Performance Instrumentation
+
+The app includes lightweight client-side telemetry to help diagnose slow pages and route transitions:
+
+- Web vitals tracked in the browser: `TTFB`, `FCP`, `LCP`, `CLS`, `INP`
+- Route transition timing tracked in `app/root.tsx` using React Router navigation state
+- Metrics are sent to `POST /perf` via `navigator.sendBeacon` with a `fetch(..., { keepalive: true })` fallback
+- Server-side processing currently logs only slow metrics to reduce noise
+
+Implementation files:
+
+- Client metrics collection: `app/lib/performance.client.ts`
+- Metric ingestion route: `app/routes/perf.ts`
