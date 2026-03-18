@@ -8,7 +8,7 @@ import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
 import { isAddItemIntent, parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
 
-export async function loader({ params: { list }, context }: Route.LoaderArgs) {
+export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
   const user = await requireUser(supabase);
 
@@ -42,18 +42,33 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     );
   }
 
-  // Record that this user viewed the list — awaited so the home page reflects
-  // the updated viewed_at on the very next navigation.
-  const { error: viewError } = await supabase
-    .from("list_views")
-    .upsert(
-      { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
-      { onConflict: "list_id,user_id" },
-    );
+  const referer = request.headers.get("referer");
+  const isSameListRevalidation = (() => {
+    if (!referer) {
+      return false;
+    }
 
-  if (viewError) {
-    console.error("Error recording list view:", viewError);
-    throw viewError;
+    try {
+      return new URL(referer).pathname === `/lists/${list}`;
+    } catch {
+      return false;
+    }
+  })();
+
+  // Record that this user viewed the list on entry, but avoid writing on same-page
+  // revalidation after actions (e.g. adding an item), which would clear unread too soon.
+  if (!isSameListRevalidation) {
+    const { error: viewError } = await supabase
+      .from("list_views")
+      .upsert(
+        { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
+        { onConflict: "list_id,user_id" },
+      );
+
+    if (viewError) {
+      console.error("Error recording list view:", viewError);
+      throw viewError;
+    }
   }
 
   const items = data.list_items.map((item) => ({
