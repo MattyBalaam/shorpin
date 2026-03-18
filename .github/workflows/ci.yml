@@ -90,6 +90,7 @@ jobs:
           VITE_GIT_HASH: ${{ github.sha }}
           VITE_GIT_DATE: ${{ github.event.head_commit.timestamp }}
           VITE_PR_NUMBER: ${{ github.event.number }}
+          VITE_BRANCH: ${{ github.ref_name }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -105,6 +106,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
 
@@ -121,6 +123,15 @@ jobs:
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
+      - name: Resolve PR number for commit
+        run: |
+          PR_NUMBER=$(curl -fsSL \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            | jq -r '.[0].number // ""')
+          echo "VITE_PR_NUMBER=$PR_NUMBER" >> "$GITHUB_ENV"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -134,7 +145,8 @@ jobs:
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_ANON_KEY }}
             VITE_GIT_HASH=${{ github.sha }}
             VITE_GIT_DATE=${{ github.event.head_commit.timestamp }}
-            VITE_PR_NUMBER=${{ github.event.number }}
+            VITE_PR_NUMBER=${{ env.VITE_PR_NUMBER }}
+            VITE_BRANCH=${{ github.ref_name }}
 
       - name: Trigger Coolify deploy
         run: |
