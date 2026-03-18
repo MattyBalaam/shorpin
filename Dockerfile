@@ -15,6 +15,9 @@ COPY . .
 # Vite bakes these into the client bundle at build time
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+ARG VITE_GIT_HASH
+ARG VITE_GIT_DATE
+ARG VITE_PR_NUMBER
 
 RUN pnpm build
 
