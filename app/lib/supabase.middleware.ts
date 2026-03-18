@@ -88,10 +88,10 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
 
   if (!publicRoutes.includes(url.pathname)) {
     if (!schemaCheckPromise) {
-      schemaCheckPromise = runListViewsSchemaCheck(supabase);
+      schemaCheckPromise = runListViewsSchemaCheck(supabase).catch((error) => {
+        console.warn("[Startup check] list_views schema check failed:", error);
+      });
     }
-
-    await schemaCheckPromise;
 
     const cookie = request.headers.get("Cookie");
     const hasAuthCookie = cookie?.includes("sb-") ?? false;
