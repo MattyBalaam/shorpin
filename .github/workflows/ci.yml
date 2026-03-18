@@ -89,6 +89,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
           VITE_GIT_HASH: ${{ github.sha }}
           VITE_GIT_DATE: ${{ github.event.head_commit.timestamp }}
+          VITE_PR_NUMBER: ${{ github.event.number }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -133,6 +134,7 @@ jobs:
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_ANON_KEY }}
             VITE_GIT_HASH=${{ github.sha }}
             VITE_GIT_DATE=${{ github.event.head_commit.timestamp }}
+            VITE_PR_NUMBER=${{ github.event.number }}
 
       - name: Trigger Coolify deploy
         run: |
