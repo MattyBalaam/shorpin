@@ -401,6 +401,39 @@ export const handlers = [
 		);
 	}),
 
+	// List views — PATCH (update viewed_at by list/user filters)
+	http.patch("*/rest/v1/list_views", async ({ request }) => {
+		await delay();
+		const email = emailFromRequest(request);
+		const user = email ? users.findFirst((q) => q.where({ email })) : null;
+		if (!user) return HttpResponse.json([], { status: 401 });
+
+		const url = new URL(request.url);
+		const listId = url.searchParams.get("list_id")?.replace("eq.", "");
+		const userId = url.searchParams.get("user_id")?.replace("eq.", "");
+		const body = (await request.json()) as { viewed_at?: number };
+
+		if (!listId || userId !== user.id || body.viewed_at === undefined) {
+			return HttpResponse.json([]);
+		}
+
+		const viewedAt = body.viewed_at;
+
+		const existing = listViews.findFirst((q) =>
+			q.where({ list_id: listId, user_id: user.id }),
+		);
+
+		if (existing) {
+			await listViews.update((q) => q.where({ id: existing.id }), {
+				data(draft) {
+					draft.viewed_at = viewedAt;
+				},
+			});
+		}
+
+		return HttpResponse.json([]);
+	}),
+
 	// List views — POST (upsert viewed_at when a user opens a list)
 	http.post("*/rest/v1/list_views", async ({ request }) => {
 		await delay();
