@@ -12,6 +12,7 @@ type PerfMetricPayload = {
 };
 
 const perfEndpoint = "/perf";
+const isPerfTelemetryEnabled = !import.meta.env.DEV;
 let didInitWebVitals = false;
 
 function toRating(name: string, value: number): Rating | undefined {
@@ -35,6 +36,10 @@ function toRating(name: string, value: number): Rating | undefined {
 }
 
 function sendMetric(metric: PerfMetricPayload) {
+  if (!isPerfTelemetryEnabled) {
+    return;
+  }
+
   const body = JSON.stringify(metric);
 
   if (navigator.sendBeacon) {
@@ -83,7 +88,7 @@ function onPageHidden(callback: () => void) {
 }
 
 export function initWebVitalsTracking() {
-  if (didInitWebVitals || typeof window === "undefined") {
+  if (!isPerfTelemetryEnabled || didInitWebVitals || typeof window === "undefined") {
     return;
   }
   didInitWebVitals = true;
