@@ -27,6 +27,11 @@ export default defineConfig(({ mode }) => ({
   ...(mode === "preview" && {
     ssr: { noExternal: ["msw", "@msw/data"] },
   }),
+  define: {
+    "import.meta.env.VITE_GIT_HASH": JSON.stringify(process.env.VITE_GIT_HASH ?? "unknown"),
+    "import.meta.env.VITE_GIT_DATE": JSON.stringify(process.env.VITE_GIT_DATE ?? "unknown"),
+    "import.meta.env.VITE_PR_NUMBER": JSON.stringify(process.env.VITE_PR_NUMBER ?? ""),
+  },
   plugins: [
     devtoolsJson(),
     // reactRouterDevTools(),

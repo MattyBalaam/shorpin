@@ -1,9 +1,10 @@
+import { styleText } from "node:util";
 import { parseCookieHeader } from "@supabase/ssr";
-import { redirect, createContext, href } from "react-router";
-import type { MiddlewareFunction } from "react-router";
-import { createSupabaseClient } from "./supabase.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { MiddlewareFunction } from "react-router";
+import { createContext, href, redirect } from "react-router";
 import type { Database } from "./database.types";
+import { createSupabaseClient } from "./supabase.server";
 
 export const supabaseContext = createContext<SupabaseClient<Database>>();
 
@@ -37,6 +38,7 @@ const publicRoutes = [
   href("/auth/confirm"),
   href("/set-password"),
   href("/request-access"),
+  href("/version"),
 ];
 
 export const supabaseMiddleware: MiddlewareFunction<Response> = async (
@@ -45,11 +47,18 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
 ) => {
   const start = performance.now();
 
+  const logger = (message: string, showMeta = false) => {
+    console.log(
+      `${styleText("yellow", "[Supabase]")} ${message}`,
+      showMeta
+        ? `\n${styleText("cyan", `[${Math.round(performance.now() - start)}ms]`)} ${styleText("magentaBright", new Date().toISOString())} | ${styleText("green", request.url)}`
+        : "",
+    );
+  };
+
   const { supabase, cookieHeaders } = createSupabaseClient(request);
 
-  console.log(
-    `[Supabase Middleware] Initialized Supabase client in ${performance.now() - start}ms`,
-  );
+  logger(`Initialized Supabase client`, true);
 
   context.set(supabaseContext, supabase);
 
@@ -59,13 +68,16 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
     const cookie = request.headers.get("Cookie");
     const hasAuthCookie = cookie?.includes("sb-") ?? false;
 
-    if (!hasAuthCookie) {
+    if (!cookie || !hasAuthCookie) {
+      logger(`no auth cookie, redirect to login`, true);
+
       throw redirect(href("/login"), { headers: cookieHeaders });
     }
 
-    const secs = tokenSecondsLeft(cookie ?? "");
-    console.log(
-      `[Supabase Middleware] token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
+    const secs = tokenSecondsLeft(cookie);
+
+    logger(
+      `token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
     );
 
     if (secs === null || secs <= 60) {
@@ -73,11 +85,13 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
         data: { session },
       } = await supabase.auth.getSession();
 
-      console.log(`[Supabase Middleware] got session in ${performance.now() - start}ms`);
-
       if (!session) {
+        logger(`failed getting session, redirect to login`, true);
+
         throw redirect(href("/login"), { headers: cookieHeaders });
       }
+
+      logger(`got session`, true);
     }
   }
 
@@ -88,18 +102,7 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
     response.headers.append(key, value);
   }
 
-  // Cache authenticated HTML navigations in the browser — stale-while-revalidate
-  // means back-navigations and repeat visits feel instant while a fresh copy is
-  // fetched in the background. Scoped to navigation requests on non-public routes
-  // so data fetches and the SW's offline error-state logic are unaffected.
-  if (
-    !publicRoutes.includes(url.pathname) &&
-    request.headers.get("Sec-Fetch-Mode") === "navigate"
-  ) {
-    response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=30");
-  }
-
-  console.log(`[Supabase Middleware] return full flow  in ${performance.now() - start}ms`);
+  logger(`complete`, true);
 
   return response;
 };
