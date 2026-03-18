@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -8,9 +8,11 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useNavigation,
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
+import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
@@ -71,6 +73,49 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { pathname } = useLocation();
+  const navigation = useNavigation();
+  const pendingNavigation = useRef<{
+    start: number;
+    fromPathname: string;
+    toPathname: string;
+  } | null>(null);
+
+  useEffect(function bootstrapPerformanceTracking() {
+    initWebVitalsTracking();
+  }, []);
+
+  useEffect(
+    function trackRouteNavigation() {
+      const toPathname = navigation.location?.pathname;
+
+      if (navigation.state !== "idle" && toPathname) {
+        if (!pendingNavigation.current || pendingNavigation.current.toPathname !== toPathname) {
+          pendingNavigation.current = {
+            start: performance.now(),
+            fromPathname: pathname,
+            toPathname,
+          };
+        }
+        return;
+      }
+
+      const pending = pendingNavigation.current;
+      if (!pending) {
+        return;
+      }
+
+      pendingNavigation.current = null;
+
+      if (pathname === pending.toPathname) {
+        reportRouteNavigationMetric({
+          pathname,
+          durationMs: performance.now() - pending.start,
+          fromPathname: pending.fromPathname,
+        });
+      }
+    },
+    [navigation.state, navigation.location?.pathname, pathname],
+  );
 
   useEffect(
     function signalHydration() {

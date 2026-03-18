@@ -2,6 +2,7 @@ import type { RouteConfig } from "@react-router/dev/routes";
 import { layout, route } from "@react-router/dev/routes";
 
 export default [
+  route("perf", "routes/perf.ts"),
   route("version", "routes/version.ts"),
   layout("routes/auth/layout.tsx", [
     route(

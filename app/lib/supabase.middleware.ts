@@ -55,6 +55,7 @@ function tokenSecondsLeft(cookieHeader: string): number | null {
 }
 
 const publicRoutes = [
+  "/perf",
   href("/login"),
   href("/forgot-password"),
   href("/auth/confirm"),
