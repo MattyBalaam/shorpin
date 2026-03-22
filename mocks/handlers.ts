@@ -2,6 +2,10 @@ import { delay, HttpResponse, http } from "msw";
 import { type BroadcastMessage, broadcastEmitter } from "./broadcast.ts";
 import { listItems, listMembers, lists, listViews, users, waitlist } from "./db.ts";
 
+const ADD_ITEM_INTENT = "add-item";
+const DELETE_PREFIX = "delete-item-";
+const UNDELETE_PREFIX = "undelete-item-";
+
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
   const token = auth.replace("Bearer ", "");
@@ -22,6 +26,16 @@ function makeSession(user: { id: string; email: string }) {
       role: "authenticated",
     },
   };
+}
+
+function hasListAccess(userId: string, listId: string) {
+  const owned = lists.findFirst((q) => q.where({ id: listId, user_id: userId }));
+  if (owned) {
+    return true;
+  }
+
+  const membership = listMembers.findFirst((q) => q.where({ list_id: listId, user_id: userId }));
+  return Boolean(membership);
 }
 
 export const handlers = [
@@ -256,6 +270,162 @@ export const handlers = [
     }
 
     return HttpResponse.json(items.map((item) => ({ id: item.id })));
+  }),
+
+  // RPC - transactional list mutation
+  http.post("*/rest/v1/rpc/mutate_list", async ({ request }) => {
+    await delay();
+    const email = emailFromRequest(request);
+    const user = email ? users.findFirst((q) => q.where({ email })) : null;
+    if (!user) return HttpResponse.json([], { status: 401 });
+
+    const body = (await request.json()) as {
+      p_list_slug: string;
+      p_payload: {
+        new?: string;
+        "new-submit"?: string;
+        items?: Array<{ id: string; value: string }>;
+        themePrimary?: string;
+        themeSecondary?: string;
+      };
+      p_intent?: string | null;
+      p_mutated_at: number;
+    };
+
+    const list =
+      lists
+        .findMany((q) => q.where({ slug: body.p_list_slug, state: "active" }))
+        .find((candidate) => hasListAccess(user.id, candidate.id)) ?? null;
+
+    if (!list) {
+      return HttpResponse.json({ ok: false, reason: "not_found" });
+    }
+
+    let hasItemMutation = false;
+    const updatedAt = body.p_mutated_at;
+    const itemsPayload = body.p_payload.items ?? [];
+    const getNextSortOrder = () => {
+      const existing = listItems.findMany((q) => q.where({ list_id: list.id }));
+      const maxOrder = Math.max(0, ...existing.map((item) => item.sort_order));
+      return maxOrder + 1;
+    };
+
+    if (body.p_payload["new-submit"] === ADD_ITEM_INTENT && body.p_payload.new) {
+      await listItems.create({
+        id: crypto.randomUUID(),
+        list_id: list.id,
+        value: body.p_payload.new,
+        state: "active",
+        sort_order: getNextSortOrder(),
+        updated_at: updatedAt,
+      });
+      hasItemMutation = true;
+    }
+
+    for (const [index, item] of itemsPayload.entries()) {
+      const existing = listItems.findFirst((q) => q.where({ id: item.id, list_id: list.id }));
+      if (!existing) {
+        continue;
+      }
+
+      if (existing.value === item.value && existing.sort_order === index) {
+        continue;
+      }
+
+      await listItems.update((q) => q.where({ id: item.id }), {
+        data(draft) {
+          draft.value = item.value;
+          draft.sort_order = index;
+          draft.updated_at = updatedAt;
+        },
+      });
+      hasItemMutation = true;
+    }
+
+    const intent = body.p_intent ?? "";
+
+    if (intent.startsWith(UNDELETE_PREFIX)) {
+      const undeleteId = intent.slice(UNDELETE_PREFIX.length);
+      const existing = listItems.findFirst((q) => q.where({ id: undeleteId, list_id: list.id }));
+      if (existing) {
+        await listItems.update((q) => q.where({ id: undeleteId }), {
+          data(draft) {
+            draft.state = "active";
+            draft.sort_order = getNextSortOrder();
+            draft.updated_at = updatedAt;
+          },
+        });
+        hasItemMutation = true;
+      }
+    }
+
+    if (intent.startsWith(DELETE_PREFIX)) {
+      const deleteId = intent.slice(DELETE_PREFIX.length);
+      const existing = listItems.findFirst((q) => q.where({ id: deleteId, list_id: list.id }));
+      if (existing) {
+        await listItems.update((q) => q.where({ id: deleteId }), {
+          data(draft) {
+            draft.state = "deleted";
+            draft.updated_at = updatedAt;
+          },
+        });
+        hasItemMutation = true;
+
+        const deletedItems = listItems
+          .findMany((q) => q.where({ list_id: list.id, state: "deleted" }))
+          .sort((a, b) => b.updated_at - a.updated_at);
+
+        if (deletedItems.length > 10) {
+          for (const staleItem of deletedItems.slice(10)) {
+            listItems.delete((q) => q.where({ id: staleItem.id }));
+          }
+        }
+      }
+    }
+
+    if (body.p_payload.themePrimary && body.p_payload.themeSecondary) {
+      await lists.update((q) => q.where({ id: list.id }), {
+        data(draft) {
+          draft.theme_primary = body.p_payload.themePrimary;
+          draft.theme_secondary = body.p_payload.themeSecondary;
+        },
+      });
+    }
+
+    if (hasItemMutation) {
+      const existingView = listViews.findFirst((q) =>
+        q.where({ list_id: list.id, user_id: user.id }),
+      );
+      if (existingView) {
+        await listViews.update((q) => q.where({ id: existingView.id }), {
+          data(draft) {
+            draft.viewed_at = updatedAt;
+          },
+        });
+      } else {
+        await listViews.create({
+          id: crypto.randomUUID(),
+          list_id: list.id,
+          user_id: user.id,
+          viewed_at: updatedAt,
+        });
+      }
+    }
+
+    const nextItems = listItems.findMany((q) => q.where({ list_id: list.id }));
+
+    return HttpResponse.json({
+      ok: true,
+      listId: list.id,
+      hasItemMutation,
+      items: nextItems.map((item) => ({
+        id: item.id,
+        value: item.value,
+        state: item.state,
+        updatedAt: item.updated_at,
+        sortOrder: item.sort_order,
+      })),
+    });
   }),
 
   // List items — POST for list action (add new item or upsert batch)

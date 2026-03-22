@@ -1,6 +1,6 @@
 import { Collection } from "@msw/data";
-import * as v from "valibot";
 import type { InferOutput } from "valibot";
+import * as v from "valibot";
 import type { Tables } from "~/lib/database.types";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -15,6 +15,8 @@ const listsSchema = v.object({
   name: v.string(),
   slug: v.string(),
   state: v.picklist(["active", "deleted"]),
+  theme_primary: v.optional(v.nullable(v.string())),
+  theme_secondary: v.optional(v.nullable(v.string())),
   user_id: v.string(),
   created_at: v.string(),
 });

@@ -6,7 +6,20 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
-import { isAddItemIntent, parseDeleteItemIntent, parseUndeleteItemIntent } from "./intents";
+import { isAddItemIntent } from "./intents";
+
+const zMutateListRpcResult = v.union([
+  v.object({
+    ok: v.literal(true),
+    listId: v.pipe(v.string(), v.uuid()),
+    hasItemMutation: v.boolean(),
+    items: zItems,
+  }),
+  v.object({
+    ok: v.literal(false),
+    reason: v.literal("not_found"),
+  }),
+]);
 
 export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -134,22 +147,40 @@ export async function action({ request, params: { list }, context }: Route.Actio
   }
 
   const supabase = context.get(supabaseContext);
-  const user = await requireUser(supabase);
-  let hasSuccessfulItemMutation = false;
+  await requireUser(supabase);
 
-  const toDelete = parseDeleteItemIntent(submission.intent);
-  const toUndelete = parseUndeleteItemIntent(submission.intent);
+  const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
+    p_list_slug: list,
+    p_payload: result.output,
+    p_intent: submission.intent ?? null,
+    p_mutated_at: updatedAt,
+  });
 
-  // Fetch current list and items from Supabase
-  const { data, error: listError } = await supabase
-    .from("lists")
-    .select("id, name, slug, list_items(*)")
-    .eq("slug", list)
-    .eq("state", "active")
-    .single();
+  if (rpcError) {
+    console.error("Error mutating list:", rpcError);
+    return {
+      result: report(submission, {
+        error: {
+          issues: [{ message: "Failed to update list. Please try again." }],
+        },
+      }),
+    };
+  }
 
-  if (listError || !data) {
-    if (listError) console.error("Error fetching list for action:", listError);
+  const rpcResult = v.safeParse(zMutateListRpcResult, rpcData);
+
+  if (!rpcResult.success) {
+    console.error("Unexpected mutate_list payload:", rpcData);
+    return {
+      result: report(submission, {
+        error: {
+          issues: [{ message: "Failed to update list. Please try again." }],
+        },
+      }),
+    };
+  }
+
+  if (!rpcResult.output.ok) {
     return {
       result: report(submission, {
         error: {
@@ -159,184 +190,13 @@ export async function action({ request, params: { list }, context }: Route.Actio
     };
   }
 
-  const listId = data.id;
-  const existingItems = data.list_items;
-
-  const existingMap = Object.fromEntries(
-    existingItems.map((item) => [
-      item.id,
-      {
-        id: item.id,
-        value: item.value,
-        state: item.state,
-        updatedAt: item.updated_at,
-        sortOrder: item.sort_order,
-      },
-    ]),
-  );
-
-  const getNextSortOrder = () => {
-    const maxOrder = Math.max(0, ...Object.values(existingMap).map((i) => i.sortOrder));
-    return maxOrder + 1;
-  };
-
   const toAdd = isAddItemIntent(result.output["new-submit"]);
 
-  // Handle new item
-  if (result.output.new && toAdd) {
-    const newId = crypto.randomUUID();
-    const newSortOrder = getNextSortOrder();
-    const { error: insertError } = await supabase.from("list_items").insert({
-      id: newId,
-      list_id: listId,
-      value: result.output.new,
-      state: "active",
-      updated_at: updatedAt,
-      sort_order: newSortOrder,
-    });
-
-    if (insertError) {
-      console.error("Error inserting new item:", insertError);
-    } else {
-      hasSuccessfulItemMutation = true;
-      existingMap[newId] = {
-        id: newId,
-        value: result.output.new,
-        updatedAt,
-        state: "active",
-        sortOrder: newSortOrder,
-      };
-    }
-  }
-
-  // Handle updates to existing items and sort order changes
-  const itemsToUpdate = result.output.items
-    .map(({ id, value }, index) => ({ id, value, index }))
-    .filter(({ id, value, index }) => {
-      if (!existingMap[id]) return false;
-      return existingMap[id].value !== value || existingMap[id].sortOrder !== index;
-    });
-
-  if (itemsToUpdate.length > 0) {
-    const { error: updateError } = await supabase.from("list_items").upsert(
-      itemsToUpdate.map(({ id, value, index }) => ({
-        id,
-        list_id: listId,
-        value,
-        sort_order: index,
-        updated_at: updatedAt,
-        state: existingMap[id].state,
-      })),
-    );
-
-    if (updateError) {
-      console.error("Error updating items:", updateError);
-    } else {
-      hasSuccessfulItemMutation = true;
-      for (const { id, value, index } of itemsToUpdate) {
-        existingMap[id].value = value;
-        existingMap[id].updatedAt = updatedAt;
-        existingMap[id].sortOrder = index;
-      }
-    }
-  }
-
-  // Handle undelete - put item at bottom of list
-  if (toUndelete && existingMap[toUndelete]) {
-    const undeleteSortOrder = getNextSortOrder();
-    const { error: undeleteError } = await supabase
-      .from("list_items")
-      .update({
-        state: "active",
-        updated_at: updatedAt,
-        sort_order: undeleteSortOrder,
-      })
-      .eq("id", toUndelete);
-
-    if (undeleteError) {
-      console.error("Error restoring item:", undeleteError);
-    } else {
-      hasSuccessfulItemMutation = true;
-      existingMap[toUndelete].state = "active";
-      existingMap[toUndelete].updatedAt = updatedAt;
-      existingMap[toUndelete].sortOrder = undeleteSortOrder;
-    }
-  }
-
-  // Handle delete
-  if (toDelete && existingMap[toDelete]) {
-    const { error: deleteError } = await supabase
-      .from("list_items")
-      .update({ state: "deleted", updated_at: updatedAt })
-      .eq("id", toDelete);
-
-    if (deleteError) {
-      console.error("Error deleting item:", deleteError);
-    } else {
-      hasSuccessfulItemMutation = true;
-      existingMap[toDelete].state = "deleted";
-      existingMap[toDelete].updatedAt = updatedAt;
-
-      // Keep only the 10 most recent deleted items, hard delete the rest
-      const maxDeletedItems = 10;
-      const { data: deletedItems } = await supabase
-        .from("list_items")
-        .select("id")
-        .eq("list_id", listId)
-        .eq("state", "deleted")
-        .order("updated_at", { ascending: false });
-
-      if (deletedItems && deletedItems.length > maxDeletedItems) {
-        const idsToRemove = deletedItems.slice(maxDeletedItems).map((i) => i.id);
-        const { error: purgeError } = await supabase
-          .from("list_items")
-          .delete()
-          .in("id", idsToRemove);
-
-        if (purgeError) {
-          console.error("Error purging old deleted items:", purgeError);
-        } else {
-          for (const id of idsToRemove) {
-            delete existingMap[id];
-          }
-        }
-      }
-    }
-  }
-
-  // Update theme colors if provided
-  if (result.output.themePrimary && result.output.themeSecondary) {
-    const { error: themeError } = await supabase
-      .from("lists")
-      .update({
-        theme_primary: result.output.themePrimary,
-        theme_secondary: result.output.themeSecondary,
-      })
-      .eq("id", listId);
-
-    if (themeError) {
-      console.error("Error updating theme:", themeError);
-    }
-  }
-
-  if (hasSuccessfulItemMutation) {
-    const { error: viewError } = await supabase
-      .from("list_views")
-      .upsert(
-        { list_id: listId, user_id: user.id, viewed_at: updatedAt },
-        { onConflict: "list_id,user_id" },
-      );
-
-    if (viewError) {
-      console.error("Error recording list view after mutation:", viewError);
-    }
-  }
-
-  const allItems = v.parse(zItems, Object.values(existingMap));
+  const allItems = rpcResult.output.items;
 
   // Broadcast change to other clients (fire-and-forget)
   const clientId = formData.get("clientId");
-  const channel = supabase.channel(`list-${listId}`);
+  const channel = supabase.channel(`list-${rpcResult.output.listId}`);
   void channel.httpSend("changed", { clientId }).finally(() => supabase.removeChannel(channel));
 
   return {
