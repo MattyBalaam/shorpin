@@ -242,9 +242,8 @@ test("reordering items does not create unread or new markers for self", async ({
   // Drag-and-drop can be timing-sensitive in CI; retry a few times.
   let reordered = false;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const handles = page.getByText("|-|-|-|-|", { exact: true });
-    const fromHandle = handles.first();
-    const toHandle = handles.nth(2);
+    const fromHandle = page.getByLabel("Reorder Milk");
+    const toHandle = page.getByLabel("Reorder Eggs");
 
     const fromBox = await fromHandle.boundingBox();
     const toBox = await toHandle.boundingBox();
