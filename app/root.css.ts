@@ -2,24 +2,24 @@ import { globalStyle, style } from "@vanilla-extract/css";
 import { vars } from "./styles/theme.css";
 
 export const main = style({
-  margin: "0 auto",
-  display: "grid",
-  height: "100dvh",
-  paddingBlockStart: vars.spacing.md,
-  gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
-  gridTemplateColumns:
-    "[left] minmax(20px, 1fr) [content] minmax(auto, 60ch) [right] minmax(20px, 1fr)",
+	margin: "0 auto",
+	display: "grid",
+	minHeight: "100svh",
+	paddingBlockStart: vars.spacing.md,
+	gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
+	gridTemplateColumns:
+		"[left] minmax(20px, 1fr) [content] minmax(auto, 60ch) [right] minmax(20px, 1fr)",
 });
 
 export const loading = style({
-  display: "grid",
-  placeItems: "center",
-  background: vars.palette.secondary,
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100%",
+	display: "grid",
+	placeItems: "center",
+	background: vars.palette.secondary,
+	alignItems: "center",
+	justifyContent: "center",
+	height: "100%",
 });
 
 globalStyle("body, h1", {
-  margin: 0,
+	margin: 0,
 });
