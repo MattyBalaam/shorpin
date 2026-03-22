@@ -205,6 +205,15 @@ export type Database = {
         Args: { p_list_id: string };
         Returns: boolean;
       };
+      mutate_list: {
+        Args: {
+          p_intent: string | null;
+          p_list_slug: string;
+          p_mutated_at: number;
+          p_payload: Json;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       list_item_state: "active" | "deleted";
