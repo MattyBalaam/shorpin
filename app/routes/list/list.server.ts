@@ -134,6 +134,8 @@ export async function action({ request, params: { list }, context }: Route.Actio
   }
 
   const supabase = context.get(supabaseContext);
+  const user = await requireUser(supabase);
+  let hasSuccessfulItemMutation = false;
 
   const toDelete = parseDeleteItemIntent(submission.intent);
   const toUndelete = parseUndeleteItemIntent(submission.intent);
@@ -196,6 +198,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     if (insertError) {
       console.error("Error inserting new item:", insertError);
     } else {
+      hasSuccessfulItemMutation = true;
       existingMap[newId] = {
         id: newId,
         value: result.output.new,
@@ -229,6 +232,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     if (updateError) {
       console.error("Error updating items:", updateError);
     } else {
+      hasSuccessfulItemMutation = true;
       for (const { id, value, index } of itemsToUpdate) {
         existingMap[id].value = value;
         existingMap[id].updatedAt = updatedAt;
@@ -252,6 +256,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     if (undeleteError) {
       console.error("Error restoring item:", undeleteError);
     } else {
+      hasSuccessfulItemMutation = true;
       existingMap[toUndelete].state = "active";
       existingMap[toUndelete].updatedAt = updatedAt;
       existingMap[toUndelete].sortOrder = undeleteSortOrder;
@@ -268,6 +273,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     if (deleteError) {
       console.error("Error deleting item:", deleteError);
     } else {
+      hasSuccessfulItemMutation = true;
       existingMap[toDelete].state = "deleted";
       existingMap[toDelete].updatedAt = updatedAt;
 
@@ -310,6 +316,19 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
     if (themeError) {
       console.error("Error updating theme:", themeError);
+    }
+  }
+
+  if (hasSuccessfulItemMutation) {
+    const { error: viewError } = await supabase
+      .from("list_views")
+      .upsert(
+        { list_id: listId, user_id: user.id, viewed_at: updatedAt },
+        { onConflict: "list_id,user_id" },
+      );
+
+    if (viewError) {
+      console.error("Error recording list view after mutation:", viewError);
     }
   }
 

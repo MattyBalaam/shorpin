@@ -96,7 +96,7 @@ export function Item({
           </span>
         ) : null}
 
-        <span className={styles.dragHandle}>
+        <span className={styles.dragHandle} aria-label={`Reorder ${fieldset.value.defaultValue}`}>
           <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
           <span aria-hidden>|-|-|-|-|</span>
         </span>

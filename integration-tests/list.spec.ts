@@ -220,3 +220,64 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
     await collabContext.close();
   }
 });
+
+test("reordering items does not create unread or new markers for self", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  // Open once to establish viewed_at for existing items.
+  await page.goto("/lists/shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  // Go home and open again so no pre-existing items are marked new.
+  await page.goto("/");
+  await page.goto("/lists/shopping");
+
+  const getEditOrder = async () =>
+    page
+      .locator('input[aria-label^="Edit "]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute("aria-label") ?? "").filter(Boolean),
+      );
+
+  // Drag-and-drop can be timing-sensitive in CI; retry a few times.
+  let reordered = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const fromHandle = page.getByLabel("Reorder Milk");
+    const toHandle = page.getByLabel("Reorder Eggs");
+
+    const fromBox = await fromHandle.boundingBox();
+    const toBox = await toHandle.boundingBox();
+    if (!fromBox || !toBox) {
+      throw new Error("Unable to determine drag handle positions for reorder");
+    }
+
+    await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 + 20, {
+      steps: 25,
+    });
+    await page.mouse.up();
+
+    // Give the pointer-up reorder submit/revalidation a moment in CI.
+    await page.waitForTimeout(200);
+
+    const order = await getEditOrder();
+    if (order[0] !== "Edit Milk") {
+      reordered = true;
+      break;
+    }
+  }
+
+  expect(reordered).toBe(true);
+
+  await page.goto("/");
+  const shoppingRow = page
+    .locator("li")
+    .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
+  await expect(shoppingRow.getByText(/unread/)).not.toBeVisible();
+
+  await page.goto("/lists/shopping");
+  await expect(
+    page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Milk") }),
+  ).toHaveCount(0);
+});
