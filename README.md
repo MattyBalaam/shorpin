@@ -39,6 +39,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 - Loaders fetch data server-side (Supabase queries)
 - Real-time updates via Supabase broadcast channels
 - Form actions handle mutations with optimistic UI updates via Conform
+- List item mutations are consolidated into a single Supabase RPC (`public.mutate_list`) to keep add/edit/reorder/delete/undelete, deleted-item pruning, and list view timestamp writes transactional
 
 ### UI & Layout Patterns
 
