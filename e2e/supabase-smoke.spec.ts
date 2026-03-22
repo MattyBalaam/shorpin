@@ -35,14 +35,14 @@ test("supabase smoke", async ({ page }) => {
     await expect(page.getByLabel("Edit Test item")).toBeVisible();
     await expect(
       page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Test item") }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
   });
 
-  await test.step("go back to home - item should be unread", async () => {
+  await test.step("go back to home - own item should not be unread", async () => {
     await page.getByRole("link", { name: "Back to index" }).click();
     await page.waitForURL("/");
     const listRow = page.locator("li").filter({ has: page.getByRole("link", { name: listName }) });
-    await expect(listRow.getByText("1 unread")).toBeVisible();
+    await expect(listRow.getByText("unread")).not.toBeVisible();
   });
 
   await test.step("open the list - this marks items as viewed", async () => {
