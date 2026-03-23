@@ -30,7 +30,7 @@ const routes: RouteCheck[] = [
     name: "list config",
     path: "/config/shopping",
     user: "owner",
-    allowedRuleIds: ["color-contrast"],
+    allowedRuleIds: [],
   },
   {
     name: "confirm delete",
