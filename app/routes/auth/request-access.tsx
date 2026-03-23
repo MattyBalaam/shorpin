@@ -1,12 +1,14 @@
-import { Form, useNavigation } from "react-router";
-import type { Route } from "./+types/request-access";
-import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
-import { zRequestAccess } from "./schemas";
+import { Form, useNavigation } from "react-router";
+import { Button } from "~/components/button/button";
+import type { Route } from "./+types/request-access";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
+import { zRequestAccess } from "./schemas";
 
 export { action } from "./request-access.server";
+
+export const meta: Route.MetaFunction = () => [{ title: "Request access | Shorpin" }];
 
 export const handle = {
   breadcrumb: { label: "Request access" },

@@ -1,9 +1,9 @@
 import { Form, useNavigation } from "react-router";
-import { Link } from "~/components/link/link";
 import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
+import { Button } from "~/components/button/button";
+import { Link } from "~/components/link/link";
 import type { Route } from "./+types/delete";
 import * as styles from "./delete.css";
-import { Button } from "~/components/button/button";
 
 export { action, loader } from "./delete.server";
 
@@ -15,6 +15,15 @@ export const handle = {
     }),
     { label: "Delete" },
   ],
+};
+
+export const meta: Route.MetaFunction = ({ data }) => {
+  const listName = data?.listName;
+  return [
+    {
+      title: listName ? `Delete ${listName} | Shorpin` : "Delete list | Shorpin",
+    },
+  ];
 };
 
 export default function Delete({ loaderData }: Route.ComponentProps) {

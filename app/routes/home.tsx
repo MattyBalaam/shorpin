@@ -25,7 +25,7 @@ export { action, loader } from "./home.server";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Shorpin" },
+    { title: "Home | Shorpin" },
     { name: "description", content: "We got lists, they’re multiplying" },
   ];
 };

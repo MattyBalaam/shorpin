@@ -1,14 +1,16 @@
-import { Form, href, useNavigation } from "react-router";
-import type { Route } from "./+types/login";
-import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
-import { zLogin } from "./schemas";
+import { Form, href, useNavigation } from "react-router";
+import { Button } from "~/components/button/button";
+import { Link } from "~/components/link/link";
+import type { Route } from "./+types/login";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
-import { Link } from "~/components/link/link";
 import * as devStyles from "./login.dev.css";
+import { zLogin } from "./schemas";
 
 export { action } from "./login.server";
+
+export const meta: Route.MetaFunction = () => [{ title: "Sign in | Shorpin" }];
 
 const DEV_USERS = [
   { email: "owner@test.com", label: "Owner" },

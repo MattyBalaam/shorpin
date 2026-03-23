@@ -1,6 +1,6 @@
 import { LazyMotion } from "motion/react";
 import { useEffect } from "react";
-import { Form, href, Outlet, useMatch, useRouteLoaderData } from "react-router";
+import { Form, href, Outlet, useLocation, useRouteLoaderData } from "react-router";
 import { Toaster, toast } from "sonner";
 import { Breadcrumbs } from "~/components/breadcrumbs/breadcrumbs";
 import { Button } from "~/components/button/button";
@@ -16,8 +16,9 @@ const loadFeatures = () => import("~/motion-features").then((m) => m.default);
 export default function AppLayout() {
   const rootData = useRouteLoaderData<typeof rootLoader>("root");
   const notification = rootData?.toast;
+  const { pathname } = useLocation();
   const showLogout =
-    Boolean(useMatch("/")) || Boolean(useMatch("/sign-ups")) || Boolean(useMatch("/config/:list"));
+    pathname === "/" || pathname === "/sign-ups" || pathname.startsWith("/config/");
 
   useEffect(
     function showNewToast() {
@@ -35,7 +36,7 @@ export default function AppLayout() {
         <Breadcrumbs />
         {showLogout ? (
           <Form method="POST" action={href("/logout")} className={styles.logOut}>
-            <Button type="submit">
+            <Button type="submit" aria-label="Sign out">
               <span className={styles.logOutLabel}>Sign out</span>
               <span aria-hidden="true" className={styles.logOutIcon}>
                 ⏻

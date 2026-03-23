@@ -1,12 +1,14 @@
-import { Form, Link, href, useNavigation } from "react-router";
-import type { Route } from "./+types/forgot-password";
-import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
-import { zForgotPassword } from "./schemas";
+import { Form, href, Link, useNavigation } from "react-router";
+import { Button } from "~/components/button/button";
+import type { Route } from "./+types/forgot-password";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
+import { zForgotPassword } from "./schemas";
 
 export { action } from "./forgot-password.server";
+
+export const meta: Route.MetaFunction = () => [{ title: "Forgot password | Shorpin" }];
 
 export default function ForgotPassword({ actionData }: Route.ComponentProps) {
   const { state } = useNavigation();

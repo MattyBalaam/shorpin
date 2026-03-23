@@ -1,12 +1,14 @@
-import { Form, useNavigation } from "react-router";
-import type { Route } from "./+types/set-password";
-import { Button } from "~/components/button/button";
 import { useForm } from "@conform-to/react/future";
-import { zSetPassword } from "./schemas";
+import { Form, useNavigation } from "react-router";
+import { Button } from "~/components/button/button";
+import type { Route } from "./+types/set-password";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
+import { zSetPassword } from "./schemas";
 
-export { loader, action } from "./set-password.server";
+export { action, loader } from "./set-password.server";
+
+export const meta: Route.MetaFunction = () => [{ title: "Set password | Shorpin" }];
 
 export default function SetPassword({ loaderData, actionData }: Route.ComponentProps) {
   const { state } = useNavigation();

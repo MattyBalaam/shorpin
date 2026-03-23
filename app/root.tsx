@@ -47,6 +47,10 @@ export const loader = async ({ context }: Route.LoaderArgs) => {
   return { toast };
 };
 
+export const meta: Route.MetaFunction = () => {
+  return [{ title: "Shorpin" }];
+};
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={themeClass}>
