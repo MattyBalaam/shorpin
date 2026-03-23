@@ -1,21 +1,18 @@
 import { Suspense, useEffect, useRef } from "react";
 import {
-	href,
-	isRouteErrorResponse,
-	Links,
-	Meta,
-	Outlet,
-	Scripts,
-	ScrollRestoration,
-	useLocation,
-	useNavigation,
-	useRouteError,
+  href,
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLocation,
+  useNavigation,
+  useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
-import {
-	initWebVitalsTracking,
-	reportRouteNavigationMetric,
-} from "~/lib/performance.client";
+import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
@@ -44,166 +41,157 @@ export const middleware = [toastMiddleware(), supabaseMiddleware];
 // ];
 
 export const loader = async ({ context }: Route.LoaderArgs) => {
-	const toast = getToast(context);
-	return { toast };
+  const toast = getToast(context);
+  return { toast };
 };
 
 export const meta: Route.MetaFunction = () => {
-	return [{ title: "Shorpin" }];
+  return [{ title: "Shorpin" }];
 };
 
 export function Layout({ children }: { children: React.ReactNode }) {
-	return (
-		<html lang="en" className={themeClass}>
-			<head>
-				<meta charSet="utf-8" />
-				<meta
-					name="viewport"
-					content="width=device-width, initial-scale=1, viewport-fit=cover"
-				/>
-				<meta name="theme-color" content="#A9CBB7" />
-				<meta name="mobile-web-app-capable" content="yes" />
-				<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-				<meta name="apple-mobile-web-app-title" content="Shorpin" />
-				<link rel="manifest" href="/manifest.webmanifest" />
-				<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-				<Meta />
-				<Links />
-			</head>
-			<body>
-				{children}
-				<ScrollRestoration />
-				<Scripts />
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en" className={themeClass}>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#A9CBB7" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Shorpin" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
 }
 
 export default function App() {
-	const { pathname } = useLocation();
-	const navigation = useNavigation();
-	const pendingNavigation = useRef<{
-		start: number;
-		fromPathname: string;
-		toPathname: string;
-	} | null>(null);
+  const { pathname } = useLocation();
+  const navigation = useNavigation();
+  const pendingNavigation = useRef<{
+    start: number;
+    fromPathname: string;
+    toPathname: string;
+  } | null>(null);
 
-	useEffect(function bootstrapPerformanceTracking() {
-		initWebVitalsTracking();
-	}, []);
+  useEffect(function bootstrapPerformanceTracking() {
+    initWebVitalsTracking();
+  }, []);
 
-	useEffect(
-		function trackRouteNavigation() {
-			const toPathname = navigation.location?.pathname;
+  useEffect(
+    function trackRouteNavigation() {
+      const toPathname = navigation.location?.pathname;
 
-			if (navigation.state !== "idle" && toPathname) {
-				if (
-					!pendingNavigation.current ||
-					pendingNavigation.current.toPathname !== toPathname
-				) {
-					pendingNavigation.current = {
-						start: performance.now(),
-						fromPathname: pathname,
-						toPathname,
-					};
-				}
-				return;
-			}
+      if (navigation.state !== "idle" && toPathname) {
+        if (!pendingNavigation.current || pendingNavigation.current.toPathname !== toPathname) {
+          pendingNavigation.current = {
+            start: performance.now(),
+            fromPathname: pathname,
+            toPathname,
+          };
+        }
+        return;
+      }
 
-			const pending = pendingNavigation.current;
-			if (!pending) {
-				return;
-			}
+      const pending = pendingNavigation.current;
+      if (!pending) {
+        return;
+      }
 
-			pendingNavigation.current = null;
+      pendingNavigation.current = null;
 
-			if (pathname === pending.toPathname) {
-				reportRouteNavigationMetric({
-					pathname,
-					durationMs: performance.now() - pending.start,
-					fromPathname: pending.fromPathname,
-				});
-			}
-		},
-		[navigation.state, navigation.location?.pathname, pathname],
-	);
+      if (pathname === pending.toPathname) {
+        reportRouteNavigationMetric({
+          pathname,
+          durationMs: performance.now() - pending.start,
+          fromPathname: pending.fromPathname,
+        });
+      }
+    },
+    [navigation.state, navigation.location?.pathname, pathname],
+  );
 
-	useEffect(
-		function signalHydration() {
-			document.documentElement.dataset.hydratedPath = pathname;
-		},
-		[pathname],
-	);
+  useEffect(
+    function signalHydration() {
+      document.documentElement.dataset.hydratedPath = pathname;
+    },
+    [pathname],
+  );
 
-	useEffect(function unregisterStaleServiceWorkers() {
-		if ("serviceWorker" in navigator) {
-			navigator.serviceWorker.getRegistrations().then((registrations) => {
-				for (const registration of registrations) {
-					registration.unregister();
-				}
-			});
-		}
-	}, []);
+  useEffect(function unregisterStaleServiceWorkers() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+  }, []);
 
-	useEffect(function handleRouteModuleErrors() {
-		// Recover from stale/deployed chunk mismatches by clearing Cache Storage
-		// and reloading when route module scripts fail to load.
-		const handleError = (event: ErrorEvent) => {
-			if (
-				event.message.includes("Error loading route module") ||
-				event.message.includes("Importing a module script failed")
-			) {
-				console.error(
-					"Route module load error, clearing caches and reloading...",
-				);
-				if ("caches" in window) {
-					window.caches.keys().then((names) => {
-						names.forEach((name) => window.caches.delete(name));
-					});
-				}
-				window.location.reload();
-			}
-		};
+  useEffect(function handleRouteModuleErrors() {
+    // Recover from stale/deployed chunk mismatches by clearing Cache Storage
+    // and reloading when route module scripts fail to load.
+    const handleError = (event: ErrorEvent) => {
+      if (
+        event.message.includes("Error loading route module") ||
+        event.message.includes("Importing a module script failed")
+      ) {
+        console.error("Route module load error, clearing caches and reloading...");
+        if ("caches" in window) {
+          window.caches.keys().then((names) => {
+            names.forEach((name) => window.caches.delete(name));
+          });
+        }
+        window.location.reload();
+      }
+    };
 
-		window.addEventListener("error", handleError);
-		return () => window.removeEventListener("error", handleError);
-	}, []);
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
+  }, []);
 
-	return (
-		<Suspense
-			fallback={
-				<main className={styles.loading}>
-					<Spinner />
-				</main>
-			}
-		>
-			<main className={styles.main}>
-				<Outlet />
-			</main>
-		</Suspense>
-	);
+  return (
+    <Suspense
+      fallback={
+        <main className={styles.loading}>
+          <Spinner />
+        </main>
+      }
+    >
+      <main className={styles.main}>
+        <Outlet />
+      </main>
+    </Suspense>
+  );
 }
 
 export function ErrorBoundary() {
-	const error = useRouteError();
+  const error = useRouteError();
 
-	if (isRouteErrorResponse(error)) {
-		const message =
-			typeof error.data === "string" ? error.data : error.data?.message;
+  if (isRouteErrorResponse(error)) {
+    const message = typeof error.data === "string" ? error.data : error.data?.message;
 
-		return (
-			<main className={styles.main}>
-				<h1>{error.status}</h1>
-				<p>{message}</p>
-				<Link to={href("/")}>Back to home</Link>
-			</main>
-		);
-	}
+    return (
+      <main className={styles.main}>
+        <h1>{error.status}</h1>
+        <p>{message}</p>
+        <Link to={href("/")}>Back to home</Link>
+      </main>
+    );
+  }
 
-	return (
-		<main className={styles.main}>
-			<h1>Something went wrong</h1>
-			<p>{error instanceof Error ? error.message : "Unknown error"}</p>
-		</main>
-	);
+  return (
+    <main className={styles.main}>
+      <h1>Something went wrong</h1>
+      <p>{error instanceof Error ? error.message : "Unknown error"}</p>
+    </main>
+  );
 }
