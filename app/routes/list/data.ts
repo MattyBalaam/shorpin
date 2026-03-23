@@ -17,11 +17,6 @@ export const zItems = v.array(zData);
 
 export type Items = v.InferOutput<typeof zItems>;
 
-const zListData = v.object({
-  name: v.string(),
-  items: zItems,
-});
-
 export const zList = v.object({
   name: v.string(),
   new: v.optional(v.string()),
