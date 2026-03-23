@@ -4,7 +4,7 @@ import { vars } from "./styles/theme.css";
 export const main = style({
   margin: "0 auto",
   display: "grid",
-  height: "100dvh",
+  minHeight: "100svh",
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
   gridTemplateColumns:

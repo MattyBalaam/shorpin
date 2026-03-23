@@ -1,9 +1,11 @@
 import { Form, href } from "react-router";
-import type { Route } from "./+types/sign-ups";
-import { Modal } from "~/components/modal/modal";
 import { CheckboxField } from "~/components/checkbox-field/checkbox-field";
+import { Modal } from "~/components/modal/modal";
+import type { Route } from "./+types/sign-ups";
 
-export { loader, action } from "./sign-ups.server";
+export { action, loader } from "./sign-ups.server";
+
+export const meta: Route.MetaFunction = () => [{ title: "Sign-ups | Shorpin" }];
 
 const formId = "sign-ups-form";
 

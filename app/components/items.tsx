@@ -1,5 +1,12 @@
 import type { FieldMetadata } from "@conform-to/react/future";
-import { AnimatePresence, Reorder, stagger, useAnimate, type Variants } from "motion/react";
+import {
+  AnimatePresence,
+  Reorder,
+  stagger,
+  useAnimate,
+  useDragControls,
+  type Variants,
+} from "motion/react";
 import { useRef, useState } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
@@ -16,9 +23,17 @@ function ReorderableItem({
   isNew: boolean;
 }) {
   const [swiped, setSwiped] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [lockedAxis, setLockedAxis] = useState<"x" | "y" | null>(null);
   const [scope, animate] = useAnimate();
+  const dragControls = useDragControls();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  function handleDragStart() {
+    setIsDragging(true);
+    setDragWidth(scope.current?.getBoundingClientRect().width ?? null);
+  }
 
   async function handleDragEnd(
     _e: PointerEvent,
@@ -48,6 +63,8 @@ function ReorderableItem({
     }
 
     setLockedAxis(null);
+    setIsDragging(false);
+    setDragWidth(null);
   }
 
   return (
@@ -56,14 +73,18 @@ function ReorderableItem({
       as="li"
       value={itemId}
       className={styles.wrapper}
+      style={{ width: isDragging && dragWidth ? `${dragWidth}px` : "100%" }}
       initial={{ height: 0 }}
       animate={swiped ? "closed" : "open"}
       exit="closed"
       variants={variants.item}
       drag
+      dragListener={false}
+      dragControls={dragControls}
       dragDirectionLock
       dragConstraints={lockedAxis === "x" ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined}
       dragElastic={lockedAxis === "x" ? { left: 1, right: 1, top: 0, bottom: 0 } : undefined}
+      onDragStart={handleDragStart}
       onDirectionLock={(axis) => setLockedAxis(axis)}
       onDragEnd={handleDragEnd}
     >
@@ -73,6 +94,7 @@ function ReorderableItem({
         isNew={isNew}
         deleteButtonRef={deleteButtonRef}
         isDismissing={lockedAxis === "x"}
+        onDragHandlePointerDown={(event) => dragControls.start(event)}
       />
     </Reorder.Item>
   );
@@ -156,6 +178,7 @@ export function Items({
       axis="y"
       values={itemIds}
       onReorder={handleReorder}
+      layoutScroll
       className={styles.items}
       onPointerUp={() => {
         if (didReorder.current) {

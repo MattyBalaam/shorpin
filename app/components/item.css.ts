@@ -3,8 +3,9 @@ import { vars } from "~/styles/theme.css";
 
 export const itemContainer = style({
   display: "grid",
-  gridTemplateColumns: "subgrid",
+  gridTemplateColumns: "1fr",
   gridColumn: "1 / -1",
+  width: "100%",
   paddingBlock: vars.spacing.sm,
   background: vars.palette.secondary,
   selectors: {
@@ -23,9 +24,11 @@ export const itemContainer = style({
 
 export const item = style({
   display: "grid",
-  gridColumn: "content",
+  gridColumn: "1 / -1",
   gridTemplateColumns: "[input] 1fr [state] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
+  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
+  marginInline: "auto",
   alignItems: "baseline",
 });
 

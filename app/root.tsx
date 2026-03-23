@@ -20,8 +20,6 @@ import "~/styles/reset.css";
 import "./app.css";
 import "~/styles/typography.css";
 
-import "~/components/conform-input";
-
 import { Link } from "./components/link/link";
 import { Spinner } from "./components/spinner/spinner";
 import * as styles from "./root.css";
@@ -45,6 +43,10 @@ export const middleware = [toastMiddleware(), supabaseMiddleware];
 export const loader = async ({ context }: Route.LoaderArgs) => {
   const toast = getToast(context);
   return { toast };
+};
+
+export const meta: Route.MetaFunction = () => {
+  return [{ title: "Shorpin" }];
 };
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -135,6 +137,8 @@ export default function App() {
   }, []);
 
   useEffect(function handleRouteModuleErrors() {
+    // Recover from stale/deployed chunk mismatches by clearing Cache Storage
+    // and reloading when route module scripts fail to load.
     const handleError = (event: ErrorEvent) => {
       if (
         event.message.includes("Error loading route module") ||

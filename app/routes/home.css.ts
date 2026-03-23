@@ -1,8 +1,14 @@
-import { style, keyframes } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const listWrapper = style({
-  display: "contents",
+  // Safari has intermittent shrink-to-content bugs with display: contents
+  // when combined with nested grid/subgrid wrappers.
+  display: "grid",
+  gridColumn: "1 / -1",
+  gridTemplateColumns: "subgrid",
+  width: "100%",
+  minWidth: 0,
 });
 
 export const list = style({
@@ -11,13 +17,18 @@ export const list = style({
   gridColumn: "1 / -1",
   display: "grid",
   gridTemplateColumns: "subgrid",
+  width: "100%",
+  minWidth: 0,
   alignSelf: "start" /** prevents items from stretching vertically */,
 });
 
 export const itemWrapper = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "subgrid",
+  // Keep row layout independent from subgrid during narrow Safari layouts.
+  gridTemplateColumns: "1fr",
+  width: "100%",
+  minWidth: 0,
   paddingBlock: vars.spacing.md,
   background: vars.palette.chrome,
   margin: 0,
@@ -33,12 +44,18 @@ export const itemWrapper = style({
 
 export const item = style({
   display: "flex",
-  gridColumn: "content",
+  gridColumn: "1 / -1",
   justifyContent: "space-between",
   gap: vars.spacing.lg,
+  // Recreate the central content width without relying on subgrid line names.
+  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
+  minWidth: 0,
+  marginInline: "auto",
 });
 
 export const itemLink = style({
+  flex: "1 1 auto",
+  minWidth: 0,
   marginRight: "auto",
   ":before": {
     content: "",
@@ -81,14 +98,16 @@ const shimmer = keyframes({
 export const skeletonRow = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "subgrid",
+  gridTemplateColumns: "1fr",
   paddingBlock: vars.spacing.md,
   background: vars.palette.chrome,
   borderBottom: `1px solid ${vars.palette.chromeLight}`,
 });
 
 export const skeletonBar = style({
-  gridColumn: "content",
+  gridColumn: "1 / -1",
+  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
+  marginInline: "auto",
   height: "1em",
   borderRadius: "3px",
   background: vars.palette.primary,

@@ -145,6 +145,11 @@ export const handle = {
   }),
 };
 
+export const meta: Route.MetaFunction = ({ data }) => {
+  const listName = data?.defaultValue?.name;
+  return [{ title: listName ? `${listName} | Shorpin` : "List | Shorpin" }];
+};
+
 export default function list({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;

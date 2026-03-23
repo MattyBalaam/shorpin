@@ -25,7 +25,7 @@ export { action, loader } from "./home.server";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Shorpin" },
+    { title: "Home | Shorpin" },
     { name: "description", content: "We got lists, they’re multiplying" },
   ];
 };
@@ -76,7 +76,7 @@ function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; us
         const isOwner = user_id === userId;
         return (
           <li key={id} role="list" className={styles.itemWrapper}>
-            <span className={styles.item}>
+            <div className={styles.item}>
               <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
                 {name}
               </Link>
@@ -111,7 +111,7 @@ function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; us
                 {totalCount}
                 <VisuallyHidden> items</VisuallyHidden>
               </span>
-            </span>
+            </div>
           </li>
         );
       })}

@@ -1,5 +1,5 @@
 import type { FieldMetadata } from "@conform-to/react/future";
-import { type RefObject, useRef } from "react";
+import { type PointerEventHandler, type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
 import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
 import { Button } from "./button/button";
@@ -12,6 +12,7 @@ export interface ItemRenderProps {
   isNew: boolean;
   deleteButtonRef: RefObject<HTMLButtonElement | null>;
   isDismissing: boolean;
+  onDragHandlePointerDown: PointerEventHandler<HTMLSpanElement>;
 }
 
 // This is a row for an item in the list with an input and a delete button
@@ -21,6 +22,7 @@ export function Item({
   isNew,
   deleteButtonRef,
   isDismissing,
+  onDragHandlePointerDown,
 }: ItemRenderProps) {
   const navigation = useNavigation();
 
@@ -96,7 +98,11 @@ export function Item({
           </span>
         ) : null}
 
-        <span className={styles.dragHandle} aria-label={`Reorder ${fieldset.value.defaultValue}`}>
+        <span
+          className={styles.dragHandle}
+          aria-label={`Reorder ${fieldset.value.defaultValue}`}
+          onPointerDown={onDragHandlePointerDown}
+        >
           <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
           <span aria-hidden>|-|-|-|-|</span>
         </span>

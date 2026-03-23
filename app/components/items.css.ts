@@ -1,10 +1,12 @@
-import { style, keyframes } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const wrapper = style({
   display: "grid",
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
+  width: "100%",
+  minWidth: 0,
   cursor: "grab",
   marginBlockEnd: 0,
   color: vars.palette.textOnChrome,
@@ -23,6 +25,7 @@ export const items = style({
   display: "grid",
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
+  width: "100%",
   padding: 0,
   alignContent: "start",
 });
@@ -42,15 +45,19 @@ export const skeletonItem = style({
 
 export const skeletonContent = style({
   display: "grid",
-  gridColumn: "content",
+  gridColumn: "1 / -1",
   gridTemplateColumns: "[input] 1fr [state] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
+  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
+  marginInline: "auto",
   alignItems: "center",
 });
 
 export const emptyState = style({
-  gridColumn: "content",
+  gridColumn: "1 / -1",
   paddingBlock: vars.spacing.xxl,
+  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
+  marginInline: "auto",
   textAlign: "center",
   color: vars.palette.chrome,
   fontSize: vars.fontSize.sm,

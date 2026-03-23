@@ -1,13 +1,22 @@
+import { Suspense, use } from "react";
 import { Form, href } from "react-router";
-import type { Route } from "./+types/config";
-import { Modal } from "~/components/modal/modal";
-import { Link } from "~/components/link/link";
 import { CheckboxField } from "~/components/checkbox-field/checkbox-field";
-import { use, Suspense } from "react";
+import { Link } from "~/components/link/link";
+import { Modal } from "~/components/modal/modal";
+import type { Route } from "./+types/config";
 
 import * as styles from "./config.css";
 
-export { loader, action } from "./config.server";
+export { action, loader } from "./config.server";
+
+export const meta: Route.MetaFunction = ({ data }) => {
+  const listName = data?.listName;
+  return [
+    {
+      title: listName ? `${listName} settings | Shorpin` : "List settings | Shorpin",
+    },
+  ];
+};
 
 const formId = "config-form";
 
