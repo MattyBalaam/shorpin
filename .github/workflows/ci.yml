@@ -23,9 +23,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm fmt:check
-
-      - run: pnpm typecheck
+      - run: pnpm verify
 
       - run: pnpm vitest run
 

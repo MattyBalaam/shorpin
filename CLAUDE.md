@@ -27,6 +27,8 @@ A `PostToolUse` hook (`.claude/hooks/post-edit-checks.sh`) runs automatically af
 2. Runs `pnpm lint` — blocks if there are lint errors
 3. Runs `pnpm fmt` — formats files in place
 
+These hooks are helpful but not sufficient on their own in every agent runtime. Some edit paths, especially patch-based ones, may not trigger them reliably.
+
 ### PreToolUse — before every `git commit`
 
 A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically before every `git commit`. It:
@@ -46,6 +48,8 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically be
 | `integration-tests/*.spec.ts` changed                                                             | That spec                                                                                                  |
 | Anything else unmatched                                                                           | Full suite (safe fallback)                                                                                 |
 
+The durable local guardrail is `pnpm verify` plus the repo-managed Git pre-commit hook installed by `pnpm install`.
+
 **If hooks are not supported** in your environment, run these steps manually before committing:
 
 ```sh
@@ -56,7 +60,7 @@ git add <changed files>  # re-stage if fmt modified anything
 pnpm test:integration    # run appropriate integration tests
 ```
 
-Do not commit if tests are failing or if the user has indicated the work is incomplete.
+Do not commit if tests are failing or if the user has indicated the work is incomplete. Before creating a commit or PR, run `pnpm verify` even if earlier tool hooks appeared to pass.
 
 ## Commit Messages
 

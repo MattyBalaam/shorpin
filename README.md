@@ -16,6 +16,13 @@ This is partly for me and my friends to use (product need), but also for me to g
 - [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
 
+## Development Workflow
+
+- Run `pnpm verify` before opening a PR or asking an agent to commit. It applies formatting, runs lint, runs typecheck, then confirms formatting is clean with `pnpm fmt:check`.
+- `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible.
+- The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
+- CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
+
 ## Architecture
 
 ### Routing Structure

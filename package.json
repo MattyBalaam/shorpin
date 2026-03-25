@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others --names mock,app \"node --experimental-strip-types mocks/server.ts\" \"react-router dev --mode mock\"",
     "dev:supabase": "react-router dev",
+    "prepare": "node scripts/install-git-hooks.mjs",
     "build": "react-router build",
     "build:preview": "react-router build --mode preview",
     "build:analyse": "react-router build --mode analyse",
@@ -15,6 +16,7 @@
     "fmt:check": "oxfmt --check",
     "lint": "oxlint --config oxlint.json",
     "lint:fix": "oxlint --fix --config oxlint.json",
+    "verify": "pnpm fmt && pnpm lint && pnpm typecheck && pnpm fmt:check",
     "db:push": "supabase db push",
     "db:migrate": "supabase migration up",
     "db:reset": "supabase db reset",
