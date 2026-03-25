@@ -53,6 +53,21 @@ export const skeletonContent = style({
   alignItems: "center",
 });
 
+export const pendingValue = style({
+  gridColumn: "input",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  animation: `1.5s ease-in-out infinite ${shimmer}`,
+});
+
+export const pendingState = style({
+  gridColumn: "state / done",
+  justifySelf: "end",
+  fontSize: vars.fontSize.sm,
+  color: vars.palette.chrome,
+});
+
 export const emptyState = style({
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.xxl,

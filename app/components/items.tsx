@@ -144,6 +144,7 @@ export function Items({
   onReorderComplete,
 }: ItemsProps) {
   const items = fieldMetadata.getFieldList();
+  const pendingValue = pendingItem?.trim() || null;
   const incomingIds = items.map((item) => item.getFieldset().id.defaultValue);
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
@@ -179,15 +180,14 @@ export function Items({
             />
           ))}
       </AnimatePresence>
-      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingItem && (
+      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
-      {pendingItem && (
+      {pendingValue && (
         <li className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>
-            <div className={styles.skeletonBar} />
-            <div className={styles.skeletonBar} />
-            <div className={styles.skeletonBar} />
+            <span className={styles.pendingValue}>{pendingValue}</span>
+            <span className={styles.pendingState}>saving...</span>
           </div>
         </li>
       )}
