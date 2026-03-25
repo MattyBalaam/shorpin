@@ -96,37 +96,6 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && req.url?.startsWith("/test/state")) {
-    const url = new URL(req.url, `http://localhost:${port}`);
-    const ownerEmail = url.searchParams.get("ownerEmail");
-    const collabEmail = url.searchParams.get("collabEmail");
-
-    const owner = ownerEmail ? users.findFirst((q) => q.where({ email: ownerEmail })) : null;
-    const collab = collabEmail ? users.findFirst((q) => q.where({ email: collabEmail })) : null;
-
-    const serializeLists = (userId: string | undefined) =>
-      userId
-        ? lists
-            .findMany((q) => q.where({ user_id: userId, state: "active" }))
-            .sort((left, right) => left.sort_order - right.sort_order)
-            .map(({ id, slug, name, sort_order }) => ({
-              id,
-              slug,
-              name,
-              sort_order,
-            }))
-        : [];
-
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        owner: { id: owner?.id ?? null, lists: serializeLists(owner?.id) },
-        collab: { id: collab?.id ?? null, lists: serializeLists(collab?.id) },
-      }),
-    );
-    return;
-  }
-
   // Convert Node headers to Fetch Headers
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {

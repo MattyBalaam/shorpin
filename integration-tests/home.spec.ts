@@ -25,19 +25,6 @@ test("owner sees their two lists", async ({ page, ctx }) => {
 test("owner can reorder lists from home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
-  const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
-  const state = await page.request
-    .get(`http://localhost:${mockPort}/test/state?ownerEmail=${encodeURIComponent(ctx.ownerEmail)}`)
-    .then((response) => response.json());
-  const ownerEmpty = state.owner.lists.find(
-    (list: { slug: string }) => list.slug === "owner-empty",
-  );
-  const shopping = state.owner.lists.find((list: { slug: string }) => list.slug === "shopping");
-
-  if (!ownerEmpty || !shopping) {
-    throw new Error("Unable to load owner list ids for home reorder test");
-  }
-
   const getListOrder = async () =>
     page
       .locator('li a[href^="/lists/"]')
@@ -45,21 +32,34 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
         elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
       );
 
-  await page.evaluate(
-    async ([ownerEmptyId, shoppingId]) => {
-      const formData = new FormData();
-      formData.set("intent", "reorder-lists");
-      formData.append("list-order", ownerEmptyId);
-      formData.append("list-order", shoppingId);
+  let reordered = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const fromHandle = page.getByLabel("Reorder Owner Empty");
+    const toHandle = page.getByLabel("Reorder Shopping");
 
-      await fetch("/", {
-        method: "POST",
-        body: formData,
-        credentials: "same-origin",
-      });
-    },
-    [ownerEmpty.id, shopping.id],
-  );
+    const fromBox = await fromHandle.boundingBox();
+    const toBox = await toHandle.boundingBox();
+    if (!fromBox || !toBox) {
+      throw new Error("Unable to determine drag handle positions for home reorder");
+    }
+
+    await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
+      steps: 25,
+    });
+    await page.mouse.up();
+
+    await page.waitForTimeout(200);
+
+    const order = await getListOrder();
+    if (order[0] === "Owner Empty") {
+      reordered = true;
+      break;
+    }
+  }
+
+  expect(reordered).toBe(true);
 
   await page.reload();
   const persistedOrder = await getListOrder();

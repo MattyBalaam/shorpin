@@ -1,5 +1,5 @@
 import { useForm } from "@conform-to/react/future";
-import { Reorder } from "motion/react";
+import { Reorder, useDragControls } from "motion/react";
 import { Suspense, use, useRef } from "react";
 import {
   href,
@@ -79,6 +79,7 @@ function ReorderableListItem({
   userId: string;
   onDrop: () => void;
 }) {
+  const dragControls = useDragControls();
   const { id, name, slug, user_id, unreadCount, totalCount } = list;
   const isOwner = user_id === userId;
 
@@ -89,6 +90,8 @@ function ReorderableListItem({
       className={styles.itemWrapper}
       drag
       dragDirectionLock
+      dragListener={false}
+      dragControls={dragControls}
       onDragEnd={onDrop}
     >
       <div className={styles.item}>
@@ -96,7 +99,11 @@ function ReorderableListItem({
           {name}
         </Link>
 
-        <span className={styles.itemDragHandle} aria-label={`Reorder ${name}`}>
+        <span
+          className={styles.itemDragHandle}
+          aria-label={`Reorder ${name}`}
+          onPointerDown={(event) => dragControls.start(event)}
+        >
           <VisuallyHidden>Reorder {name}</VisuallyHidden>
           <span aria-hidden>|-|-|-|-|</span>
         </span>
