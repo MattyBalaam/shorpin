@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others --names mock,app \"node --experimental-strip-types mocks/server.ts\" \"react-router dev --mode mock\"",
     "dev:supabase": "react-router dev",
-    "prepare": "node scripts/install-git-hooks.mjs",
+    "prepare": "node --input-type=module -e \"import { existsSync } from 'node:fs'; if (existsSync('scripts/install-git-hooks.mjs')) await import('./scripts/install-git-hooks.mjs');\"",
     "build": "react-router build",
     "build:preview": "react-router build --mode preview",
     "build:analyse": "react-router build --mode analyse",
