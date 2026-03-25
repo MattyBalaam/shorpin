@@ -11,10 +11,18 @@ export function useReorderIds({
 }: {
   incomingIds: string[];
   onReorder?: (itemIds: string[]) => void;
-  onReorderComplete?: () => void;
+  onReorderComplete?: (itemIds: string[]) => void;
 }) {
   const [itemIds, setItemIds] = useState(() => incomingIds);
   const didReorder = useRef(false);
+  const latestItemIds = useRef(itemIds);
+
+  useEffect(
+    function trackLatestItemIds() {
+      latestItemIds.current = itemIds;
+    },
+    [itemIds],
+  );
 
   useEffect(
     function syncIncomingOrder() {
@@ -39,7 +47,7 @@ export function useReorderIds({
     }
 
     didReorder.current = false;
-    onReorderComplete?.();
+    onReorderComplete?.(latestItemIds.current);
   }
 
   return {

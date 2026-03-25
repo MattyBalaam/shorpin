@@ -1,6 +1,6 @@
 import { useForm } from "@conform-to/react/future";
 import { Reorder, useDragControls } from "motion/react";
-import { Suspense, use, useRef } from "react";
+import { Suspense, use } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -146,27 +146,22 @@ function ReorderableListItem({
 function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; userId: string }) {
   const lists = use(listsPromise);
   const submit = useSubmit();
-  const pendingOrderRef = useRef<string[] | null>(null);
   const incomingIds = lists.map(({ id }) => id);
   const listRecord = Object.fromEntries(lists.map((list) => [list.id, list]));
 
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
-    onReorder(newOrder) {
-      pendingOrderRef.current = newOrder;
-    },
-    onReorderComplete() {
-      const orderedIds = pendingOrderRef.current;
-      pendingOrderRef.current = null;
-
+    onReorderComplete(orderedIds) {
       if (!orderedIds) {
         return;
       }
 
-      const formData = new FormData();
-      formData.set("intent", REORDER_LISTS_INTENT);
-      orderedIds.forEach((id) => formData.append("list-order", id));
-      submit(formData, { method: "post" });
+      requestAnimationFrame(() => {
+        const formData = new FormData();
+        formData.set("intent", REORDER_LISTS_INTENT);
+        orderedIds.forEach((id) => formData.append("list-order", id));
+        submit(formData, { method: "post" });
+      });
     },
   });
 
