@@ -14,6 +14,7 @@ const listsSchema = v.object({
   id: v.string(),
   name: v.string(),
   slug: v.string(),
+  sort_order: v.number(),
   state: v.picklist(["active", "deleted"]),
   theme_primary: v.optional(v.nullable(v.string())),
   theme_secondary: v.optional(v.nullable(v.string())),

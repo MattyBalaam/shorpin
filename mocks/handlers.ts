@@ -178,6 +178,13 @@ export const handlers = [
       .filter((l) => memberListIds.has(l.id) && l.user_id !== user.id);
 
     const allLists = [...ownedLists, ...sharedLists];
+    const order = url.searchParams.get("order") ?? "";
+
+    if (order.includes("sort_order.asc")) {
+      allLists.sort((a, b) => a.sort_order - b.sort_order);
+    } else if (order.includes("created_at.desc")) {
+      allLists.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    }
 
     // Embed list_items when the select param requests them (home page unread count query)
     const selectParam = url.searchParams.get("select") ?? "";
@@ -202,6 +209,7 @@ export const handlers = [
       name: string;
       slug: string;
       user_id: string;
+      sort_order?: number;
     };
 
     // Sentinel for e2e error testing — trigger a DB error without shared state
@@ -216,6 +224,14 @@ export const handlers = [
       id: crypto.randomUUID(),
       name: body.name,
       slug: body.slug,
+      sort_order:
+        body.sort_order ??
+        (() => {
+          const existing = lists.findMany((q) =>
+            q.where({ user_id: body.user_id, state: "active" }),
+          );
+          return Math.max(-1, ...existing.map((item) => item.sort_order)) + 1;
+        })(),
       state: "active",
       user_id: body.user_id,
       created_at: new Date().toISOString(),
@@ -227,7 +243,12 @@ export const handlers = [
   http.patch("*/rest/v1/lists", async ({ request }) => {
     await delay();
     const url = new URL(request.url);
-    const body = (await request.json()) as { state?: string };
+    const body = (await request.json()) as {
+      state?: string;
+      sort_order?: number;
+      updated_at?: number;
+    };
+    const idParam = url.searchParams.get("id")?.replace("eq.", "");
     const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
     const email = emailFromRequest(request);
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
@@ -242,6 +263,22 @@ export const handlers = [
         });
       }
     }
+
+    if (idParam && user) {
+      const list = lists.findFirst((q) =>
+        q.where({ id: idParam, user_id: user.id, state: "active" }),
+      );
+      if (list) {
+        await lists.update((q) => q.where({ id: list.id }), {
+          data(draft) {
+            if (body.sort_order !== undefined) {
+              draft.sort_order = body.sort_order;
+            }
+          },
+        });
+      }
+    }
+
     return HttpResponse.json([]);
   }),
 

@@ -8,7 +8,7 @@ import { resolveSlug, slugify } from "~/lib/slugify";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/home";
-import { zCreate } from "./home.schema";
+import { REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -20,6 +20,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     .from("lists")
     .select("id, name, slug, user_id, list_items(updated_at, state)")
     .eq("state", "active")
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
     .then(({ data, error }) => {
       if (error) {
@@ -65,6 +66,58 @@ export async function loader({ context }: Route.LoaderArgs) {
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
 
+  if (formData.get("intent") === REORDER_LISTS_INTENT) {
+    const reorderPayload = {
+      intent: formData.get("intent"),
+      "list-order": formData.getAll("list-order"),
+    };
+
+    const reorderResult = v.safeParse(zReorderLists, reorderPayload);
+
+    if (!reorderResult.success) {
+      return null;
+    }
+
+    const supabase = context.get(supabaseContext);
+    const user = await requireUser(supabase);
+
+    const { data: ownedLists, error: listsError } = await supabase
+      .from("lists")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("state", "active");
+
+    if (listsError) {
+      console.error("Error loading owned lists for reorder:", listsError);
+      return null;
+    }
+
+    const ownedSet = new Set((ownedLists ?? []).map(({ id }) => id));
+    const ownedOrder = reorderResult.output["list-order"].filter((id) => ownedSet.has(id));
+
+    if (ownedOrder.length === 0) {
+      return null;
+    }
+
+    const updates = ownedOrder.map((id, sortOrder) =>
+      supabase
+        .from("lists")
+        .update({ sort_order: sortOrder, updated_at: Date.now() })
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .eq("state", "active"),
+    );
+
+    const results = await Promise.all(updates);
+
+    const failed = results.find(({ error }) => Boolean(error));
+    if (failed?.error) {
+      console.error("Error reordering lists:", failed.error);
+    }
+
+    return null;
+  }
+
   const submission = parseSubmission(formData);
 
   const result = v.safeParse(zCreate, submission.payload);
@@ -80,6 +133,22 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const user = await requireUser(supabase);
 
+  const { data: userLists, error: userListsError } = await supabase
+    .from("lists")
+    .select("sort_order")
+    .eq("user_id", user.id)
+    .eq("state", "active");
+
+  if (userListsError) {
+    console.error("Error loading list sort order:", userListsError);
+    return report(submission, {
+      error: { formErrors: ["Failed to create list. Please try again."] },
+    });
+  }
+
+  const nextSortOrder =
+    Math.max(-1, ...(userLists ?? []).map((existingList) => existingList.sort_order)) + 1;
+
   const { data: matches } = await supabase
     .from("lists")
     .select("slug")
@@ -92,6 +161,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     name: listName,
     slug,
     user_id: user.id,
+    sort_order: nextSortOrder,
   });
 
   if (error) {

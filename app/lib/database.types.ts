@@ -126,6 +126,7 @@ export type Database = {
           created_at: string | null;
           id: string;
           name: string;
+          sort_order: number;
           slug: string;
           state: Database["public"]["Enums"]["list_item_state"];
           theme_primary: string | null;
@@ -137,6 +138,7 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           name: string;
+          sort_order?: number;
           slug: string;
           state?: Database["public"]["Enums"]["list_item_state"];
           theme_primary?: string | null;
@@ -148,6 +150,7 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           name?: string;
+          sort_order?: number;
           slug?: string;
           state?: Database["public"]["Enums"]["list_item_state"];
           theme_primary?: string | null;
