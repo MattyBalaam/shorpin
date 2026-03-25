@@ -22,6 +22,50 @@ test("owner sees their two lists", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Owner Empty" })).toBeVisible();
 });
 
+test("owner can reorder lists from home", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
+  const state = await page.request
+    .get(`http://localhost:${mockPort}/test/state?ownerEmail=${encodeURIComponent(ctx.ownerEmail)}`)
+    .then((response) => response.json());
+  const ownerEmpty = state.owner.lists.find(
+    (list: { slug: string }) => list.slug === "owner-empty",
+  );
+  const shopping = state.owner.lists.find((list: { slug: string }) => list.slug === "shopping");
+
+  if (!ownerEmpty || !shopping) {
+    throw new Error("Unable to load owner list ids for home reorder test");
+  }
+
+  const getListOrder = async () =>
+    page
+      .locator('li a[href^="/lists/"]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
+      );
+
+  await page.evaluate(
+    async ([ownerEmptyId, shoppingId]) => {
+      const formData = new FormData();
+      formData.set("intent", "reorder-lists");
+      formData.append("list-order", ownerEmptyId);
+      formData.append("list-order", shoppingId);
+
+      await fetch("/", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+    },
+    [ownerEmpty.id, shopping.id],
+  );
+
+  await page.reload();
+  const persistedOrder = await getListOrder();
+  expect(persistedOrder[0]).toBe("Owner Empty");
+});
+
 test("owner sees admin link for both their lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 

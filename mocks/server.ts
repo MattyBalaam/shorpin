@@ -1,10 +1,10 @@
 import { createServer } from "node:http";
-import { WebSocketServer, type WebSocket } from "ws";
 import { setupServer } from "msw/node";
-import { seed } from "./seed.ts";
+import { type WebSocket, WebSocketServer } from "ws";
+import { type BroadcastMessage, broadcastEmitter } from "./broadcast.ts";
+import { listItems, listMembers, lists, listViews, users, waitlist } from "./db.ts";
 import { handlers } from "./handlers.ts";
-import { users, lists, listItems, listMembers, waitlist, listViews } from "./db.ts";
-import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
+import { seed } from "./seed.ts";
 
 // Seed fixed dev users at startup so pnpm dev works without any setup.
 // No waitlistEmail here — the demo entry is created separately below so it
@@ -93,6 +93,37 @@ const httpServer = createServer(async (req, res) => {
     await seed(ownerEmail, collabEmail, waitlistEmail);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (req.method === "GET" && req.url?.startsWith("/test/state")) {
+    const url = new URL(req.url, `http://localhost:${port}`);
+    const ownerEmail = url.searchParams.get("ownerEmail");
+    const collabEmail = url.searchParams.get("collabEmail");
+
+    const owner = ownerEmail ? users.findFirst((q) => q.where({ email: ownerEmail })) : null;
+    const collab = collabEmail ? users.findFirst((q) => q.where({ email: collabEmail })) : null;
+
+    const serializeLists = (userId: string | undefined) =>
+      userId
+        ? lists
+            .findMany((q) => q.where({ user_id: userId, state: "active" }))
+            .sort((left, right) => left.sort_order - right.sort_order)
+            .map(({ id, slug, name, sort_order }) => ({
+              id,
+              slug,
+              name,
+              sort_order,
+            }))
+        : [];
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        owner: { id: owner?.id ?? null, lists: serializeLists(owner?.id) },
+        collab: { id: collab?.id ?? null, lists: serializeLists(collab?.id) },
+      }),
+    );
     return;
   }
 
