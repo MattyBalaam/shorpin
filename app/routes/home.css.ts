@@ -43,9 +43,10 @@ export const itemWrapper = style({
 });
 
 export const item = style({
-  display: "flex",
+  display: "grid",
   gridColumn: "1 / -1",
-  justifyContent: "space-between",
+  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] auto [count] auto",
+  alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
@@ -54,7 +55,7 @@ export const item = style({
 });
 
 export const itemLink = style({
-  flex: "1 1 auto",
+  gridColumn: "name",
   minWidth: 0,
   marginRight: "auto",
   ":before": {
@@ -66,10 +67,43 @@ export const itemLink = style({
 });
 
 export const itemConfig = style({
+  gridColumn: "config",
   zIndex: 1,
 });
 
+export const itemDragHandle = style({
+  gridColumn: "drag",
+  userSelect: "none",
+  touchAction: "none",
+  cursor: "grab",
+  color: vars.palette.textOnChrome,
+  display: "flex",
+  zIndex: 1,
+  position: "relative",
+  opacity: 0.7,
+  ":hover": {
+    opacity: 1,
+    transform: "translateY(-1px)",
+  },
+  ":active": {
+    color: "cyan",
+    opacity: 1,
+    transform: "translateY(0)",
+  },
+  "::before": {
+    content: '""',
+    position: "absolute",
+    inset: "-0.75rem",
+  },
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      color: vars.palette.textOnChromeDarkMode,
+    },
+  },
+});
+
 export const itemTotal = style({
+  gridColumn: "count",
   fontSize: vars.fontSize.xs,
   opacity: 0.6,
   flexShrink: 0,
@@ -78,6 +112,7 @@ export const itemTotal = style({
 });
 
 export const unreadBadge = style({
+  gridColumn: "status",
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
   color: vars.palette.text,

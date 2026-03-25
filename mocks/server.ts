@@ -1,10 +1,10 @@
 import { createServer } from "node:http";
-import { WebSocketServer, type WebSocket } from "ws";
 import { setupServer } from "msw/node";
-import { seed } from "./seed.ts";
+import { type WebSocket, WebSocketServer } from "ws";
+import { type BroadcastMessage, broadcastEmitter } from "./broadcast.ts";
+import { listItems, listMembers, lists, listViews, users, waitlist } from "./db.ts";
 import { handlers } from "./handlers.ts";
-import { users, lists, listItems, listMembers, waitlist, listViews } from "./db.ts";
-import { broadcastEmitter, type BroadcastMessage } from "./broadcast.ts";
+import { seed } from "./seed.ts";
 
 // Seed fixed dev users at startup so pnpm dev works without any setup.
 // No waitlistEmail here — the demo entry is created separately below so it

@@ -22,6 +22,50 @@ test("owner sees their two lists", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Owner Empty" })).toBeVisible();
 });
 
+test("owner can reorder lists from home", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  const getListOrder = async () =>
+    page
+      .locator('li a[href^="/lists/"]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
+      );
+
+  let reordered = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const fromHandle = page.getByLabel("Reorder Owner Empty");
+    const toHandle = page.getByLabel("Reorder Shopping");
+
+    const fromBox = await fromHandle.boundingBox();
+    const toBox = await toHandle.boundingBox();
+    if (!fromBox || !toBox) {
+      throw new Error("Unable to determine drag handle positions for home reorder");
+    }
+
+    await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
+      steps: 25,
+    });
+    await page.mouse.up();
+
+    await page.waitForTimeout(200);
+
+    const order = await getListOrder();
+    if (order[0] === "Owner Empty") {
+      reordered = true;
+      break;
+    }
+  }
+
+  expect(reordered).toBe(true);
+
+  await page.reload();
+  const persistedOrder = await getListOrder();
+  expect(persistedOrder[0]).toBe("Owner Empty");
+});
+
 test("owner sees admin link for both their lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 

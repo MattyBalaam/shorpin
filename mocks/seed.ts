@@ -1,10 +1,17 @@
-import { users, lists, listItems, listMembers, waitlist } from "./db.ts";
+import { listItems, listMembers, lists, users, waitlist } from "./db.ts";
 
-async function createListWithItems(ownerId: string, name: string, slug: string, items: string[]) {
+async function createListWithItems(
+  ownerId: string,
+  name: string,
+  slug: string,
+  items: string[],
+  sortOrder: number,
+) {
   const list = await lists.create({
     id: crypto.randomUUID(),
     name,
     slug,
+    sort_order: sortOrder,
     state: "active",
     user_id: ownerId,
     created_at: new Date().toISOString(),
@@ -39,20 +46,24 @@ export async function seed(
   });
 
   // Owner gets 2 lists: one with 3 items, one empty
-  const ownerList = await createListWithItems(owner.id, "Shopping", "shopping", [
-    "Milk",
-    "Bread",
-    "Eggs",
-  ]);
-  await createListWithItems(owner.id, "Owner Empty", "owner-empty", []);
+  const ownerList = await createListWithItems(
+    owner.id,
+    "Shopping",
+    "shopping",
+    ["Milk", "Bread", "Eggs"],
+    0,
+  );
+  await createListWithItems(owner.id, "Owner Empty", "owner-empty", [], 1);
 
   // Collab gets 2 lists: one with 3 items, one empty
-  await createListWithItems(collab.id, "Collab Shopping", "collab-shopping", [
-    "Coffee",
-    "Tea",
-    "Sugar",
-  ]);
-  await createListWithItems(collab.id, "Collab Empty", "collab-empty", []);
+  await createListWithItems(
+    collab.id,
+    "Collab Shopping",
+    "collab-shopping",
+    ["Coffee", "Tea", "Sugar"],
+    0,
+  );
+  await createListWithItems(collab.id, "Collab Empty", "collab-empty", [], 1);
 
   // Collab is also a member of the owner's Shopping list
   await listMembers.create({

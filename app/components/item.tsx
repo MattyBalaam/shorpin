@@ -53,6 +53,20 @@ export function Item({
     !isDeleteItemIntent(effectiveIntent) &&
     !isUndeleteItemIntent(effectiveIntent);
 
+  const autoResize = (element: HTMLTextAreaElement) => {
+    const startHeight = element.offsetHeight;
+    const computed = window.getComputedStyle(element);
+    const borderTop = Number.parseFloat(computed.borderTopWidth) || 0;
+    const borderBottom = Number.parseFloat(computed.borderBottomWidth) || 0;
+    const contentHeight = element.scrollHeight + borderTop + borderBottom;
+    const endHeight = Math.max(startHeight, contentHeight);
+
+    element.style.height = `${startHeight}px`;
+    requestAnimationFrame(() => {
+      element.style.height = `${endHeight}px`;
+    });
+  };
+
   return (
     <div
       className={styles.itemContainer}
@@ -61,14 +75,28 @@ export function Item({
       data-new={isNew}
     >
       <div className={styles.item}>
-        <input
+        <textarea
           className={styles.input}
           name={fieldset.value.name}
           id={fieldset.value.id}
           defaultValue={fieldset.value.defaultValue}
           aria-label={`Edit ${fieldset.value.defaultValue}`}
           autoComplete="none"
+          rows={1}
+          onFocus={function expandOnFocus(e) {
+            autoResize(e.currentTarget);
+          }}
+          onInput={function expandOnInput(e) {
+            autoResize(e.currentTarget);
+          }}
+          onKeyDown={function submitOnEnter(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
           onBlur={function submitIfEdited(e) {
+            e.currentTarget.style.height = "";
             if (edited) {
               e.currentTarget.form?.requestSubmit();
             }

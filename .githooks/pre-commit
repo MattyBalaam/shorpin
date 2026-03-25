@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# shorpin-managed-hook
+
+set -eu
+
+echo "[pre-commit] Running pnpm verify" >&2
+pnpm verify

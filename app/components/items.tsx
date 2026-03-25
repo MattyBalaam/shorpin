@@ -10,6 +10,7 @@ import {
 import { useRef, useState } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
+import { useReorderIds } from "./use-reorder-ids";
 
 function ReorderableItem({
   itemId,
@@ -143,29 +144,12 @@ export function Items({
   onReorderComplete,
 }: ItemsProps) {
   const items = fieldMetadata.getFieldList();
-  const didReorder = useRef(false);
-
-  // Track item order by IDs
-  const [itemIds, setItemIds] = useState(() =>
-    items.map((item) => item.getFieldset().id.defaultValue),
-  );
-
-  // Sync itemIds when items change from the server (new items, reorder from another client, etc.)
-  // but not while the user is actively dragging on this client
   const incomingIds = items.map((item) => item.getFieldset().id.defaultValue);
-
-  if (
-    !didReorder.current &&
-    (incomingIds.length !== itemIds.length || incomingIds.some((id, i) => id !== itemIds[i]))
-  ) {
-    setItemIds(incomingIds);
-  }
-
-  const handleReorder = (newOrder: string[]) => {
-    didReorder.current = true;
-    setItemIds(newOrder);
-    onReorder?.(newOrder);
-  };
+  const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
+    incomingIds,
+    onReorder,
+    onReorderComplete,
+  });
 
   const itemRecord = Object.fromEntries(
     items.map((item) => [item.getFieldset().id.defaultValue, item]),
@@ -180,12 +164,7 @@ export function Items({
       onReorder={handleReorder}
       layoutScroll
       className={styles.items}
-      onPointerUp={() => {
-        if (didReorder.current) {
-          didReorder.current = false;
-          onReorderComplete?.();
-        }
-      }}
+      onPointerUp={handleReorderComplete}
     >
       <AnimatePresence>
         {itemIds

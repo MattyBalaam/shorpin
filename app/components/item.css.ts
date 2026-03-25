@@ -6,10 +6,9 @@ export const itemContainer = style({
   gridTemplateColumns: "1fr",
   gridColumn: "1 / -1",
   width: "100%",
-  paddingBlock: vars.spacing.sm,
   background: vars.palette.secondary,
   selectors: {
-    "&:has(input:focus)": {
+    "&:has(textarea:focus)": {
       background: vars.palette.primary,
     },
     "&[data-dismissing=true]": {
@@ -29,7 +28,13 @@ export const item = style({
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
-  alignItems: "baseline",
+  paddingBlockStart: vars.spacing.sm,
+  alignItems: "center",
+  selectors: {
+    "&:has(textarea:focus)": {
+      alignItems: "start",
+    },
+  },
 });
 
 export const input = style({
@@ -41,11 +46,19 @@ export const input = style({
   borderRadius: "3px",
   background: "transparent",
   color: "currentColor",
-  textOverflow: "ellipsis",
+  height: `calc(1lh + (2 * ${vars.spacing.sm}) + 2px)`,
+  boxSizing: "border-box",
+  lineHeight: 1.35,
+  resize: "none",
+  overflow: "hidden",
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  transition: "height 140ms ease, background-color 140ms ease, color 140ms ease",
   ":focus": {
     outline: "0 none",
     background: "white",
     color: "black",
+    overflowY: "auto",
   },
   "@media": {
     "(prefers-color-scheme: dark)": {
