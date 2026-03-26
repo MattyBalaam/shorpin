@@ -107,7 +107,7 @@ interface ItemsProps {
   newItems: Array<string>;
   pendingItem?: string | null;
   onReorder?: (itemIds: string[]) => void;
-  onReorderComplete?: () => void;
+  onReorderComplete?: (itemIds: string[]) => void;
 }
 
 const variants = {
