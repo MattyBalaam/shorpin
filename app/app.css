@@ -8,6 +8,8 @@ body {
 }
 
 /* Prevent iOS Safari from zooming on input focus */
-input {
+input,
+textarea {
   font-size: 16px;
+  font-family: sans-serif;
 }
