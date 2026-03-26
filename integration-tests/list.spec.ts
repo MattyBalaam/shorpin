@@ -243,6 +243,19 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
 test("reordering items does not create unread or new markers for self", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
+  let releaseReorderRequest = () => {};
+  const reorderRequestBlocked = new Promise<void>((resolve) => {
+    releaseReorderRequest = resolve;
+  });
+
+  await page.route("**/lists/shopping", async (route) => {
+    if (route.request().method() === "POST") {
+      await reorderRequestBlocked;
+    }
+
+    await route.continue();
+  });
+
   // Open once to establish viewed_at for existing items.
   await page.goto("/lists/shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
@@ -288,6 +301,11 @@ test("reordering items does not create unread or new markers for self", async ({
   }
 
   expect(reordered).toBe(true);
+
+  await expect.poll(async () => (await getEditOrder())[0], { timeout: 2000 }).not.toBe("Edit Milk");
+
+  releaseReorderRequest();
+  await page.unroute("**/lists/shopping");
 
   await page.goto("/");
   const shoppingRow = page

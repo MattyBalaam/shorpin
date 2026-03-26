@@ -128,15 +128,17 @@ function ReorderableListItem({
           </Link>
         )}
 
-        {unreadCount > 0 && (
-          <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
-            {unreadCount}
-            <VisuallyHidden> unread</VisuallyHidden>
+        <span className={styles.itemStatus}>
+          {unreadCount > 0 && (
+            <span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
+              {unreadCount}
+              <VisuallyHidden> unread of </VisuallyHidden>
+            </span>
+          )}
+          <span className={styles.itemTotal}>
+            {totalCount}
+            <VisuallyHidden> items</VisuallyHidden>
           </span>
-        )}
-        <span className={styles.itemTotal}>
-          {totalCount}
-          <VisuallyHidden> items</VisuallyHidden>
         </span>
       </div>
     </Reorder.Item>
@@ -145,12 +147,14 @@ function ReorderableListItem({
 
 function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; userId: string }) {
   const lists = use(listsPromise);
+  const navigation = useNavigation();
   const submit = useSubmit();
   const incomingIds = lists.map(({ id }) => id);
   const listRecord = Object.fromEntries(lists.map((list) => [list.id, list]));
 
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
+    isPersisting: navigation.state !== "idle",
     onReorderComplete(orderedIds) {
       if (!orderedIds) {
         return;
