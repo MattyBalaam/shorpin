@@ -1,5 +1,5 @@
-import type { FieldMetadata } from "@conform-to/react/future";
-import { type PointerEventHandler, type RefObject, useEffect, useRef, useState } from "react";
+import { type FieldMetadata, useFormData } from "@conform-to/react/future";
+import { type PointerEventHandler, type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
 import { getFirstLink } from "~/lib/extract-link";
 import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
@@ -29,13 +29,14 @@ export function Item({
 
   const fieldset = fieldsetMetadata.getFieldset();
   const defaultValue = fieldset.value.defaultValue ?? "";
-  const [currentValue, setCurrentValue] = useState(defaultValue);
+  const currentValue =
+    useFormData(
+      fieldset.value.formId,
+      (formData) => formData.get(fieldset.value.name)?.toString() ?? defaultValue,
+      { fallback: defaultValue },
+    ) ?? defaultValue;
 
   const intent = navigation.formData?.get("__INTENT__") as string | null;
-
-  useEffect(() => {
-    setCurrentValue(defaultValue);
-  }, [defaultValue]);
 
   // Persist the last known intent through the full navigation cycle.
   // navigation.formData (and therefore intent) is only populated during
@@ -95,7 +96,6 @@ export function Item({
             autoResize(e.currentTarget);
           }}
           onInput={function expandOnInput(e) {
-            setCurrentValue(e.currentTarget.value);
             autoResize(e.currentTarget);
           }}
           onKeyDown={function submitOnEnter(e) {
