@@ -1,6 +1,7 @@
-import type { FieldMetadata } from "@conform-to/react/future";
+import { type FieldMetadata, useFormData } from "@conform-to/react/future";
 import { type PointerEventHandler, type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
+import { getFirstLink } from "~/lib/extract-link";
 import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
@@ -27,6 +28,13 @@ export function Item({
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
+  const defaultValue = fieldset.value.defaultValue ?? "";
+  const currentValue =
+    useFormData(
+      fieldset.value.formId,
+      (formData) => formData.get(fieldset.value.name)?.toString() ?? defaultValue,
+      { fallback: defaultValue },
+    ) ?? defaultValue;
 
   const intent = navigation.formData?.get("__INTENT__") as string | null;
 
@@ -42,6 +50,7 @@ export function Item({
     lastIntentRef.current = null;
   }
   const effectiveIntent = navigation.state === "submitting" ? intent : lastIntentRef.current;
+  const firstLink = getFirstLink(currentValue);
 
   const isDeleting =
     navigation.state === "submitting" &&
@@ -124,6 +133,41 @@ export function Item({
               new
             </span>
           </span>
+        ) : null}
+
+        {firstLink ? (
+          <a className={styles.linkButton} href={firstLink} target="_blank" rel="noreferrer">
+            <VisuallyHidden>Open link</VisuallyHidden>
+            <svg
+              aria-hidden
+              className={styles.linkIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M14 5H19V10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M10 14L19 5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M19 14V18C19 18.5304 18.7893 19.0391 18.4142 19.4142C18.0391 19.7893 17.5304 20 17 20H6C5.46957 20 4.96086 19.7893 4.58579 19.4142C4.21071 19.0391 4 18.5304 4 18V7C4 6.46957 4.21071 5.96086 4.58579 5.58579C4.96086 5.21071 5.46957 5 6 5H10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
         ) : null}
 
         <span
