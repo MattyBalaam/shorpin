@@ -125,6 +125,7 @@ export const linkButton = style({
   minWidth: "44px",
   minHeight: "44px",
   borderRadius: vars.radius.pill,
+  outline: "1px solid white",
   selectors: {
     "&:hover": {
       color: "black",

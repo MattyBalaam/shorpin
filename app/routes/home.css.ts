@@ -45,7 +45,7 @@ export const itemWrapper = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] auto [count] auto",
+  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] auto",
   alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
@@ -102,27 +102,27 @@ export const itemDragHandle = style({
   },
 });
 
-export const itemTotal = style({
-  gridColumn: "count",
-  fontSize: vars.fontSize.xs,
-  opacity: 0.6,
-  flexShrink: 0,
+export const itemStatus = style({
+  gridColumn: "status",
+  display: "grid",
   zIndex: 1,
   alignSelf: "center",
+  justifyContent: "center",
+  alignContent: "center",
+});
+
+export const itemTotal = style({
+  fontSize: vars.fontSize.xs,
+  textAlign: "center",
 });
 
 export const unreadBadge = style({
-  gridColumn: "status",
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
   color: vars.palette.text,
   borderRadius: vars.radius.pill,
   paddingInline: vars.spacing.sm,
   minWidth: "1.5em",
-  textAlign: "center",
-  flexShrink: 0,
-  zIndex: 1,
-  alignSelf: "center",
 });
 
 const shimmer = keyframes({
