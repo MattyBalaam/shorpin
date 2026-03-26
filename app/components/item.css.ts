@@ -24,7 +24,7 @@ export const itemContainer = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[input] 1fr [state] auto [drag] auto [done] auto",
+  gridTemplateColumns: "[input] 1fr [state] auto [link] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
@@ -112,6 +112,36 @@ export const dragHandle = style({
     position: "absolute",
     inset: "-1em",
   },
+});
+
+export const linkButton = style({
+  gridColumn: "link",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  alignSelf: "center",
+  color: vars.palette.chrome,
+  textDecoration: "none",
+  minWidth: "44px",
+  minHeight: "44px",
+  borderRadius: vars.radius.pill,
+  selectors: {
+    "&:hover": {
+      color: "black",
+      background: "rgb(255 255 255 / 0.4)",
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.palette.text}`,
+      outlineOffset: "2px",
+      background: "rgb(255 255 255 / 0.4)",
+    },
+  },
+});
+
+export const linkIcon = style({
+  width: "22px",
+  height: "22px",
+  flexShrink: 0,
 });
 
 export const deleteButton = style({

@@ -42,6 +42,25 @@ test("owner can add an item to a list", async ({ page, ctx }) => {
   await expect(page.getByRole("textbox").first()).toHaveValue("Butter");
 });
 
+test("item with a URL shows a single open-link control", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Owner Empty" }).click();
+  await page.waitForURL("/lists/owner-empty");
+
+  await page.getByLabel("New item").fill("Docs https://example.com/guide");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  const itemRow = page
+    .locator("li")
+    .filter({ has: page.getByLabel("Edit Docs https://example.com/guide") });
+  const openLink = itemRow.getByRole("link", { name: "Open link" });
+
+  await expect(openLink).toBeVisible();
+  await expect(openLink).toHaveAttribute("href", "https://example.com/guide");
+  await expect(itemRow.getByRole("link")).toHaveCount(1);
+});
+
 test("owner can delete an item from a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
