@@ -20,13 +20,6 @@ export function useReorderIds({
   const latestItemIds = useRef(itemIds);
 
   useEffect(
-    function trackLatestItemIds() {
-      latestItemIds.current = itemIds;
-    },
-    [itemIds],
-  );
-
-  useEffect(
     function syncIncomingOrder() {
       if (didReorder.current) {
         if (isPersisting) {
@@ -43,6 +36,7 @@ export function useReorderIds({
 
   function handleReorder(newOrder: string[]) {
     didReorder.current = true;
+    latestItemIds.current = newOrder;
     setItemIds(newOrder);
     onReorder?.(newOrder);
   }
