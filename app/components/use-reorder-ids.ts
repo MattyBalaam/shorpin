@@ -19,10 +19,23 @@ export function useReorderIds({
   const didReorder = useRef(false);
   const latestItemIds = useRef(itemIds);
 
+  /**
+   * Sync incoming server order with local state.
+   *
+   * When a reorder is in flight (didReorder = true):
+   * - If the server has confirmed our order (incomingIds matches latestItemIds),
+   *   clear the flag so future server updates take effect normally.
+   * - Otherwise, ignore server data until it confirms our reorder — this prevents
+   *   items snapping back during the pending request.
+   *
+   * When no reorder is in flight, accept server data normally.
+   */
   useEffect(
     function syncIncomingOrder() {
       if (didReorder.current) {
-        if (isPersisting) {
+        // Only clear the flag when the server confirms our reorder.
+        // This guards against the server sending stale data during a pending update.
+        if (isPersisting && sameOrder(incomingIds, latestItemIds.current)) {
           didReorder.current = false;
         }
 
@@ -34,6 +47,10 @@ export function useReorderIds({
     [incomingIds, isPersisting],
   );
 
+  /**
+   * Called by the drag component when items are reordered.
+   * Updates local state optimistically and marks that a reorder is in flight.
+   */
   function handleReorder(newOrder: string[]) {
     didReorder.current = true;
     latestItemIds.current = newOrder;
@@ -41,6 +58,9 @@ export function useReorderIds({
     onReorder?.(newOrder);
   }
 
+  /**
+   * Called when the drag ends — triggers the server persistence.
+   */
   function handleReorderComplete() {
     if (!didReorder.current) {
       return;
