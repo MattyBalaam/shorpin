@@ -66,6 +66,30 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
   expect(persistedOrder[0]).toBe("Owner Empty");
 });
 
+test("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  const firstList = () => page.locator('li a[href^="/lists/"]').first();
+
+  const fromHandle = page.getByLabel("Reorder Owner Empty");
+  const toHandle = page.getByLabel("Reorder Shopping");
+
+  const fromBox = await fromHandle.boundingBox();
+  const toBox = await toHandle.boundingBox();
+  if (!fromBox || !toBox) {
+    throw new Error("Unable to determine drag handle positions");
+  }
+
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
+    steps: 25,
+  });
+  await page.mouse.up();
+
+  await expect(firstList()).toHaveText("Owner Empty");
+});
+
 test("owner sees admin link for both their lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
