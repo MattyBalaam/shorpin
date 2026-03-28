@@ -27,6 +27,7 @@
     "supabase",
     "Teardown",
     "tsgo",
+    "TTFB",
     "VITE",
     "vitest",
     "waitlist"
