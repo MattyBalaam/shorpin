@@ -53,10 +53,6 @@ export default async function handleRequest(
   }
 
   responseHeaders.set("Content-Type", "text/html");
-  // private: only cached by browser, not shared CDN
-  // max-age=0: don't use fresh cache, always revalidate with server
-  // stale-while-revalidate=30: serve stale content while fetching update in background (up to 30s)
-  responseHeaders.set("Cache-Control", "private, max-age=0, stale-while-revalidate=30");
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,

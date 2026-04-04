@@ -109,7 +109,7 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
       `token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
     );
 
-    if (secs === null || secs <= 60) {
+    if (secs === null || secs <= 300) {
       const {
         data: { session },
       } = await supabase.auth.getSession();
