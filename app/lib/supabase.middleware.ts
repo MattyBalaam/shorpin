@@ -37,34 +37,19 @@ function tokenSecondsLeft(cookieHeader: string): number | null {
   const authCookie = cookies.find(
     (c) => (c.name === supabaseStorageKey || c.name === `${supabaseStorageKey}.0`) && c.value,
   );
-  if (!authCookie?.value) {
-    console.log("[Token] no auth cookie found");
-    return null;
-  }
+  if (!authCookie?.value) return null;
   try {
     let value = authCookie.value;
     if (value.startsWith("base64-")) {
       value = Buffer.from(value.slice(7), "base64url").toString();
     }
     const tokenMatch = value.match(/"access_token":"([^"]+)"/);
-    if (!tokenMatch) {
-      console.log("[Token] no access_token in cookie, value:", value.slice(0, 100));
-      return null;
-    }
+    if (!tokenMatch) return null;
     const parts = tokenMatch[1].split(".");
-    if (parts.length !== 3) {
-      console.log(
-        "[Token] not a valid JWT, got parts:",
-        parts.length,
-        "token:",
-        tokenMatch[1].slice(0, 80),
-      );
-      return null;
-    }
+    if (parts.length !== 3) return null; // not a real JWT (e.g. mock token)
     const { exp } = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as { exp: number };
     return exp - Math.floor(Date.now() / 1000);
-  } catch (e) {
-    console.log("[Token] parse error:", e);
+  } catch {
     return null;
   }
 }
