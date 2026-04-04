@@ -53,7 +53,12 @@ function tokenSecondsLeft(cookieHeader: string): number | null {
     }
     const parts = tokenMatch[1].split(".");
     if (parts.length !== 3) {
-      console.log("[Token] not a valid JWT, parts:", parts.length);
+      console.log(
+        "[Token] not a valid JWT, got parts:",
+        parts.length,
+        "token:",
+        tokenMatch[1].slice(0, 80),
+      );
       return null;
     }
     const { exp } = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as { exp: number };
