@@ -1,16 +1,22 @@
+import { createSupabaseClient } from "~/lib/supabase.server";
 import type { Route } from "./+types/health";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const start = performance.now();
 
-  // Basic health check - could add more checks here (db, etc)
-  const ok = true;
+  const { supabase } = createSupabaseClient(request);
+
+  supabase
+    .from("lists")
+    .select("id", { head: true })
+    .limit(1)
+    .then(({ error }) => {
+      if (error) {
+        console.warn("[Health] Supabase check failed:", error.message);
+      }
+    });
 
   const duration = performance.now() - start;
-
-  if (!ok) {
-    return new Response("unhealthy", { status: 503 });
-  }
 
   return new Response("ok", {
     status: 200,
