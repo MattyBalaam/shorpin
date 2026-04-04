@@ -110,6 +110,8 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
     );
 
     if (secs === null || secs <= 60) {
+      logger(`session expiring - trying to refresh`, true);
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -120,7 +122,7 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
         throw redirect(href("/login"), { headers: cookieHeaders });
       }
 
-      logger(`got session`, true);
+      logger(`session refreshed`, true);
     }
   }
 
