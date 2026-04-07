@@ -27,4 +27,6 @@ export default [
     route("lists/:list", "routes/list/list.tsx"),
     route("lists/:list/confirm-delete", "routes/delete.tsx"),
   ]),
+  route("/sentry-example-page", "routes/sentry-example-page.tsx"),
+  route("/api/sentry-example-api", "routes/api.sentry-example-api.ts"),
 ] satisfies RouteConfig;
