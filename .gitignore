@@ -12,3 +12,6 @@ playwright-report
 public/mockServiceWorker.js
 build/
 supabase/.temp/
+
+# Sentry Config File
+.env.sentry-build-plugin

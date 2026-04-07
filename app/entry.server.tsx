@@ -1,9 +1,14 @@
+import * as Sentry from "@sentry/react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
 import type { EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 
 import "./instrument.server.mjs";
+
+export const handleError = Sentry.createSentryHandleError({
+  logErrors: false,
+});
 
 // In preview builds, intercept all Supabase calls with MSW so the Netlify
 // Function doesn't need a real Supabase project. Runs once on cold start;
@@ -27,7 +32,7 @@ if (import.meta.env.MODE === "preview") {
   });
 }
 
-export default async function handleRequest(
+async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
@@ -58,3 +63,6 @@ export default async function handleRequest(
     status: responseStatusCode,
   });
 }
+
+export default Sentry.wrapSentryHandleRequest(handleRequest);
+export const unstable_instrumentations = [Sentry.createSentryServerInstrumentation()];
