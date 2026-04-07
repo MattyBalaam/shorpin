@@ -37,7 +37,8 @@ These secrets are not baked into the image and must be set in Coolify's **Enviro
 ### 4. Add the deploy webhook to GitHub
 
 1. In Coolify → your app → **Webhooks**, copy the **Deploy Webhook URL**
-2. In your GitHub repo → **Settings** → **Secrets and variables** → **Actions**, add:
+2. In Coolify → keys & tokens > api tokens -> Create an API key with DEPLOY and READ permissions.
+3. In your GitHub repo → **Settings** → **Secrets and variables** → **Actions**, add:
    - Name: `COOLIFY_WEBHOOK_URL`
    - Value: the webhook URL from above
 
