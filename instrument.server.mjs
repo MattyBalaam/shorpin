@@ -17,10 +17,7 @@ Sentry.init({
   beforeSend(event) {
     if (event.exception) {
       const error = event.exception.values?.[0];
-      if (
-        error?.type === "NotFoundException" ||
-        error?.value?.includes("404")
-      ) {
+      if (error?.type === "NotFoundException" || error?.value?.includes("404")) {
         return null;
       }
     }
