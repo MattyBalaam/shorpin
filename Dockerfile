@@ -33,7 +33,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/build ./build
-COPY --from=builder /instrument.server.mjs ./instrument.server.mjs
+COPY --from=builder /app/instrument.server.mjs ./instrument.server.mjs
 
 EXPOSE 3000
 
