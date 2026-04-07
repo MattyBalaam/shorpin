@@ -1,9 +1,8 @@
-import * as Sentry from "@sentry/react-router";
 import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import * as Sentry from "@sentry/react-router";
 
 Sentry.init({
-  dsn: "https://6cc0a8c552b7164800664a1faf634fe0@o4510459316666368.ingest.de.sentry.io/4510936655265872",
-
+  dsn: process.env.VITE_SENTRY_DSN,
   // Adds request headers and IP for users, for more info visit:
   // https://docs.sentry.io/platforms/javascript/guides/react-router/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
@@ -12,12 +11,10 @@ Sentry.init({
   enableLogs: true,
 
   integrations: [nodeProfilingIntegration()],
-  tracesSampleRate: 1.0, // Capture 100% of the transactions
-  profilesSampleRate: 1.0, // profile every transaction
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
 
-  // Set up performance monitoring
   beforeSend(event) {
-    // Filter out 404s from error reporting
     if (event.exception) {
       const error = event.exception.values?.[0];
       if (error?.type === "NotFoundException" || error?.value?.includes("404")) {
