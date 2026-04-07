@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react-router";
 import { Suspense, useEffect, useRef } from "react";
 import {
   href,
@@ -186,6 +187,10 @@ export function ErrorBoundary() {
         <Link to={href("/")}>Back to home</Link>
       </main>
     );
+  }
+
+  if (error && error instanceof Error) {
+    Sentry.captureException(error);
   }
 
   return (
