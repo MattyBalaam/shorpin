@@ -26,6 +26,7 @@ RUN pnpm build
 FROM node:24-alpine
 
 RUN corepack enable
+RUN apk add --no-cache wget
 
 WORKDIR /app
 
