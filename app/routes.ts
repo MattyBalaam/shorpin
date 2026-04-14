@@ -20,7 +20,7 @@ export default [
     route("request-access", "routes/auth/request-access.tsx"),
   ]),
   layout("routes/app/layout.tsx", [
-    route("/", "routes/home.tsx", [
+    route("/", "routes/home/home.tsx", [
       route("sign-ups", "routes/sign-ups.tsx"),
       route("config/:list", "routes/list/config.tsx"),
     ]),

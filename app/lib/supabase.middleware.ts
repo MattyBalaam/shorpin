@@ -3,14 +3,18 @@ import { parseCookieHeader } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MiddlewareFunction } from "react-router";
 import { createContext, href, redirect } from "react-router";
-import type { Database } from "./database.types";
+import type { Database, Tables } from "./database.types";
 import { createSupabaseClient } from "./supabase.server";
 
-export const supabaseContext = createContext<SupabaseClient<Database>>();
+export type SupaBaseContext = SupabaseClient<Database>;
+
+export type ListItem = Tables<"lists">;
+
+export const supabaseContext = createContext<SupaBaseContext>();
 
 let schemaCheckPromise: Promise<void> | null = null;
 
-async function runListViewsSchemaCheck(supabase: SupabaseClient<Database>) {
+async function runListViewsSchemaCheck(supabase: SupaBaseContext) {
   const { error } = await supabase
     .from("list_views")
     .select("list_id", { head: true, count: "exact" })

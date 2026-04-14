@@ -8,7 +8,8 @@ import { resolveSlug, slugify } from "~/lib/slugify";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/home";
-import { REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
+
+import { ListItem, REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -22,12 +23,15 @@ export async function loader({ context }: Route.LoaderArgs) {
     .eq("state", "active")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
-    .then(({ data, error }) => {
+    .then(async ({ data, error }) => {
+      console.log("delay to remove!!!");
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+
       if (error) {
         console.error("Error loading lists:", error);
         throw error;
       }
-      return data ?? [];
+      return data;
     });
 
   const viewedAtMapPromise = supabase
@@ -40,7 +44,7 @@ export async function loader({ context }: Route.LoaderArgs) {
         throw error;
       }
 
-      return Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at]));
+      return data ? Object.fromEntries(data.map((v) => [v.list_id, v.viewed_at])) : {};
     });
 
   return {
@@ -53,13 +57,15 @@ export async function loader({ context }: Route.LoaderArgs) {
           totalCount: activeItems.length,
           unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
             .length,
-        };
+        } satisfies ListItem;
       }),
     ),
     waitlistCount: supabase
       .from("waitlist")
       .select("*", { count: "exact", head: true })
       .then(({ count }) => count ?? 0),
+    // this is mostly here to satisfy the types in component
+    revalidatePromise: Promise.resolve("server"),
   };
 }
 

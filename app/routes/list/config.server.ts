@@ -18,7 +18,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
       .select("id, name, user_id")
       .eq("slug", list)
       .eq("state", "active")
-      .single(),
+      .maybeSingle(),
   ]);
 
   if (error || !data) {
@@ -60,7 +60,7 @@ export async function action({ params: { list }, request, context }: Route.Actio
     .select("id, user_id")
     .eq("slug", list)
     .eq("state", "active")
-    .single();
+    .maybeSingle();
 
   if (!listData || listData.user_id !== user?.id) {
     throw redirectWithError(href("/"), "Only the list owner can manage settings.");
