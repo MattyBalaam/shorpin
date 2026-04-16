@@ -49,18 +49,12 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 		revalidatePromise: serverData.lists.then(async (freshLists) => {
 			const freshTimestamp = await serverData.updatedAt;
 
-			// Cache is stale if timestamps differ
-			if (freshTimestamp !== cached.updatedAt) {
+			// Cache is stale if server has newer data
+			if (freshTimestamp > cached.updatedAt) {
 				setCachedLists({ lists: freshLists, updatedAt: freshTimestamp });
 				return "stale" as const;
 			}
 
-			return "up-to-date" as const;
-		}),
-	} as const;
-}
-
-			console.log("[clientLoader] cache up-to-date");
 			return "up-to-date" as const;
 		}),
 	} as const;
