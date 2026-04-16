@@ -35,6 +35,11 @@ function setCachedLists(data: CachedData): void {
 	}
 }
 
+export function clearListsCache(): void {
+	if (typeof window === "undefined") return;
+	localStorage.removeItem(CACHE_KEY);
+}
+
 // clientLoader - returns cached instantly, fetches fresh in background
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 	const serverData = await serverLoader();
