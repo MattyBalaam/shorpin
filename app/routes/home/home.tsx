@@ -1,13 +1,13 @@
 import { useForm } from "@conform-to/react/future";
 import { Suspense } from "react";
 import {
-  isRouteErrorResponse,
-  type MetaFunction,
-  Outlet,
-  Form as RouterForm,
-  useNavigation,
-  useRevalidator,
-  useRouteError,
+	isRouteErrorResponse,
+	type MetaFunction,
+	Outlet,
+	Form as RouterForm,
+	useNavigation,
+	useRevalidator,
+	useRouteError,
 } from "react-router";
 
 import { Actions } from "~/components/actions/actions";
@@ -27,90 +27,97 @@ import { Lists, PendingSignUps } from "./components";
 export { clientLoader };
 
 export const meta: MetaFunction = () => {
-  return [
-    { title: "Home | Shorpin" },
-    { name: "description", content: "We got lists, they’re multiplying" },
-  ];
+	return [
+		{ title: "Home | Shorpin" },
+		{ name: "description", content: "We got lists, they’re multiplying" },
+	];
 };
 
 export const handle = {
-  breadcrumb: {
-    label: "Home",
-  },
+	breadcrumb: {
+		label: "Home",
+	},
 };
 
 export function HydrateFallback() {
-  return <p>Loading...</p>;
+	return <p>Loading...</p>;
 }
 
 clientLoader.hydrate = true;
 
-export default function Index({ loaderData, actionData }: Route.ComponentProps) {
-  const { form, fields } = useForm(zCreate, {
-    lastResult: actionData,
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
-  });
+export default function Index({
+	loaderData,
+	actionData,
+}: Route.ComponentProps) {
+	const { form, fields } = useForm(zCreate, {
+		lastResult: actionData,
+		shouldValidate: "onBlur",
+		shouldRevalidate: "onInput",
+	});
 
-  const { state } = useNavigation();
-  // TODO fix types
-  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
+	const { state } = useNavigation();
+	// TODO fix types
+	const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
-  return (
-    <>
-      <div className={styles.pendingSignUps}>
-        <Suspense fallback={null}>
-          <Revalidator data={loaderData.revalidatePromise} />
-          <PendingSignUps countPromise={pendingCount} />
-        </Suspense>
-      </div>
-      <ScrollArea>
-        <nav className={styles.listWrapper}>
-          <Suspense fallback={<Spinner />}>
-            <Lists listsPromise={loaderData.lists} userId={loaderData.userId} />
-          </Suspense>{" "}
-        </nav>
-      </ScrollArea>
+	return (
+		<>
+			<div className={styles.pendingSignUps}>
+				<Suspense fallback={null}>
+					<Revalidator />
+					<PendingSignUps countPromise={pendingCount} />
+				</Suspense>
+			</div>
+			<ScrollArea>
+				<nav className={styles.listWrapper}>
+					<Suspense fallback={<Spinner />}>
+						<Lists listsPromise={loaderData.lists} userId={loaderData.userId} />
+					</Suspense>{" "}
+				</nav>
+			</ScrollArea>
 
-      <Actions>
-        <RouterForm {...form.props} method="POST" className={styles.actions}>
-          {form.errors?.map((error, i) => (
-            <p key={i} className={styles.formError}>
-              {error}
-            </p>
-          ))}
-          <div className={styles.newList}>
-            <VisuallyHidden>
-              <label htmlFor={fields["new-list"].id}>New list</label>
-            </VisuallyHidden>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
+			<Actions>
+				<RouterForm {...form.props} method="POST" className={styles.actions}>
+					{form.errors?.map((error, i) => (
+						<p key={i} className={styles.formError}>
+							{error}
+						</p>
+					))}
+					<div className={styles.newList}>
+						<VisuallyHidden>
+							<label htmlFor={fields["new-list"].id}>New list</label>
+						</VisuallyHidden>
+						<input
+							name={fields["new-list"].name}
+							id={fields["new-list"].id}
+							autoComplete="off"
+						/>
 
-            <Button type="submit" isSubmitting={state === "submitting"}>
-              Add
-            </Button>
-          </div>
-        </RouterForm>
-      </Actions>
-      <Outlet />
-    </>
-  );
+						<Button type="submit" isSubmitting={state === "submitting"}>
+							Add
+						</Button>
+					</div>
+				</RouterForm>
+			</Actions>
+			<Outlet />
+		</>
+	);
 }
 
 export function ErrorBoundary() {
-  const error = useRouteError();
-  const { revalidate, state } = useRevalidator();
+	const error = useRouteError();
+	const { revalidate, state } = useRevalidator();
 
-  const message =
-    isRouteErrorResponse(error) && error.status === 503
-      ? "Couldn't reach the server."
-      : "Something went wrong.";
+	const message =
+		isRouteErrorResponse(error) && error.status === 503
+			? "Couldn't reach the server."
+			: "Something went wrong.";
 
-  return (
-    <div className={styles.errorState}>
-      <p>{message}</p>
-      <Button onClick={revalidate} isSubmitting={state === "loading"}>
-        Retry
-      </Button>
-    </div>
-  );
+	return (
+		<div className={styles.errorState}>
+			<p>{message}</p>
+			<Button onClick={revalidate} isSubmitting={state === "loading"}>
+				Retry
+			</Button>
+		</div>
+	);
 }
