@@ -63,7 +63,7 @@ export default function Index({
 		<>
 			<div className={styles.pendingSignUps}>
 				<Suspense fallback={null}>
-					<Revalidator />
+					<Revalidator data={loaderData.revalidatePromise} />
 					<PendingSignUps countPromise={pendingCount} />
 				</Suspense>
 			</div>
