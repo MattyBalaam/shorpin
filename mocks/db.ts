@@ -20,6 +20,7 @@ const listsSchema = v.object({
   theme_secondary: v.optional(v.nullable(v.string())),
   user_id: v.string(),
   created_at: v.string(),
+  updated_at: v.number(),
 });
 
 const listMembersSchema = v.object({

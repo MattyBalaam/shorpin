@@ -220,6 +220,7 @@ export const handlers = [
       );
     }
 
+    const now = Date.now();
     const list = await lists.create({
       id: crypto.randomUUID(),
       name: body.name,
@@ -234,7 +235,8 @@ export const handlers = [
         })(),
       state: "active",
       user_id: body.user_id,
-      created_at: new Date().toISOString(),
+      created_at: new Date(now).toISOString(),
+      updated_at: now,
     });
     return HttpResponse.json(list, { status: 201 });
   }),
@@ -430,6 +432,14 @@ export const handlers = [
     }
 
     if (hasItemMutation) {
+      await lists.update((q) => q.where({ id: list.id }), {
+        data(draft) {
+          draft.updated_at = updatedAt;
+        },
+      });
+    }
+
+    if (hasItemMutation) {
       const existingView = listViews.findFirst((q) =>
         q.where({ list_id: list.id, user_id: user.id }),
       );
@@ -480,6 +490,7 @@ export const handlers = [
         sort_order: number;
         updated_at: number;
       }>;
+      let listId: string | null = null;
       for (const body of items) {
         const existing = listItems.findFirst((q) => q.where({ id: body.id }));
         if (existing) {
@@ -491,9 +502,19 @@ export const handlers = [
               draft.updated_at = body.updated_at;
             },
           });
+          listId = existing.list_id;
         } else {
           await listItems.create(body);
+          listId = body.list_id;
         }
+      }
+      if (listId) {
+        const now = Date.now();
+        await lists.update((q) => q.where({ id: listId }), {
+          data(draft) {
+            draft.updated_at = now;
+          },
+        });
       }
       return HttpResponse.json([]);
     }
@@ -506,13 +527,19 @@ export const handlers = [
       sort_order?: number;
       updated_at?: number;
     };
+    const now = body.updated_at ?? Date.now();
     const item = await listItems.create({
       id: body.id ?? crypto.randomUUID(),
       list_id: body.list_id,
       value: body.value,
       state: body.state ?? "active",
       sort_order: body.sort_order ?? 0,
-      updated_at: body.updated_at ?? Date.now(),
+      updated_at: now,
+    });
+    await lists.update((q) => q.where({ id: body.list_id }), {
+      data(draft) {
+        draft.updated_at = now;
+      },
     });
     return HttpResponse.json(item, { status: 201 });
   }),
@@ -529,14 +556,23 @@ export const handlers = [
     };
     const idParam = url.searchParams.get("id")?.replace("eq.", "");
     if (idParam) {
+      const now = body.updated_at ?? Date.now();
       await listItems.update((q) => q.where({ id: idParam }), {
         data(draft) {
           if (body.value !== undefined) draft.value = body.value;
           if (body.state !== undefined) draft.state = body.state;
           if (body.sort_order !== undefined) draft.sort_order = body.sort_order;
-          if (body.updated_at !== undefined) draft.updated_at = body.updated_at;
+          if (body.updated_at !== undefined) draft.updated_at = now;
         },
       });
+      const item = await listItems.findFirst((q) => q.where({ id: idParam }));
+      if (item) {
+        await lists.update((q) => q.where({ id: item.list_id }), {
+          data(draft) {
+            draft.updated_at = now;
+          },
+        });
+      }
     }
     return HttpResponse.json([]);
   }),
@@ -549,7 +585,22 @@ export const handlers = [
     const inMatch = idsParam.match(/^in\.\((.+)\)$/);
     if (inMatch) {
       const ids = inMatch[1].split(",");
-      ids.forEach((id) => listItems.delete((q) => q.where({ id })));
+      const listIds = new Set<string>();
+      for (const id of ids) {
+        const item = listItems.findFirst((q) => q.where({ id }));
+        if (item) {
+          listIds.add(item.list_id);
+        }
+        listItems.delete((q) => q.where({ id }));
+      }
+      const now = Date.now();
+      for (const listId of listIds) {
+        await lists.update((q) => q.where({ id: listId }), {
+          data(draft) {
+            draft.updated_at = now;
+          },
+        });
+      }
     }
     return HttpResponse.json([]);
   }),

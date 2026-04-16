@@ -56,8 +56,6 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
   // TODO fix types
   const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
-  console.log(loaderData);
-
   return (
     <>
       <div className={styles.pendingSignUps}>

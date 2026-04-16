@@ -168,3 +168,27 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
     .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
   await expect(shoppingRow.getByText("3 unread")).toBeVisible();
 });
+
+test("cached list updates on navigation back", async ({ page, ctx }) => {
+  const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
+
+  await login(page, ctx.ownerEmail);
+  await expect(page.getByRole("link", { name: "Shopping" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Shopping" }).click();
+  await page.waitForURL("/lists/shopping");
+
+  await page.request.post(`http://localhost:${mockPort}/rest/v1/lists`, {
+    headers: { Authorization: `Bearer ${ctx.ownerEmail}` },
+    data: {
+      name: "New List",
+      slug: "new-list",
+      user_id: ctx.ownerEmail,
+    },
+  });
+
+  await page.getByRole("link", { name: "Back to index" }).click();
+  await page.waitForURL("/");
+
+  await expect(page.getByRole("link", { name: "New List" })).toBeVisible();
+});

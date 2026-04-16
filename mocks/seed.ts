@@ -7,6 +7,7 @@ async function createListWithItems(
   items: string[],
   sortOrder: number,
 ) {
+  const now = Date.now();
   const list = await lists.create({
     id: crypto.randomUUID(),
     name,
@@ -14,7 +15,8 @@ async function createListWithItems(
     sort_order: sortOrder,
     state: "active",
     user_id: ownerId,
-    created_at: new Date().toISOString(),
+    created_at: new Date(now).toISOString(),
+    updated_at: now,
   });
 
   for (let i = 0; i < items.length; i++) {

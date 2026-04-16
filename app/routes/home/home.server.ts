@@ -19,19 +19,20 @@ export async function loader({ context }: Route.LoaderArgs) {
 
   const listsPromise = supabase
     .from("lists")
-    .select("id, name, slug, user_id, list_items(updated_at, state)")
+    .select("id, name, slug, user_id, updated_at,list_items(updated_at, state)")
     .eq("state", "active")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
     .then(async ({ data, error }) => {
-      console.log("delay to remove!!!");
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
-
       if (error) {
         console.error("Error loading lists:", error);
         throw error;
       }
-      return data;
+
+      return data.map((list) => ({
+        ...list,
+        list_items: list.list_items.filter((item) => item.state === "active"),
+      }));
     });
 
   const viewedAtMapPromise = supabase
@@ -51,21 +52,28 @@ export async function loader({ context }: Route.LoaderArgs) {
     userId,
     lists: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) =>
       lists.map(({ list_items, ...list }) => {
-        const activeItems = list_items.filter((item) => item.state === "active");
         return {
           ...list,
-          totalCount: activeItems.length,
-          unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
+          totalCount: list_items.length,
+          unreadCount: list_items.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
             .length,
         } satisfies ListItem;
       }),
     ),
+    updatedAt: (async () => {
+      const lists = await listsPromise;
+
+      return lists.reduce((max, list) => {
+        const ts = new Date(list.updated_at).getTime();
+        return ts > max ? ts : max;
+      }, 0);
+    })(),
     waitlistCount: supabase
       .from("waitlist")
       .select("*", { count: "exact", head: true })
       .then(({ count }) => count ?? 0),
     // this is mostly here to satisfy the types in component
-    revalidatePromise: Promise.resolve("server"),
+    revalidatePromise: Promise.resolve("stale" as const),
   };
 }
 
