@@ -106,7 +106,6 @@ interface ItemsProps {
   edited: Array<string>;
   newItems: Array<string>;
   pendingItem?: string | null;
-  isPersisting?: boolean;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: (itemIds: string[]) => void;
 }
@@ -141,7 +140,6 @@ export function Items({
   edited,
   newItems,
   pendingItem,
-  isPersisting = false,
   onReorder,
   onReorderComplete,
 }: ItemsProps) {
@@ -150,7 +148,6 @@ export function Items({
   const incomingIds = items.map((item) => item.getFieldset().id.defaultValue);
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
-    isPersisting,
     onReorder,
     onReorderComplete,
   });

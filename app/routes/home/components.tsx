@@ -1,6 +1,6 @@
 import { Reorder, useDragControls } from "motion/react";
 import { use } from "react";
-import { href, useNavigation, useSubmit } from "react-router";
+import { href, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
 import { useReorderIds } from "~/components/use-reorder-ids";
@@ -102,15 +102,15 @@ export function Lists({
   userId: string;
 }) {
   const lists = use(listsPromise);
-  const navigation = useNavigation();
   const submit = useSubmit();
   const incomingIds = lists.map(({ id }) => id);
   const listRecord = Object.fromEntries(lists.map((list) => [list.id, list]));
 
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
-    isPersisting: navigation.state !== "idle",
     onReorderComplete(orderedIds) {
+      console.log("Reorder complete, orderedIds:", orderedIds);
+
       if (!orderedIds) {
         return;
       }

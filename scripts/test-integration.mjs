@@ -21,6 +21,7 @@ const mockPort = await findFreePort(9001);
 const appPort = await findFreePort(5174);
 
 console.log(`[test:integration] mock :${mockPort}  app :${appPort}`);
+console.log(`[test:integration] Using VITE_SUPABASE_URL: http://localhost:${mockPort}`);
 
 const result = spawnSync("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], {
   env: {

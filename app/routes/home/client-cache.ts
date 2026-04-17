@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffectEvent } from "react";
 import { useRevalidator } from "react-router";
 
 import type { Route } from "./+types/home";
@@ -48,7 +48,8 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   return {
     ...serverData,
     lists: cached.lists.length > 0 ? Promise.resolve(cached.lists) : serverData.lists,
-    revalidatePromise: serverData.lists.then(async (freshLists) => {
+    revalidatePromise: (async () => {
+      const freshLists = await serverData.lists;
       const freshKey = await serverData.updatedKey;
 
       // Cache is stale if server has different data
@@ -58,7 +59,7 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
       }
 
       return "up-to-date" as const;
-    }),
+    })(),
   } as const;
 }
 
@@ -67,13 +68,19 @@ clientLoader.hydrate = true;
 export const Revalidator = ({ data }: { data: Promise<"stale" | "up-to-date"> }) => {
   const revalidator = useRevalidator();
 
+  const handleRevalidate = useEffectEvent(() => {
+    revalidator.revalidate();
+  });
+
   const state = React.use(data);
 
   React.useEffect(() => {
+    // console.log("Cache status:", state);
+
     if (state === "stale") {
-      revalidator.revalidate();
+      handleRevalidate();
     }
-  }, [state, revalidator]);
+  }, [state]);
 
   return null;
 };

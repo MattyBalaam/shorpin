@@ -61,12 +61,11 @@ export async function loader({ context }: Route.LoaderArgs) {
       }),
     ),
     // create a sum of the updated_at timestamps of all lists as a simple way to detect changes without needing a separate "updatedKey" field in the database
-    updatedKey: (async () =>
-      (await listsPromise).reduce((max, list) => max + list.updated_at, 0))(),
-    waitlistCount: supabase
-      .from("waitlist")
-      .select("*", { count: "exact", head: true })
-      .then(({ count }) => count ?? 0),
+    updatedKey: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) => {
+      return lists.reduce((max, list) => max + list.updated_at + (viewedAtMap[list.id] ?? 0), 0);
+    }),
+    waitlistCount: (async () =>
+      (await supabase.from("waitlist").select("*", { count: "exact", head: true })).count ?? 0)(),
     // this is mostly here to satisfy the types in component
     revalidatePromise: Promise.resolve("stale" as const),
   };
@@ -82,6 +81,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     };
 
     const reorderResult = v.safeParse(zReorderLists, reorderPayload);
+
+    console.log("Reorder validation result:", reorderResult);
 
     if (!reorderResult.success) {
       return null;

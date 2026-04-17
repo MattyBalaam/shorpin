@@ -53,15 +53,13 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
   });
 
   const { state } = useNavigation();
-  // TODO fix types
-  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
 
   return (
     <>
       <div className={styles.pendingSignUps}>
         <Suspense fallback={null}>
           <Revalidator data={loaderData.revalidatePromise} />
-          <PendingSignUps countPromise={pendingCount} />
+          <PendingSignUps countPromise={loaderData.waitlistCount} />
         </Suspense>
       </div>
       <ScrollArea>

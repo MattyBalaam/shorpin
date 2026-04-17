@@ -145,11 +145,13 @@ export const handlers = [
         q.where({ id: idParam, user_id: user.id, state: "active" }),
       );
       if (list) {
+        const now = Date.now();
         await lists.update((q) => q.where({ id: list.id }), {
           data(draft) {
             if (body.sort_order !== undefined) {
               draft.sort_order = body.sort_order;
             }
+            draft.updated_at = now;
           },
         });
       }
