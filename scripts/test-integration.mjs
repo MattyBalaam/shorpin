@@ -6,31 +6,38 @@
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 
+const useBuiltServer = process.argv.includes("--built");
+
 function findFreePort(start) {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.on("error", (err) => {
-      if (err.code === "EADDRINUSE") resolve(findFreePort(start + 1));
-      else reject(err);
-    });
-    server.listen(start, "127.0.0.1", () => server.close(() => resolve(start)));
-  });
+	return new Promise((resolve, reject) => {
+		const server = createServer();
+		server.on("error", (err) => {
+			if (err.code === "EADDRINUSE") resolve(findFreePort(start + 1));
+			else reject(err);
+		});
+		server.listen(start, "127.0.0.1", () => server.close(() => resolve(start)));
+	});
 }
 
 const mockPort = await findFreePort(9001);
 const appPort = await findFreePort(5174);
 
 console.log(`[test:integration] mock :${mockPort}  app :${appPort}`);
-console.log(`[test:integration] Using VITE_SUPABASE_URL: http://localhost:${mockPort}`);
+console.log(`[test:integration] mode: ${useBuiltServer ? "built" : "dev"}`);
 
-const result = spawnSync("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], {
-  env: {
-    ...process.env,
-    MOCK_SERVER_PORT: String(mockPort),
-    APP_SERVER_PORT: String(appPort),
-  },
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+const result = spawnSync(
+	"pnpm",
+	["exec", "playwright", "test", ...process.argv.slice(2)],
+	{
+		env: {
+			...process.env,
+			MOCK_SERVER_PORT: String(mockPort),
+			APP_SERVER_PORT: String(appPort),
+			CI: useBuiltServer ? "true" : "false",
+		},
+		stdio: "inherit",
+		shell: process.platform === "win32",
+	},
+);
 
 process.exit(result.status ?? 1);

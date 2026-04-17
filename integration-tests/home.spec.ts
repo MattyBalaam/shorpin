@@ -53,19 +53,13 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
   await page.waitForTimeout(200);
 
   await expect(async () => {
-    const order = await getListOrder();
-
-    expect(order).toEqual(["Owner Empty", "Shopping"]);
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
   }).toPass();
 
   await page.reload();
 
   await expect(async () => {
-    const persistedOrder = await getListOrder();
-
-    console.log({ persistedOrder, should: ["Owner Empty", "Shopping"] });
-
-    expect(persistedOrder).toEqual(["Owner Empty", "Shopping"]);
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
   }).toPass();
 });
 
