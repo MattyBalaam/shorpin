@@ -13,7 +13,7 @@ export const handleError = Sentry.createSentryHandleError({
 // state persists for the lifetime of the warm function instance.
 if (import.meta.env.MODE === "preview") {
   const { setupServer } = await import("msw/node");
-  const { handlers } = await import("../mocks/handlers");
+  const { handlers } = await import("../mocks/handlers.ts");
   const { seed } = await import("../mocks/seed");
   const { waitlist } = await import("../mocks/db");
 

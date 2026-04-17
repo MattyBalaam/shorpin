@@ -60,14 +60,9 @@ export async function loader({ context }: Route.LoaderArgs) {
         } satisfies ListItem;
       }),
     ),
-    updatedAt: (async () => {
-      const lists = await listsPromise;
-
-      return lists.reduce((max, list) => {
-        const ts = new Date(list.updated_at).getTime();
-        return ts > max ? ts : max;
-      }, 0);
-    })(),
+    // create a sum of the updated_at timestamps of all lists as a simple way to detect changes without needing a separate "updatedKey" field in the database
+    updatedKey: (async () =>
+      (await listsPromise).reduce((max, list) => max + list.updated_at, 0))(),
     waitlistCount: supabase
       .from("waitlist")
       .select("*", { count: "exact", head: true })

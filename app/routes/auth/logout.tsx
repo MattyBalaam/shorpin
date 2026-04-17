@@ -5,8 +5,8 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { clearListsCache } from "~/routes/home/client-cache";
 
 export async function action({ context }: Route.ActionArgs) {
-	const supabase = context.get(supabaseContext);
-	await supabase.auth.signOut();
-	clearListsCache();
-	throw await redirectWithSuccess(href("/login"), "You have been logged out.");
+  const supabase = context.get(supabaseContext);
+  await supabase.auth.signOut();
+  clearListsCache();
+  throw await redirectWithSuccess(href("/login"), "You have been logged out.");
 }
