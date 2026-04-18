@@ -26,44 +26,41 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const getListOrder = async () =>
-    page
-      .locator('li a[href^="/lists/"]')
-      .evaluateAll((elements) =>
-        elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
-      );
+    page.locator('li a[href^="/lists/"]').evaluateAll((elements) => {
+      console.log(elements);
 
-  let reordered = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const fromHandle = page.getByLabel("Reorder Owner Empty");
-    const toHandle = page.getByLabel("Reorder Shopping");
-
-    const fromBox = await fromHandle.boundingBox();
-    const toBox = await toHandle.boundingBox();
-    if (!fromBox || !toBox) {
-      throw new Error("Unable to determine drag handle positions for home reorder");
-    }
-
-    await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
-      steps: 25,
+      return elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean);
     });
-    await page.mouse.up();
 
-    await page.waitForTimeout(200);
+  // let reordered = false;
+  // for (let attempt = 0; attempt < 3; attempt++) {
+  const fromHandle = page.getByLabel("Reorder Owner Empty");
+  const toHandle = page.getByLabel("Reorder Shopping");
 
-    const order = await getListOrder();
-    if (order[0] === "Owner Empty") {
-      reordered = true;
-      break;
-    }
+  const fromBox = await fromHandle.boundingBox();
+  const toBox = await toHandle.boundingBox();
+  if (!fromBox || !toBox) {
+    throw new Error("Unable to determine drag handle positions for home reorder");
   }
 
-  expect(reordered).toBe(true);
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
+    steps: 25,
+  });
+  await page.mouse.up();
+
+  await page.waitForTimeout(200);
+
+  await expect(async () => {
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
+  }).toPass();
 
   await page.reload();
-  const persistedOrder = await getListOrder();
-  expect(persistedOrder[0]).toBe("Owner Empty");
+
+  await expect(async () => {
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
+  }).toPass();
 });
 
 test("owner sees admin link for both their lists", async ({ page, ctx }) => {
@@ -108,8 +105,10 @@ test("shows an error message when list creation fails", async ({ page, ctx }) =>
 test("shows unread badge for lists not yet opened", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
-  // Shopping has 3 seeded items and has never been opened — all 3 are unread
-  await expect(page.getByText("3 unread")).toBeVisible();
+  await expect(async () => {
+    // Shopping has 3 seeded items and has never been opened — all 3 are unread
+    await expect(page.getByText("3 unread")).toBeVisible();
+  }).toPass();
 });
 
 test("empty list shows no unread badge", async ({ page, ctx }) => {

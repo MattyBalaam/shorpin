@@ -15,7 +15,7 @@ export async function loader({ params: { list }, request, context }: Route.Loade
     .select("name, user_id")
     .eq("slug", list)
     .eq("state", "active")
-    .single();
+    .maybeSingle();
 
   if (!data) {
     throw new Response("List not found", { status: 404 });
@@ -43,7 +43,7 @@ export async function action({ params: { list }, context }: Route.ActionArgs) {
     .select("user_id")
     .eq("slug", list)
     .eq("state", "active")
-    .single();
+    .maybeSingle();
 
   if (!data || data.user_id !== user?.id) {
     throw redirectWithError(href("/"), "Only the list owner can delete this list.");

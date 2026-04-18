@@ -8,7 +8,8 @@ import { resolveSlug, slugify } from "~/lib/slugify";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/home";
-import { REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
+
+import { ListItem, REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
@@ -18,16 +19,20 @@ export async function loader({ context }: Route.LoaderArgs) {
 
   const listsPromise = supabase
     .from("lists")
-    .select("id, name, slug, user_id, list_items(updated_at, state)")
+    .select("id, name, slug, user_id, updated_at,list_items(updated_at, state)")
     .eq("state", "active")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
-    .then(({ data, error }) => {
+    .then(async ({ data, error }) => {
       if (error) {
         console.error("Error loading lists:", error);
         throw error;
       }
-      return data ?? [];
+
+      return data.map((list) => ({
+        ...list,
+        list_items: list.list_items.filter((item) => item.state === "active"),
+      }));
     });
 
   const viewedAtMapPromise = supabase
@@ -40,26 +45,29 @@ export async function loader({ context }: Route.LoaderArgs) {
         throw error;
       }
 
-      return Object.fromEntries((data ?? []).map((v) => [v.list_id, v.viewed_at]));
+      return data ? Object.fromEntries(data.map((v) => [v.list_id, v.viewed_at])) : {};
     });
 
   return {
     userId,
     lists: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) =>
       lists.map(({ list_items, ...list }) => {
-        const activeItems = list_items.filter((item) => item.state === "active");
         return {
           ...list,
-          totalCount: activeItems.length,
-          unreadCount: activeItems.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
+          totalCount: list_items.length,
+          unreadCount: list_items.filter((item) => item.updated_at > (viewedAtMap[list.id] ?? 0))
             .length,
-        };
+        } satisfies ListItem;
       }),
     ),
-    waitlistCount: supabase
-      .from("waitlist")
-      .select("*", { count: "exact", head: true })
-      .then(({ count }) => count ?? 0),
+    // create a sum of the updated_at timestamps of all lists as a simple way to detect changes without needing a separate "updatedKey" field in the database
+    updatedKey: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) => {
+      return lists.reduce((max, list) => max + list.updated_at + (viewedAtMap[list.id] ?? 0), 0);
+    }),
+    waitlistCount: (async () =>
+      (await supabase.from("waitlist").select("*", { count: "exact", head: true })).count ?? 0)(),
+    // this is mostly here to satisfy the types in component
+    revalidatePromise: Promise.resolve("stale" as const),
   };
 }
 
@@ -73,6 +81,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     };
 
     const reorderResult = v.safeParse(zReorderLists, reorderPayload);
+
+    console.log("Reorder validation result:", reorderResult);
 
     if (!reorderResult.success) {
       return null;

@@ -340,7 +340,6 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             fieldMetadata={fields.items}
             edited={edited}
             newItems={loaderData.newItemIds}
-            isPersisting={state !== "idle"}
             pendingItem={
               state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
                 ? (formData.get(fields.new.name) as string)

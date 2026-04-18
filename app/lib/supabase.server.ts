@@ -1,7 +1,7 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import { redirect, href } from "react-router";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
+import { SupaBaseContext } from "./supabase.middleware";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
@@ -33,7 +33,7 @@ export function createSupabaseClient(request: Request) {
   return { supabase, cookieHeaders };
 }
 
-export async function requireUser(supabase: SupabaseClient<Database>) {
+export async function requireUser(supabase: SupaBaseContext) {
   const {
     data: { user },
   } = await supabase.auth.getUser();

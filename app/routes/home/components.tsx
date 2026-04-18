@@ -1,66 +1,15 @@
-import { useForm } from "@conform-to/react/future";
 import { Reorder, useDragControls } from "motion/react";
-import { Suspense, use } from "react";
-import {
-  href,
-  isRouteErrorResponse,
-  type MetaFunction,
-  Outlet,
-  Form as RouterForm,
-  useNavigation,
-  useRevalidator,
-  useRouteError,
-  useSubmit,
-} from "react-router";
+import { use } from "react";
+import { href, useSubmit } from "react-router";
 
-import { Actions } from "~/components/actions/actions";
-import { Button } from "~/components/button/button";
 import { Link } from "~/components/link/link";
-import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { useReorderIds } from "~/components/use-reorder-ids";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
-import type { Route } from "./+types/home";
 import * as styles from "./home.css";
-import { REORDER_LISTS_INTENT, zCreate } from "./home.schema";
+import { ListItem, REORDER_LISTS_INTENT } from "./home.schema";
 
-export { action, loader } from "./home.server";
-
-export const meta: MetaFunction = () => {
-  return [
-    { title: "Home | Shorpin" },
-    { name: "description", content: "We got lists, they’re multiplying" },
-  ];
-};
-
-export const handle = {
-  breadcrumb: {
-    label: "Home",
-  },
-};
-
-type ListItem = {
-  id: string;
-  name: string;
-  slug: string;
-  user_id: string;
-  unreadCount: number;
-  totalCount: number;
-};
-
-function ListsSkeleton() {
-  return (
-    <ul className={styles.list}>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <li key={i} className={styles.skeletonRow}>
-          <div className={styles.skeletonBar} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
+export function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   const count = use(countPromise);
   if (count === 0) return null;
   return (
@@ -70,7 +19,7 @@ function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   );
 }
 
-function ReorderableListItem({
+export function ReorderableListItem({
   list,
   userId,
   onDrop,
@@ -145,17 +94,23 @@ function ReorderableListItem({
   );
 }
 
-function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; userId: string }) {
+export function Lists({
+  listsPromise,
+  userId,
+}: {
+  listsPromise: Promise<ListItem[]>;
+  userId: string;
+}) {
   const lists = use(listsPromise);
-  const navigation = useNavigation();
   const submit = useSubmit();
   const incomingIds = lists.map(({ id }) => id);
   const listRecord = Object.fromEntries(lists.map((list) => [list.id, list]));
 
   const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
     incomingIds,
-    isPersisting: navigation.state !== "idle",
     onReorderComplete(orderedIds) {
+      console.log("Reorder complete, orderedIds:", orderedIds);
+
       if (!orderedIds) {
         return;
       }
@@ -189,77 +144,5 @@ function Lists({ listsPromise, userId }: { listsPromise: Promise<ListItem[]>; us
           />
         ))}
     </Reorder.Group>
-  );
-}
-
-export default function Index({ loaderData, actionData }: Route.ComponentProps) {
-  const { form, fields } = useForm(zCreate, {
-    lastResult: actionData,
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
-  });
-
-  const { state } = useNavigation();
-  // TODO fix types
-  const pendingCount = loaderData.waitlistCount as unknown as Promise<number>;
-
-  return (
-    <>
-      <div className={styles.pendingSignUps}>
-        <Suspense fallback={null}>
-          <PendingSignUps countPromise={pendingCount} />
-        </Suspense>
-      </div>
-      <ScrollArea>
-        <nav className={styles.listWrapper}>
-          <Suspense fallback={<ListsSkeleton />}>
-            <Lists
-              listsPromise={loaderData.lists as unknown as Promise<ListItem[]>}
-              userId={loaderData.userId}
-            />
-          </Suspense>
-        </nav>
-      </ScrollArea>
-
-      <Actions>
-        <RouterForm {...form.props} method="POST" className={styles.actions}>
-          {form.errors?.map((error, i) => (
-            <p key={i} className={styles.formError}>
-              {error}
-            </p>
-          ))}
-          <div className={styles.newList}>
-            <VisuallyHidden>
-              <label htmlFor={fields["new-list"].id}>New list</label>
-            </VisuallyHidden>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
-
-            <Button type="submit" isSubmitting={state === "submitting"}>
-              Add
-            </Button>
-          </div>
-        </RouterForm>
-      </Actions>
-      <Outlet />
-    </>
-  );
-}
-
-export function ErrorBoundary() {
-  const error = useRouteError();
-  const { revalidate, state } = useRevalidator();
-
-  const message =
-    isRouteErrorResponse(error) && error.status === 503
-      ? "Couldn't reach the server."
-      : "Something went wrong.";
-
-  return (
-    <div className={styles.errorState}>
-      <p>{message}</p>
-      <Button onClick={revalidate} isSubmitting={state === "loading"}>
-        Retry
-      </Button>
-    </div>
   );
 }

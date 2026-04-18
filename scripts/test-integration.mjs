@@ -6,6 +6,8 @@
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 
+const useDevServer = process.argv.includes("--dev") || process.argv.includes("-d");
+
 function findFreePort(start) {
   return new Promise((resolve, reject) => {
     const server = createServer();
@@ -21,8 +23,11 @@ const mockPort = await findFreePort(9001);
 const appPort = await findFreePort(5174);
 
 console.log(`[test:integration] mock :${mockPort}  app :${appPort}`);
+console.log(`[test:integration] mode: ${useDevServer ? "dev" : "built"}`);
 
-const result = spawnSync("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], {
+const playwrightArgs = process.argv.slice(2).filter((arg) => arg !== "--dev" && arg !== "-d");
+
+const result = spawnSync("pnpm", ["exec", "playwright", "test", ...playwrightArgs], {
   env: {
     ...process.env,
     MOCK_SERVER_PORT: String(mockPort),

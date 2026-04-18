@@ -31,7 +31,7 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     .eq("slug", list)
     .eq("state", "active")
     .order("sort_order", { referencedTable: "list_items", ascending: true })
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     if (error) console.error("Error loading list:", error);
@@ -44,11 +44,7 @@ export async function loader({ request, params: { list }, context }: Route.Loade
 
     throw await dataWithError(
       {
-        message: error
-          ? error.code === "PGRST116"
-            ? "List does not exist"
-            : error.message
-          : "unknown error",
+        message: error?.message ?? "List does not exist",
       },
       "List does not exist",
       { status: 404 },
