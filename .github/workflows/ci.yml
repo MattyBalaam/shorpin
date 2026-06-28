@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
       options: --ipc=host
     steps:
       - uses: actions/checkout@v5
@@ -71,7 +71,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
       options: --ipc=host
     steps:
       - uses: actions/checkout@v5
