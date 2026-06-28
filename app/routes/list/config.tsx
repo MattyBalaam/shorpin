@@ -9,8 +9,7 @@ import * as styles from "./config.css";
 
 export { action, loader } from "./config.server";
 
-export const meta: Route.MetaFunction = ({ data }) => {
-  const listName = data?.listName;
+export const meta: Route.MetaFunction = ({ loaderData: listName }) => {
   return [
     {
       title: listName ? `${listName} settings | Shorpin` : "List settings | Shorpin",

@@ -145,8 +145,8 @@ export const handle = {
   }),
 };
 
-export const meta: Route.MetaFunction = ({ data }) => {
-  const listName = data?.defaultValue?.name;
+export const meta: Route.MetaFunction = ({ loaderData }) => {
+  const listName = loaderData?.defaultValue?.name;
   return [{ title: listName ? `${listName} | Shorpin` : "List | Shorpin" }];
 };
 

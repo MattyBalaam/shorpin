@@ -3,7 +3,7 @@ import { type SentryReactRouterBuildOptions, sentryReactRouter } from "@sentry/r
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
-import babel from "vite-plugin-babel";
+import babel from "@rolldown/plugin-babel";
 import devtoolsJson from "vite-plugin-devtools-json";
 
 const sentryConfig: SentryReactRouterBuildOptions = {
@@ -48,7 +48,7 @@ export default defineConfig((config) => {
     plugins: [
       devtoolsJson(),
       vanillaExtractPlugin(),
-      babel({ babelConfig: { plugins: ["babel-plugin-react-compiler"] } }),
+      babel({ plugins: ["babel-plugin-react-compiler"] }),
       reactRouter(),
       sentryReactRouter(sentryConfig, config),
       ...(mode === "analyse"
