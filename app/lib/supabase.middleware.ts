@@ -90,8 +90,9 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
   context.set(supabaseContext, supabase);
 
   const url = new URL(request.url);
+  const pathname = url.pathname.endsWith(".data") ? url.pathname.slice(0, -5) : url.pathname;
 
-  if (!publicRoutes.includes(url.pathname)) {
+  if (!publicRoutes.includes(pathname)) {
     if (!schemaCheckPromise) {
       schemaCheckPromise = runListViewsSchemaCheck(supabase).catch((error) => {
         console.warn("[Startup check] list_views schema check failed:", error);

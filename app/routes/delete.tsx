@@ -17,8 +17,7 @@ export const handle = {
   ],
 };
 
-export const meta: Route.MetaFunction = ({ data }) => {
-  const listName = data?.listName;
+export const meta: Route.MetaFunction = ({ loaderData: { listName } }) => {
   return [
     {
       title: listName ? `Delete ${listName} | Shorpin` : "Delete list | Shorpin",

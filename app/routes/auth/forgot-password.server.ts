@@ -10,7 +10,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const result = v.safeParse(zForgotPassword, submission.payload);
 
   if (!result.success) {
-    return { result: report(submission), success: false };
+    return { result: report(submission, { error: result }), success: false };
   }
 
   const supabase = context.get(supabaseContext);

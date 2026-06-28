@@ -3,6 +3,7 @@ import { Suspense, useEffect, useRef } from "react";
 import {
   href,
   isRouteErrorResponse,
+  LayoutRouteProps,
   Links,
   Meta,
   Outlet,
@@ -50,7 +51,7 @@ export const meta: Route.MetaFunction = () => {
   return [{ title: "Shorpin" }];
 };
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children }: LayoutRouteProps) {
   return (
     <html lang="en" className={themeClass}>
       <head>
