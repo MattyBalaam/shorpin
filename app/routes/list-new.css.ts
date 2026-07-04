@@ -1,57 +1,43 @@
 import { style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
-export const list = style({
-  // display: "grid",
-  // gridTemplateColumns: "1fr",
-  gap: "1px",
-  // listStyle: "none",
-  // margin: 0,
-  // padding: 0,
-  // width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
-  // marginInline: "auto",
+export const form = style({
   display: "grid",
-  gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
-  width: "100%",
-  padding: 0,
-  alignContent: "start",
+  gridRow: "content / -1",
+  gridTemplateRows: "subgrid",
+  gridTemplateColumns: "subgrid",
+  overflow: "hidden",
+});
+
+export const undoButton = style({
+  gridColumnStart: "input",
+  gridColumnEnd: "done",
+  marginLeft: "auto",
 });
 
 export const actions = style({
+  gridColumn: "content",
   display: "flex",
-  gap: vars.spacing.md,
-  width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
-  marginInline: "auto",
+  gap: "1em",
 });
 
-export const addInput = style({
-  flex: 1,
-  padding: `${vars.spacing.sm} ${vars.spacing.md}`,
-  fontSize: vars.fontSize.md,
-  fontFamily: "inherit",
-  border: "none",
-  outline: "none",
-  backgroundColor: "transparent",
+export const topActions = style({
+  gridRow: "breadcrumbs",
+  gridColumn: "content",
+  justifySelf: "end",
+  display: "flex",
+  gap: vars.spacing.sm,
 });
 
-export const addButton = style({
-  padding: `${vars.spacing.sm} ${vars.spacing.lg}`,
-  fontSize: vars.fontSize.md,
-  fontWeight: vars.fontWeight.semibold,
-  fontFamily: "inherit",
-  border: "none",
-  backgroundColor: vars.palette.text,
-  color: "white",
-  borderRadius: vars.radius.pill,
-  cursor: "pointer",
-  selectors: {
-    "&:hover": {
-      opacity: 0.9,
-    },
-    "&:focus-visible": {
-      outline: `2px solid ${vars.palette.text}`,
-      outlineOffset: "2px",
-    },
-  },
+export const errorState = style({
+  gridColumn: "content",
+  gridRow: "content / -1",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: vars.spacing.lg,
+  textAlign: "center",
+  paddingInline: vars.spacing.appMargin,
 });

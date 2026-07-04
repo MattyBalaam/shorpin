@@ -15,6 +15,7 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
+import { reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import type { Route } from "./+types/list";
 import { zList } from "./data";
 
@@ -298,6 +299,14 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         .map(({ id }) => id);
     }) || [];
 
+  const reorder = reorderViaConform({
+    fieldName: fields.items.name,
+    items: defaultValue.items,
+    intent,
+    submit,
+    formRef,
+  });
+
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -345,22 +354,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
                 ? (formData.get(fields.new.name) as string)
                 : null
             }
-            onReorder={(newOrder) => {
-              const itemRecord = Object.fromEntries(
-                defaultValue.items.map((item) => [item.id, item]),
-              );
-
-              intent.update({
-                name: fields.items.name,
-                value: newOrder.map((id) => itemRecord[id]),
-              });
-            }}
-            onReorderComplete={() => {
-              // Wait for React to flush the intent.update() before submitting
-              requestAnimationFrame(() => {
-                submit(formRef.current);
-              });
-            }}
+            onReorder={reorder.onReorder}
+            onReorderComplete={reorder.onComplete}
           />
         </ScrollArea>
 

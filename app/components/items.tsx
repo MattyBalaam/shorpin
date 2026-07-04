@@ -10,7 +10,7 @@ import {
 import { useRef, useState } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
-import { useReorderIds } from "./use-reorder-ids";
+import { useReorderable } from "./reorderable/use-reorderable";
 
 function ReorderableItem({
   itemId,
@@ -146,10 +146,10 @@ export function Items({
   const items = fieldMetadata.getFieldList();
   const pendingValue = pendingItem?.trim() || null;
   const incomingIds = items.map((item) => item.getFieldset().id.defaultValue);
-  const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
+  const { orderedIds, getGroupProps } = useReorderable({
     incomingIds,
     onReorder,
-    onReorderComplete,
+    onComplete: onReorderComplete,
   });
 
   const itemRecord = Object.fromEntries(
@@ -158,17 +158,9 @@ export function Items({
   const newItemSet = new Set(newItems);
 
   return (
-    <Reorder.Group
-      as="ul"
-      axis="y"
-      values={itemIds}
-      onReorder={handleReorder}
-      layoutScroll
-      className={styles.items}
-      onPointerUp={handleReorderComplete}
-    >
+    <Reorder.Group as="ul" axis="y" layoutScroll className={styles.items} {...getGroupProps()}>
       <AnimatePresence>
-        {itemIds
+        {orderedIds
           .filter((itemId) => itemRecord[itemId])
           .map((itemId) => (
             <ReorderableItem
@@ -180,7 +172,7 @@ export function Items({
             />
           ))}
       </AnimatePresence>
-      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
+      {orderedIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (
