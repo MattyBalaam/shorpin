@@ -7,6 +7,10 @@ import { clearListsCache } from "~/routes/home/client-cache";
 export async function action({ context }: Route.ActionArgs) {
   const supabase = context.get(supabaseContext);
   await supabase.auth.signOut();
-  clearListsCache();
   throw await redirectWithSuccess(href("/login"), "You have been logged out.");
+}
+
+export async function clientAction({ serverAction }: Route.ClientActionArgs) {
+  clearListsCache();
+  return serverAction();
 }

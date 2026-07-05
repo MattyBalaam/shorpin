@@ -47,22 +47,33 @@ export async function seed(
     email: collabEmail,
   });
 
-  // Owner gets 2 lists: one with 3 items, one empty
+  // Owner gets 2 lists: one with 10 items, one empty
   const ownerList = await createListWithItems(
     owner.id,
     "Shopping",
     "shopping",
-    ["Milk", "Bread", "Eggs"],
+    [
+      "Milk",
+      "Bread",
+      "Eggs",
+      "Butter",
+      "Cheese",
+      "Bananas",
+      "Apples",
+      "Yogurt",
+      "Orange juice",
+      "Coffee",
+    ],
     0,
   );
   await createListWithItems(owner.id, "Owner Empty", "owner-empty", [], 1);
 
-  // Collab gets 2 lists: one with 3 items, one empty
+  // Collab gets 2 lists: one with 6 items, one empty
   await createListWithItems(
     collab.id,
     "Collab Shopping",
     "collab-shopping",
-    ["Coffee", "Tea", "Sugar"],
+    ["Coffee", "Tea", "Sugar", "Cream", "Honey", "Jam"],
     0,
   );
   await createListWithItems(collab.id, "Collab Empty", "collab-empty", [], 1);

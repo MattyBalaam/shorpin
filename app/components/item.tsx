@@ -14,6 +14,8 @@ export interface ItemRenderProps {
   deleteButtonRef: RefObject<HTMLButtonElement | null>;
   isDismissing: boolean;
   onDragHandlePointerDown: PointerEventHandler<HTMLSpanElement>;
+  onDelete?: (value: string) => void;
+  reorderable?: boolean;
 }
 
 // This is a row for an item in the list with an input and a delete button
@@ -24,6 +26,8 @@ export function Item({
   deleteButtonRef,
   isDismissing,
   onDragHandlePointerDown,
+  onDelete,
+  reorderable,
 }: ItemRenderProps) {
   const navigation = useNavigation();
 
@@ -78,7 +82,9 @@ export function Item({
 
   return (
     <div
-      className={styles.itemContainer}
+      className={[styles.itemContainer, reorderable && styles.itemContainerReorderable]
+        .filter(Boolean)
+        .join(" ")}
       data-dismissing={isDismissing}
       data-deleting={isDeleting}
       data-new={isNew}
@@ -181,14 +187,18 @@ export function Item({
 
         <span className={styles.deleteButton}>
           <Button
-            className={styles.tick}
+            className={reorderable ? styles.deleteReorderable : styles.tick}
             type="submit"
             name="__INTENT__"
             value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
             ref={deleteButtonRef}
+            // Capture the deleted value here — fires for the real click and for
+            // the swipe path (which calls deleteButtonRef.current?.click()) — so
+            // the parent can offer a browser-only "recreate last deleted".
+            onClick={() => onDelete?.(fieldset.value.defaultValue ?? "")}
           >
             <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
-            ☑️
+            {reorderable ? "✕" : "☑️"}
           </Button>
         </span>
 

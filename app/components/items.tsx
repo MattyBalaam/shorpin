@@ -1,71 +1,52 @@
 import type { FieldMetadata } from "@conform-to/react/future";
-import {
-  AnimatePresence,
-  Reorder,
-  stagger,
-  useAnimate,
-  useDragControls,
-  type Variants,
-} from "motion/react";
-import { useRef, useState } from "react";
+import { AnimatePresence, Reorder, useAnimate, useDragControls } from "motion/react";
+import { useRef } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
-import { useReorderIds } from "./use-reorder-ids";
+import { useReorderable } from "./reorderable/use-reorderable";
 
 function ReorderableItem({
   itemId,
   item,
   edited,
   isNew,
+  onDelete,
+  reorderable,
 }: {
   itemId: string;
   item: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
   isNew: boolean;
+  onDelete?: (value: string) => void;
+  reorderable?: boolean;
 }) {
-  const [swiped, setSwiped] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragWidth, setDragWidth] = useState<number | null>(null);
-  const [lockedAxis, setLockedAxis] = useState<"x" | "y" | null>(null);
-  const [scope, animate] = useAnimate();
   const dragControls = useDragControls();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const [scope, animate] = useAnimate();
 
-  function handleDragStart() {
-    setIsDragging(true);
-    setDragWidth(scope.current?.getBoundingClientRect().width ?? null);
-  }
-
-  async function handleDragEnd(
-    _e: PointerEvent,
-    info: { velocity: { x: number }; offset: { x: number } },
+  // Reorder (vertical) and swipe-to-delete (horizontal) both start from the drag
+  // handle via dragControls + dragDirectionLock. This only reacts once the
+  // gesture ENDS — it deliberately adds NO width/size/layout manipulation during
+  // the drag, which is what perturbed motion's measurement and caused the
+  // reorder-position drift.
+  function handleDragEnd(
+    _event: PointerEvent,
+    info: { offset: { x: number }; velocity: { x: number } },
   ) {
-    if (lockedAxis === "x") {
-      if (Math.abs(info.velocity.x) > 200 || Math.abs(info.offset.x) > 350) {
-        const direction = info.velocity.x > 0 || info.offset.x > 0 ? 1 : -1;
-        setSwiped(true);
+    if (!scope.current) return;
 
-        animate(
-          scope.current,
-          {
-            x: direction * window.innerWidth,
-            height: 0,
-          },
-          {
-            type: "spring",
-            stiffness: 300,
-            damping: 30,
-            velocity: info.velocity.x,
-          },
-        );
-
-        deleteButtonRef.current?.click();
-      }
+    const flung = Math.abs(info.offset.x) > 140 || Math.abs(info.velocity.x) > 500;
+    if (flung) {
+      const direction = info.offset.x > 0 ? 1 : -1;
+      animate(
+        scope.current,
+        { x: direction * window.innerWidth, opacity: 0 },
+        { duration: 0.2 },
+      ).then(() => deleteButtonRef.current?.click());
+    } else {
+      // Not a delete — spring any horizontal offset back to rest.
+      animate(scope.current, { x: 0 }, { type: "spring", stiffness: 500, damping: 40 });
     }
-
-    setLockedAxis(null);
-    setIsDragging(false);
-    setDragWidth(null);
   }
 
   return (
@@ -74,28 +55,26 @@ function ReorderableItem({
       as="li"
       value={itemId}
       className={styles.wrapper}
-      style={{ width: isDragging && dragWidth ? `${dragWidth}px` : "100%" }}
-      initial={{ height: 0 }}
-      animate={swiped ? "closed" : "open"}
-      exit="closed"
-      variants={variants.item}
+      exit={{ opacity: 0, height: 0 }}
       drag
       dragListener={false}
       dragControls={dragControls}
       dragDirectionLock
-      dragConstraints={lockedAxis === "x" ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined}
-      dragElastic={lockedAxis === "x" ? { left: 1, right: 1, top: 0, bottom: 0 } : undefined}
-      onDragStart={handleDragStart}
-      onDirectionLock={(axis) => setLockedAxis(axis)}
       onDragEnd={handleDragEnd}
+      // Tactile lift while dragging (prototype behaviour). A one-off scale is
+      // safe here — unlike the removed width/layout machinery it doesn't
+      // accumulate offset, so reorder tracking stays true to the pointer.
+      whileDrag={reorderable ? { scale: 1.03 } : undefined}
     >
       <Item
         fieldsetMetadata={item}
         edited={edited}
         isNew={isNew}
         deleteButtonRef={deleteButtonRef}
-        isDismissing={lockedAxis === "x"}
+        isDismissing={false}
         onDragHandlePointerDown={(event) => dragControls.start(event)}
+        onDelete={onDelete}
+        reorderable={reorderable}
       />
     </Reorder.Item>
   );
@@ -108,32 +87,9 @@ interface ItemsProps {
   pendingItem?: string | null;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: (itemIds: string[]) => void;
+  onDelete?: (value: string) => void;
+  reorderable?: boolean;
 }
-
-const variants = {
-  container: {
-    open: {
-      transition: { delayChildren: stagger(0.1), duration: 1 },
-    },
-    closed: {
-      transition: { delayChildren: 0.03, staggerDirection: -1 },
-    },
-  },
-  item: {
-    open: {
-      height: "auto",
-      paddingBottom: "0.1rem",
-      transitionEnd: {
-        overflow: "visible",
-      },
-    },
-    closed: {
-      height: 0,
-      paddingBottom: 0,
-      overflow: "hidden",
-    },
-  },
-} satisfies Record<"container" | "item", Variants>;
 
 export function Items({
   fieldMetadata,
@@ -142,14 +98,16 @@ export function Items({
   pendingItem,
   onReorder,
   onReorderComplete,
+  onDelete,
+  reorderable,
 }: ItemsProps) {
   const items = fieldMetadata.getFieldList();
   const pendingValue = pendingItem?.trim() || null;
   const incomingIds = items.map((item) => item.getFieldset().id.defaultValue);
-  const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
+  const { orderedIds, getGroupProps } = useReorderable({
     incomingIds,
     onReorder,
-    onReorderComplete,
+    onComplete: onReorderComplete,
   });
 
   const itemRecord = Object.fromEntries(
@@ -158,17 +116,9 @@ export function Items({
   const newItemSet = new Set(newItems);
 
   return (
-    <Reorder.Group
-      as="ul"
-      axis="y"
-      values={itemIds}
-      onReorder={handleReorder}
-      layoutScroll
-      className={styles.items}
-      onPointerUp={handleReorderComplete}
-    >
+    <Reorder.Group as="ul" axis="y" className={styles.items} {...getGroupProps()}>
       <AnimatePresence>
-        {itemIds
+        {orderedIds
           .filter((itemId) => itemRecord[itemId])
           .map((itemId) => (
             <ReorderableItem
@@ -177,10 +127,12 @@ export function Items({
               item={itemRecord[itemId]}
               edited={edited.includes(itemId)}
               isNew={newItemSet.has(itemId)}
+              onDelete={onDelete}
+              reorderable={reorderable}
             />
           ))}
       </AnimatePresence>
-      {itemIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
+      {orderedIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (

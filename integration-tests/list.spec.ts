@@ -1,52 +1,54 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { holdLoader, login } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
-test("list with items shows all items", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
+const listPath = (slug: string) => `/lists/${slug}`;
 
-  await page.getByRole("link", { name: "Shopping" }).click();
+/**
+ * Navigate straight to the list route and wait for client hydration.
+ * The delete-capture and "Recreate last deleted" affordances are driven by
+ * client-side React state, so tests must not interact until the route has
+ * hydrated (signalled by root.tsx setting data-hydrated-path).
+ */
+async function openList(page: Page, slug: string) {
+  await page.goto(listPath(slug));
+  await page.waitForURL(listPath(slug));
+  await expect(page.locator(`html[data-hydrated-path="${listPath(slug)}"]`)).toBeAttached();
+}
+
+test("list shows all items", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
 
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await expect(page.getByLabel("Edit Bread")).toBeVisible();
   await expect(page.getByLabel("Edit Eggs")).toBeVisible();
 });
 
-test("empty list shows no items", async ({ page, ctx }) => {
+test("list empty list shows the placeholder prompt", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
-
-  await page.getByRole("link", { name: "Owner Empty" }).click();
+  await openList(page, "owner-empty");
 
   // The only textbox on an empty list is the "add new item" input
   await expect(page.getByRole("textbox")).toHaveCount(1);
-});
-
-test("empty list shows a placeholder prompt", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-
-  await page.getByRole("link", { name: "Owner Empty" }).click();
-
   await expect(page.getByText("No items yet — add one below")).toBeVisible();
 });
 
-test("owner can add an item to a list", async ({ page, ctx }) => {
+test("owner can add an item on list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
-
-  await page.getByRole("link", { name: "Owner Empty" }).click();
-  await page.waitForURL("/lists/owner-empty");
+  await openList(page, "owner-empty");
 
   await page.getByLabel("New item").fill("Butter");
   await page.getByRole("button", { name: "Add" }).click();
 
-  await expect(page.getByRole("textbox").first()).toHaveValue("Butter");
+  await expect(page.getByLabel("Edit Butter")).toBeVisible();
 });
 
 test("item with a URL shows a single open-link control", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
-
-  await page.getByRole("link", { name: "Owner Empty" }).click();
-  await page.waitForURL("/lists/owner-empty");
+  await openList(page, "owner-empty");
 
   await page.getByLabel("New item").fill("Docs https://example.com/guide");
   await page.getByRole("button", { name: "Add" }).click();
@@ -61,17 +63,37 @@ test("item with a URL shows a single open-link control", async ({ page, ctx }) =
   await expect(itemRow.getByRole("link")).toHaveCount(1);
 });
 
-test("owner can delete an item from a list", async ({ page, ctx }) => {
+test("deleting an item reveals a browser-only 'Recreate last deleted' button", async ({
+  page,
+  ctx,
+}) => {
   await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
 
-  await page.getByRole("link", { name: "Shopping" }).click();
+  // No recreate affordance until something has been deleted this session
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Delete Milk" }).click();
 
   await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
+  // Deliberately not an undo — no server undelete round-trip
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
+});
 
-  // An undo button should appear
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+test("'Recreate last deleted' re-adds the deleted value as a fresh item", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Delete Milk" }).click();
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Recreate last deleted" }).click();
+
+  // Milk returns (as a freshly-added item at the end of the list)
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  // The affordance clears once the value has been recreated
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
 test("edited icon does not appear on unedited items while another item is being deleted", async ({
@@ -79,8 +101,7 @@ test("edited icon does not appear on unedited items while another item is being 
   ctx,
 }) => {
   await login(page, ctx.ownerEmail);
-
-  await page.getByRole("link", { name: "Shopping" }).click();
+  await openList(page, "shopping");
 
   // Edit Milk without submitting, giving it edited=true
   await page.getByLabel("Edit Milk").fill("Oat Milk");
@@ -88,10 +109,6 @@ test("edited icon does not appear on unedited items while another item is being 
   // Hold the revalidation loader so the navigation stays in "loading" state
   // long enough to assert — this is when navigation.formData becomes null and
   // isSavingEdit incorrectly flips true for all edited items.
-  //
-  // React Router v7 uses a .data suffix for loader/action fetches and fires two
-  // concurrent revalidation GETs (one per route segment). holdLoader blocks only
-  // the first GET; subsequent ones pass through immediately.
   const { intercepted, release } = await holdLoader(page, /\/lists\/shopping\.data/);
 
   // Delete a different item
@@ -107,7 +124,7 @@ test("edited icon does not appear on unedited items while another item is being 
   ).not.toContainText("saving");
 
   release();
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
 
   // The delete form submission also saves all current item values (including
   // "Oat Milk"), so at idle there is no pending unsaved edit — the edited
@@ -126,8 +143,7 @@ test("when offline, the offline indicator appears and cached list data remains v
   context,
 }) => {
   await login(page, ctx.ownerEmail);
-  await page.getByRole("link", { name: "Shopping" }).click();
-  await page.waitForURL("/lists/shopping");
+  await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
   await context.setOffline(true);
@@ -137,6 +153,59 @@ test("when offline, the offline indicator appears and cached list data remains v
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await expect(page.getByLabel("Edit Bread")).toBeVisible();
   await expect(page.getByLabel("Edit Eggs")).toBeVisible();
+});
+
+test("an item added offline syncs to the server on reconnect", async ({ page, ctx, context }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  // Add while offline — the clientAction stores it locally
+  await page.getByLabel("New item").fill("Offline butter");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+
+  await context.setOffline(false);
+
+  // onOnline fires: resubmit persists the local edits, indicator clears
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
+
+  // The offline item must survive a full reload — i.e. it reached the server
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
+test("own changes do not trigger the updated-by-another-user notification", async ({
+  browser,
+  ctx,
+}) => {
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await openList(ownerPage, "shopping");
+    await openList(collabPage, "shopping");
+
+    await ownerPage.getByLabel("New item").fill("Butter");
+    await ownerPage.getByRole("button", { name: "Add" }).click();
+
+    // Anchor timing on actual broadcast delivery: the collaborator sees it...
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
+    // ...while the owner — whose clientId matches the broadcast — must not.
+    await expect(ownerPage.getByText("List updated by another user")).not.toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
 });
 
 test("item added by collaborator appears as unread for owner on home page", async ({
@@ -153,8 +222,7 @@ test("item added by collaborator appears as unread for owner on home page", asyn
     await login(collabPage, ctx.collabEmail);
 
     // Owner opens the list — records viewed_at covering all current items
-    await ownerPage.goto("/lists/shopping");
-    await ownerPage.waitForURL("/lists/shopping");
+    await openList(ownerPage, "shopping");
     await expect(ownerPage.getByLabel("Edit Milk")).toBeVisible();
 
     // Owner goes back home — no unread badge because viewed_at > all item timestamps
@@ -162,7 +230,7 @@ test("item added by collaborator appears as unread for owner on home page", asyn
     await expect(ownerPage.getByText(/unread/)).not.toBeVisible();
 
     // Collab adds a new item to the same list
-    await collabPage.goto("/lists/shopping");
+    await openList(collabPage, "shopping");
     await collabPage.getByLabel("New item").fill("Butter");
     await collabPage.getByRole("button", { name: "Add" }).click();
     await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
@@ -186,19 +254,18 @@ test("new item is marked in the list since last opening", async ({ browser, ctx 
     await login(ownerPage, ctx.ownerEmail);
     await login(collabPage, ctx.collabEmail);
 
-    await ownerPage.goto("/lists/shopping");
-    await ownerPage.waitForURL("/lists/shopping");
+    await openList(ownerPage, "shopping");
     await expect(ownerPage.getByLabel("Edit Milk")).toBeVisible();
 
     await ownerPage.goto("/");
     await expect(ownerPage.getByText(/unread/)).not.toBeVisible();
 
-    await collabPage.goto("/lists/shopping");
+    await openList(collabPage, "shopping");
     await collabPage.getByLabel("New item").fill("Butter");
     await collabPage.getByRole("button", { name: "Add" }).click();
     await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
 
-    await ownerPage.goto("/lists/shopping");
+    await openList(ownerPage, "shopping");
     await expect(
       ownerPage.locator('[data-new="true"]').filter({ has: ownerPage.getByLabel("Edit Butter") }),
     ).toHaveCount(1);
@@ -223,8 +290,8 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
     await login(collabPage, ctx.collabEmail);
 
     // Both navigate to the owner's Shopping list (collab is a member)
-    await ownerPage.goto("/lists/shopping");
-    await collabPage.goto("/lists/shopping");
+    await openList(ownerPage, "shopping");
+    await openList(collabPage, "shopping");
 
     // Owner adds a new item
     await ownerPage.getByLabel("New item").fill("Butter");
@@ -257,19 +324,37 @@ test("reordering items does not create unread or new markers for self", async ({
   });
 
   // Open once to establish viewed_at for existing items.
-  await page.goto("/lists/shopping");
+  await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
   // Go home and open again so no pre-existing items are marked new.
   await page.goto("/");
-  await page.goto("/lists/shopping");
+  await openList(page, "shopping");
 
   const getEditOrder = async () =>
     page
-      .locator('input[aria-label^="Edit "]')
+      .locator('textarea[aria-label^="Edit "]')
       .evaluateAll((elements) =>
         elements.map((element) => element.getAttribute("aria-label") ?? "").filter(Boolean),
       );
+
+  // Guard against the selector silently matching nothing again: the value
+  // fields are <textarea>. Poll so the clientLoader HydrateFallback (skeleton)
+  // resolves before we assert the initial order.
+  await expect
+    .poll(getEditOrder)
+    .toEqual([
+      "Edit Milk",
+      "Edit Bread",
+      "Edit Eggs",
+      "Edit Butter",
+      "Edit Cheese",
+      "Edit Bananas",
+      "Edit Apples",
+      "Edit Yogurt",
+      "Edit Orange juice",
+      "Edit Coffee",
+    ]);
 
   // Drag-and-drop can be timing-sensitive in CI; retry a few times.
   let reordered = false;
@@ -313,7 +398,7 @@ test("reordering items does not create unread or new markers for self", async ({
     .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
   await expect(shoppingRow.getByText(/unread/)).not.toBeVisible();
 
-  await page.goto("/lists/shopping");
+  await openList(page, "shopping");
   await expect(
     page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Milk") }),
   ).toHaveCount(0);

@@ -21,13 +21,3 @@ export function isDeleteItemIntent(intent: string | null | undefined) {
 export function isUndeleteItemIntent(intent: string | null | undefined) {
   return intent?.startsWith(UNDELETE_PREFIX) ?? false;
 }
-
-export function parseDeleteItemIntent(intent: string | null | undefined) {
-  if (typeof intent !== "string") return undefined;
-  return isDeleteItemIntent(intent) ? intent.slice(DELETE_PREFIX.length) : undefined;
-}
-
-export function parseUndeleteItemIntent(intent: string | null | undefined) {
-  if (typeof intent !== "string") return undefined;
-  return isUndeleteItemIntent(intent) ? intent.slice(UNDELETE_PREFIX.length) : undefined;
-}

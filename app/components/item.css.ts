@@ -46,13 +46,13 @@ export const input = style({
   borderRadius: "3px",
   background: "transparent",
   color: "currentColor",
-  height: `calc(1lh + (2 * ${vars.spacing.sm}) + 2px)`,
+  // height: `calc(1lh + (2 * ${vars.spacing.sm}) + 2px)`,
   boxSizing: "border-box",
   lineHeight: 1.35,
-  resize: "none",
-  overflow: "hidden",
+  // resize: "none",
+  // overflow: "hidden",
   whiteSpace: "pre-wrap",
-  overflowWrap: "anywhere",
+  // overflowWrap: "anywhere",
   transition: "height 140ms ease, background-color 140ms ease, color 140ms ease",
   ":focus": {
     outline: "0 none",
@@ -166,6 +166,49 @@ export const tick = style({
   },
   ":active": {
     opacity: 0.2,
+  },
+});
+
+// --- Reorderable variant (list route): the prototype's flat grey rows + circular
+// delete button, ported from the old reorderable-item.css.ts design. ---
+
+export const itemContainerReorderable = style({
+  // Use the list's theme palette (primary/secondary are overridden per-list by
+  // the Theme component) rather than a flat grey, with dark text for contrast
+  // against the light pastel theme colours.
+  background: vars.palette.secondary,
+  color: vars.palette.text,
+  selectors: {
+    "&:has(textarea:focus)": {
+      background: vars.palette.primary,
+    },
+  },
+});
+
+export const deleteReorderable = style({
+  appearance: "none",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  width: "28px",
+  height: "28px",
+  padding: 0,
+  margin: 0,
+  borderRadius: "50%",
+  color: vars.palette.chrome,
+  fontSize: vars.fontSize.sm,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  selectors: {
+    "&:hover": {
+      color: "black",
+      background: "rgb(0 0 0 / 0.1)",
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.palette.text}`,
+      outlineOffset: "2px",
+    },
   },
 });
 

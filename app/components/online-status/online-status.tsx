@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import * as styles from "./online-status.css";
 
 const OnlineContext = createContext<boolean>(true);
@@ -35,20 +42,26 @@ interface OnlineStatusProviderProps {
   children: React.ReactNode;
 }
 
+// navigator.onLine is an external store: subscribe to the browser's events,
+// read the value synchronously during render. On the server (and during
+// hydration) assume online; React re-renders with the client snapshot after
+// hydration if they differ.
+function subscribeToOnlineStatus(onStoreChange: () => void) {
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  window.addEventListener("online", onStoreChange, { signal });
+  window.addEventListener("offline", onStoreChange, { signal });
+
+  return () => controller.abort();
+}
+
 export function OnlineStatusProvider({ children }: OnlineStatusProviderProps) {
-  const [isOnline, setIsOnline] = useState(true);
-
-  useEffect(function trackOnlineStatus() {
-    setIsOnline(navigator.onLine);
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    window.addEventListener("online", () => setIsOnline(true), { signal });
-    window.addEventListener("offline", () => setIsOnline(false), { signal });
-
-    return () => controller.abort();
-  }, []);
+  const isOnline = useSyncExternalStore(
+    subscribeToOnlineStatus,
+    () => navigator.onLine,
+    () => true,
+  );
 
   return <OnlineContext.Provider value={isOnline}>{children}</OnlineContext.Provider>;
 }

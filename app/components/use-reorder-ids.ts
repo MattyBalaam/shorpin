@@ -1,10 +1,10 @@
-import { useEffect, useEffectEvent, useState } from "react";
+import { useReorderable } from "./reorderable/use-reorderable";
 
-function sameOrder(left: string[], right: string[] | null) {
-  if (!right) return false;
-  return left.length === right.length && left.every((id, index) => id === right[index]);
-}
-
+/**
+ * @deprecated Backwards-compatible shim over {@link useReorderable}. New code
+ * should use `useReorderable` directly. Home still consumes this; it is removed
+ * once home migrates (see follow-up plan).
+ */
 export function useReorderIds({
   incomingIds,
   onReorder,
@@ -14,45 +14,15 @@ export function useReorderIds({
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: (itemIds: string[]) => void;
 }) {
-  const [prevIncomingIds, setPrevIncomingIds] = useState(() => incomingIds);
-  const [itemIds, setItemIds] = useState(() => incomingIds);
-  const [optimisticOrder, setOptimisticOrder] = useState<string[] | null>(null);
-
-  const incomingChange = !optimisticOrder && !sameOrder(incomingIds, prevIncomingIds);
-
-  const handleSyncIncomingOrder = useEffectEvent(() => {
-    setItemIds(incomingIds);
-    setPrevIncomingIds(incomingIds);
-    setOptimisticOrder(null);
+  const { orderedIds, handleReorder, complete } = useReorderable({
+    incomingIds,
+    onReorder,
+    onComplete: onReorderComplete,
   });
 
-  useEffect(
-    function syncIncomingOrder() {
-      if (!incomingChange) {
-        return;
-      }
-
-      handleSyncIncomingOrder();
-    },
-    [incomingChange],
-  );
-
-  function handleReorder(newOrder: string[]) {
-    setOptimisticOrder(newOrder);
-    onReorder?.(newOrder);
-  }
-
-  function handleReorderComplete() {
-    if (optimisticOrder) {
-      setItemIds(optimisticOrder);
-      onReorderComplete?.(optimisticOrder);
-      setOptimisticOrder(null);
-    }
-  }
-
   return {
-    itemIds: optimisticOrder ?? itemIds,
+    itemIds: orderedIds,
     handleReorder,
-    handleReorderComplete,
+    handleReorderComplete: complete,
   };
 }

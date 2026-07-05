@@ -45,7 +45,7 @@ export const itemWrapper = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] auto",
+  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] 3ch",
   alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
