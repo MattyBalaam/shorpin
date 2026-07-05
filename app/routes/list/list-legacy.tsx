@@ -16,17 +16,23 @@ import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
 import { reorderViaConform } from "~/components/reorderable/reorder-strategies";
-import type { Route } from "./+types/list-new";
-import { zList } from "./list/data";
+import type { Route } from "./+types/list-legacy";
+import { zList } from "./data";
 
-export { action, loader } from "./list/list.server";
+export { action, loader } from "./list.server";
 
 import { report } from "@conform-to/react/future";
 import { toast } from "sonner";
-import { ADD_ITEM_INTENT, isAddItemIntent, isDeleteItemIntent } from "./list/intents";
+import {
+  ADD_ITEM_INTENT,
+  isAddItemIntent,
+  isDeleteItemIntent,
+  isUndeleteItemIntent,
+  undeleteItemIntent,
+} from "./intents";
 
 // Cache loader data for offline support
-let cachedLoaderData: Awaited<ReturnType<typeof import("./list/list.server").loader>> | null = null;
+let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   if (!navigator.onLine && cachedLoaderData) {
@@ -114,7 +120,7 @@ import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { Theme } from "~/components/theme/theme";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
-import * as styles from "./list-new.css";
+import * as styles from "./list-legacy.css";
 
 export function HydrateFallback() {
   return (
@@ -145,7 +151,7 @@ export const meta: Route.MetaFunction = ({ loaderData }) => {
   return [{ title: listName ? `${listName} | Shorpin` : "List | Shorpin" }];
 };
 
-export default function listNew({ actionData, loaderData }: Route.ComponentProps) {
+export default function list({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;
 
@@ -219,9 +225,12 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     lastResult,
     shouldValidate: "onBlur",
     onValidate: (ctx) => {
-      // skip validation when deleting items so the intent is sent server side
-      // (this route has no undelete intent — recreate is browser-only)
-      if (isDeleteItemIntent(ctx.intent?.type)) {
+      if (
+        // we want to skip validation when deleting or undeleting items
+        // so that the intent is sent server side
+        isUndeleteItemIntent(ctx.intent?.type) ||
+        isDeleteItemIntent(ctx.intent?.type)
+      ) {
         return null;
       }
 
@@ -260,6 +269,8 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     [itemsKey, intent, actionData, fields.items.name, defaultValue.items, form.id, isOnline],
   );
 
+  const lastDeleted = actionData?.lastDeleted || loaderData.lastDeleted;
+
   const edited =
     useFormData(form.id, (formData) => {
       const submission = parseSubmission(formData);
@@ -296,26 +307,6 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     formRef,
   });
 
-  // Browser-only "recreate last deleted": the delete itself is a Conform intent
-  // that updates the DB, but we keep the recreate affordance client-side rather
-  // than round-tripping the server's soft-deleted row. The deleted value is
-  // captured directly in the delete button's click handler (fires for the real
-  // click and the swipe path) — see Items `onDelete`.
-  const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
-
-  // Recreate re-adds the captured value through the normal add path, so it
-  // returns as a fresh item at the end of the list — hence "recreate", not "undo".
-  function recreateLastDeleted() {
-    const formElement = formRef.current;
-    if (!formElement || !lastDeletedValue) return;
-
-    const recreateData = new FormData(formElement);
-    recreateData.set(fields.new.name, lastDeletedValue);
-    recreateData.set("new-submit", ADD_ITEM_INTENT);
-    submit(recreateData, { method: "POST" });
-    setLastDeletedValue(null);
-  }
-
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -325,7 +316,13 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
         <Theme.Button formId={form.id} />
       </div>
 
-      <Form {...form.props} ref={formRef} method="POST" className={styles.form}>
+      <Form
+        {...form.props}
+        ref={formRef}
+        // validationErrors={form.fieldErrors}
+        method="POST"
+        className={styles.form}
+      >
         {/* hidden submit button captures Enter key presses to add a new item */}
         <VisuallyHidden>
           <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
@@ -359,8 +356,6 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             }
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
-            onDelete={setLastDeletedValue}
-            reorderable
           />
         </ScrollArea>
 
@@ -369,26 +364,24 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             <VisuallyHidden>
               <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
-            <input
-              name={fields.new.name}
-              id={fields.new.id}
-              autoFocus
-              autoComplete="off"
-              className={styles.addInput}
-            />
+            <input name={fields.new.name} id={fields.new.id} autoFocus autoComplete="off" />
             <Button
               type="submit"
               value={ADD_ITEM_INTENT}
               name="new-submit"
               isSubmitting={state === "submitting"}
-              className={styles.addButton}
             >
               Add
             </Button>
 
-            {lastDeletedValue ? (
-              <button type="button" onClick={recreateLastDeleted} className={styles.undoButton}>
-                Recreate last deleted
+            {lastDeleted ? (
+              <button
+                type="submit"
+                name="__INTENT__"
+                value={undeleteItemIntent(lastDeleted.id)}
+                className={styles.undoButton}
+              >
+                Undo
               </button>
             ) : null}
           </div>

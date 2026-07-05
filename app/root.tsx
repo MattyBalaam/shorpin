@@ -9,6 +9,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  type ShouldRevalidateFunctionArgs,
   useLocation,
   useNavigation,
   useRouteError,
@@ -46,6 +47,17 @@ export const loader = async ({ context }: Route.LoaderArgs) => {
   const toast = getToast(context);
   return { toast };
 };
+
+// Skip revalidation while offline — the .data fetch would fail and throw the
+// whole app into the error boundary (e.g. after an offline clientAction on
+// the list route). Route-level shouldRevalidate guards only cover their own route;
+// the root loader revalidates after every action without this.
+export function shouldRevalidate({ defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+  return defaultShouldRevalidate;
+}
 
 export const meta: Route.MetaFunction = () => {
   return [{ title: "Shorpin" }];

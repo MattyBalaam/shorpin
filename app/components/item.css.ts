@@ -169,7 +169,7 @@ export const tick = style({
   },
 });
 
-// --- Reorderable variant (list-new): the prototype's flat grey rows + circular
+// --- Reorderable variant (list route): the prototype's flat grey rows + circular
 // delete button, ported from the old reorderable-item.css.ts design. ---
 
 export const itemContainerReorderable = style({

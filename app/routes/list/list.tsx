@@ -1,6 +1,6 @@
-import { parseSubmission, useForm, useFormData } from "@conform-to/react/future";
+import { parseSubmission, report, useForm, useFormData } from "@conform-to/react/future";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -21,15 +21,8 @@ import { zList } from "./data";
 
 export { action, loader } from "./list.server";
 
-import { report } from "@conform-to/react/future";
 import { toast } from "sonner";
-import {
-  ADD_ITEM_INTENT,
-  isAddItemIntent,
-  isDeleteItemIntent,
-  isUndeleteItemIntent,
-  undeleteItemIntent,
-} from "./intents";
+import { ADD_ITEM_INTENT, isAddItemIntent, isDeleteItemIntent } from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -59,16 +52,11 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 
 clientLoader.hydrate = true as const;
 
-// Prevent revalidation when offline, but allow initial navigation to this route
-export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
-  const isRevalidation = currentUrl.pathname === nextUrl.pathname;
-  if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
-    return false;
-  }
-  return true;
-}
+// Queue of form data submitted while offline, drained on reconnect by the
+// component's reconnect effect (which replays each write, then revalidates so
+// the open page converges on canonical server state).
+const pendingOfflineSubmissions: FormData[] = [];
 
-// Handle offline submissions - construct fake lastResult for Conform
 export async function clientAction({ request, serverAction }: Route.ClientActionArgs) {
   if (!navigator.onLine) {
     const formData = await request.formData();
@@ -78,17 +66,13 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
 
     if (!result.success) {
       return {
-        lastDeleted: undefined,
         lastResult: report(submission, { error: { issues: result.issues } }),
       };
     }
 
-    // Get current items from form
     const currentItems = result.output.items;
-
     const toAdd = isAddItemIntent(result.output["new-submit"]);
 
-    // Add new item if present
     if (result.output.new && toAdd) {
       currentItems.push({
         id: crypto.randomUUID(),
@@ -96,10 +80,11 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
       });
     }
 
+    pendingOfflineSubmissions.push(formData);
+
     toast.info("You're offline - changes saved locally");
 
     return {
-      lastDeleted: undefined,
       lastResult: report(submission, {
         reset: toAdd && Boolean(result.output.new),
         value: {
@@ -110,7 +95,17 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
       }),
     };
   }
+
   return serverAction();
+}
+
+// Prevent revalidation when offline, but allow initial navigation to this route
+export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+  const isRevalidation = currentUrl.pathname === nextUrl.pathname;
+  if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+  return true;
 }
 
 import { Actions } from "~/components/actions/actions";
@@ -151,7 +146,7 @@ export const meta: Route.MetaFunction = ({ loaderData }) => {
   return [{ title: listName ? `${listName} | Shorpin` : "List | Shorpin" }];
 };
 
-export default function list({ actionData, loaderData }: Route.ComponentProps) {
+export default function listNew({ actionData, loaderData }: Route.ComponentProps) {
   const defaultValue = loaderData.defaultValue;
   const lastResult = actionData?.lastResult;
 
@@ -174,20 +169,52 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   const submit = useSubmit();
   const formRef = useRef<HTMLFormElement>(null);
-  const isOnline = useIsOnline({
-    onOffline: () => {
-      toast.info("You're offline - changes saved locally");
-    },
-    onOnline: () => {
-      formRef.current?.requestSubmit();
-      toast.success("Back online - syncing changes");
-    },
+
+  // Replay writes queued by the offline clientAction once we reconnect: drain
+  // the queue to persist the offline edits, then revalidate once so the live
+  // page converges on canonical server state (real item IDs replacing the
+  // client UUIDs) — this re-fires updateFormWithNewValues (below) via itemsKey.
+  async function syncOfflineSubmissions() {
+    if (pendingOfflineSubmissions.length === 0) return;
+
+    toast.success("Back online - syncing changes");
+
+    // Replay in submission order so server-side ordering is preserved.
+    let formData = pendingOfflineSubmissions.shift();
+    while (formData) {
+      try {
+        await fetch(window.location.href, { method: "POST", body: formData });
+      } catch {
+        // Went offline again mid-sync — put the unsent write back and bail;
+        // the next reconnect retries it. Skip revalidation while offline.
+        pendingOfflineSubmissions.unshift(formData);
+        return;
+      }
+      formData = pendingOfflineSubmissions.shift();
+    }
+
+    revalidate();
+  }
+
+  // useIsOnline fires onOnline only on a genuine offline→online transition,
+  // driven off the shared navigator.onLine store.
+  const isOnline = useIsOnline({ onOnline: syncOfflineSubmissions });
+
+  // Event response, separated from the subscription so the channel's lifetime
+  // depends only on listId — reacting to a message shouldn't be reactive to
+  // clientId/revalidate identity.
+  const onBroadcastChanged = useEffectEvent((payload: { clientId?: string | null }) => {
+    if (payload.clientId !== clientId) {
+      toast.info("List updated by another user");
+      revalidate();
+    }
   });
 
   // Subscribe to broadcast for real-time updates
   useEffect(
     function subscribeToBroadcast() {
-      if (!loaderData.listId) return;
+      const listId = loaderData.listId;
+      if (!listId) return;
 
       let cancelled = false;
       let cleanup: (() => void) | undefined;
@@ -197,13 +224,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
           if (cancelled) return;
 
           const channel = realtimeClient
-            .channel(`list-${loaderData.listId}`)
-            .on("broadcast", { event: "changed" }, ({ payload }) => {
-              if (payload.clientId !== clientId) {
-                toast.info("List updated by another user");
-                revalidate();
-              }
-            })
+            .channel(`list-${listId}`)
+            .on("broadcast", { event: "changed" }, ({ payload }) => onBroadcastChanged(payload))
             .subscribe();
 
           cleanup = () => realtimeClient.removeChannel(channel);
@@ -217,7 +239,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         cleanup?.();
       };
     },
-    [loaderData.listId, clientId, revalidate],
+    [loaderData.listId],
   );
 
   const { form, fields, intent } = useForm(zList, {
@@ -225,12 +247,9 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     lastResult,
     shouldValidate: "onBlur",
     onValidate: (ctx) => {
-      if (
-        // we want to skip validation when deleting or undeleting items
-        // so that the intent is sent server side
-        isUndeleteItemIntent(ctx.intent?.type) ||
-        isDeleteItemIntent(ctx.intent?.type)
-      ) {
+      // skip validation when deleting items so the intent is sent server side
+      // (this route has no undelete intent — recreate is browser-only)
+      if (isDeleteItemIntent(ctx.intent?.type)) {
         return null;
       }
 
@@ -240,36 +259,51 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
 
   const itemsKey = defaultValue.items.map((i) => `${i.id}:${i.value}`).join(",");
 
-  // Track previous actionData to detect when updates came from our own action
+  // Track the actionData last seen by the sync below, to detect when an items
+  // change came from our own action (Conform already applied it via lastResult).
   const prevActionDataRef = useRef(actionData);
 
+  // Push server items into Conform. An effect-event so the sync can read
+  // isOnline/actionData/fields without making the effect reactive to them —
+  // the only signal that should re-run it is the items themselves changing.
+  const applyServerItems = useEffectEvent(() => {
+    // Don't overwrite local changes when offline
+    if (!isOnline) {
+      return;
+    }
+
+    // Skip if this update came from our own action - Conform already handled it via lastResult
+    const actionDataJustChanged = prevActionDataRef.current !== actionData;
+    if (actionDataJustChanged && actionData?.lastResult) {
+      return;
+    }
+
+    // Ensure form element exists before updating
+    if (!formRef.current) {
+      return;
+    }
+
+    intent.update({ name: fields.items.name, value: defaultValue.items });
+  });
+
+  // Note: deliberately NOT reactive to isOnline — on reconnect, defaultValue is
+  // stale (revalidation is blocked offline); the reconnect listener's fetch →
+  // revalidate path delivers fresh items, which re-fires this via itemsKey.
   useEffect(
     function updateFormWithNewValues() {
-      // Don't overwrite local changes when offline
-      if (!isOnline) {
-        return;
-      }
-
-      const actionDataJustChanged = prevActionDataRef.current !== actionData;
-      prevActionDataRef.current = actionData;
-
-      // Skip if this update came from our own action - Conform already handled it via lastResult
-      if (actionDataJustChanged && actionData?.lastResult) {
-        return;
-      }
-
-      // Ensure form element exists before updating
-      const formElement = document.getElementById(form.id);
-      if (!formElement) {
-        return;
-      }
-
-      intent.update({ name: fields.items.name, value: defaultValue.items });
+      applyServerItems();
     },
-    [itemsKey, intent, actionData, fields.items.name, defaultValue.items, form.id, isOnline],
+    [itemsKey],
   );
 
-  const lastDeleted = actionData?.lastDeleted || loaderData.lastDeleted;
+  // Bookkeeping runs after the sync effect in the same commit, so the
+  // comparison above sees the previous actionData.
+  useEffect(
+    function trackActionData() {
+      prevActionDataRef.current = actionData;
+    },
+    [actionData],
+  );
 
   const edited =
     useFormData(form.id, (formData) => {
@@ -307,6 +341,26 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     formRef,
   });
 
+  // Browser-only "recreate last deleted": the delete itself is a Conform intent
+  // that updates the DB, but we keep the recreate affordance client-side rather
+  // than round-tripping the server's soft-deleted row. The deleted value is
+  // captured directly in the delete button's click handler (fires for the real
+  // click and the swipe path) — see Items `onDelete`.
+  const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
+
+  // Recreate re-adds the captured value through the normal add path, so it
+  // returns as a fresh item at the end of the list — hence "recreate", not "undo".
+  function recreateLastDeleted() {
+    const formElement = formRef.current;
+    if (!formElement || !lastDeletedValue) return;
+
+    const recreateData = new FormData(formElement);
+    recreateData.set(fields.new.name, lastDeletedValue);
+    recreateData.set("new-submit", ADD_ITEM_INTENT);
+    submit(recreateData, { method: "POST" });
+    setLastDeletedValue(null);
+  }
+
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -316,13 +370,7 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
         <Theme.Button formId={form.id} />
       </div>
 
-      <Form
-        {...form.props}
-        ref={formRef}
-        // validationErrors={form.fieldErrors}
-        method="POST"
-        className={styles.form}
-      >
+      <Form {...form.props} ref={formRef} method="POST" className={styles.form}>
         {/* hidden submit button captures Enter key presses to add a new item */}
         <VisuallyHidden>
           <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
@@ -356,6 +404,8 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             }
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
+            onDelete={setLastDeletedValue}
+            reorderable
           />
         </ScrollArea>
 
@@ -364,24 +414,26 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
             <VisuallyHidden>
               <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
-            <input name={fields.new.name} id={fields.new.id} autoFocus autoComplete="off" />
+            <input
+              name={fields.new.name}
+              id={fields.new.id}
+              autoFocus
+              autoComplete="off"
+              className={styles.addInput}
+            />
             <Button
               type="submit"
               value={ADD_ITEM_INTENT}
               name="new-submit"
               isSubmitting={state === "submitting"}
+              className={styles.addButton}
             >
               Add
             </Button>
 
-            {lastDeleted ? (
-              <button
-                type="submit"
-                name="__INTENT__"
-                value={undeleteItemIntent(lastDeleted.id)}
-                className={styles.undoButton}
-              >
-                Undo
+            {lastDeletedValue ? (
+              <button type="button" onClick={recreateLastDeleted} className={styles.undoButton}>
+                Recreate last deleted
               </button>
             ) : null}
           </div>
