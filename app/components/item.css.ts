@@ -169,6 +169,49 @@ export const tick = style({
   },
 });
 
+// --- Reorderable variant (list-new): the prototype's flat grey rows + circular
+// delete button, ported from the old reorderable-item.css.ts design. ---
+
+export const itemContainerReorderable = style({
+  // Use the list's theme palette (primary/secondary are overridden per-list by
+  // the Theme component) rather than a flat grey, with dark text for contrast
+  // against the light pastel theme colours.
+  background: vars.palette.secondary,
+  color: vars.palette.text,
+  selectors: {
+    "&:has(textarea:focus)": {
+      background: vars.palette.primary,
+    },
+  },
+});
+
+export const deleteReorderable = style({
+  appearance: "none",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  width: "28px",
+  height: "28px",
+  padding: 0,
+  margin: 0,
+  borderRadius: "50%",
+  color: vars.palette.chrome,
+  fontSize: vars.fontSize.sm,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  selectors: {
+    "&:hover": {
+      color: "black",
+      background: "rgb(0 0 0 / 0.1)",
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.palette.text}`,
+      outlineOffset: "2px",
+    },
+  },
+});
+
 const spin = keyframes({
   "0%": {
     rotate: "0",

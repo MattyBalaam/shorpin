@@ -266,10 +266,14 @@ test("reordering items does not create unread or new markers for self", async ({
 
   const getEditOrder = async () =>
     page
-      .locator('input[aria-label^="Edit "]')
+      .locator('textarea[aria-label^="Edit "]')
       .evaluateAll((elements) =>
         elements.map((element) => element.getAttribute("aria-label") ?? "").filter(Boolean),
       );
+
+  // Guard against the selector silently matching nothing: value fields are
+  // <textarea>. Poll so the list has rendered before asserting.
+  await expect.poll(async () => (await getEditOrder())[0]).toBe("Edit Milk");
 
   // Drag-and-drop can be timing-sensitive in CI; retry a few times.
   let reordered = false;

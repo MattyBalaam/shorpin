@@ -22,6 +22,29 @@ export const actions = style({
   gap: "1em",
 });
 
+// Inline, borderless "add item" input — the distinctive list-new treatment.
+export const addInput = style({
+  flex: 1,
+  paddingBlock: vars.spacing.sm,
+  paddingInline: vars.spacing.md,
+  fontSize: vars.fontSize.md,
+  fontFamily: "inherit",
+  border: "none",
+  outline: "none",
+  background: "transparent",
+});
+
+// Pill "Add" button. Layered over Button's primary variant (which loads first),
+// so these visual overrides win — same pattern as item.css `tick`.
+export const addButton = style({
+  background: vars.palette.text,
+  color: "white",
+  borderRadius: vars.radius.pill,
+  paddingInline: vars.spacing.lg,
+  fontSize: vars.fontSize.md,
+  fontWeight: vars.fontWeight.semibold,
+});
+
 export const topActions = style({
   gridRow: "breadcrumbs",
   gridColumn: "content",
