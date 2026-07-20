@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@conform-to/react':
-        specifier: 1.19.4
-        version: 1.19.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 1.20.0
+        version: 1.20.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@react-router/node':
         specifier: 8.0.1
         version: 8.0.1(react-router@8.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@7.0.1-rc)
@@ -323,11 +323,11 @@ packages:
       react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@conform-to/dom@1.19.4':
-    resolution: {integrity: sha512-P/mBdVRl946iE74TXmF5YLY9+1IDrQzxKdj9A7qv7Cd4l/O02EvJskg3X7cHwhmFFIXXgNzSmf/y4B597SS4gg==}
+  '@conform-to/dom@1.20.0':
+    resolution: {integrity: sha512-8BdYAycBTCy2erDmEdpOtS75fBUrf1XTiUc53IHEd565Da/dNY85lUAshtNM26WTfvqvUBpROk9J7+fm6HQG6Q==}
 
-  '@conform-to/react@1.19.4':
-    resolution: {integrity: sha512-Xyw4hbD9467q8PTWW+Nvmf523y814w70eeABRJzVvfnpghGOAWAGt1lpOboAs6sqaKG/eouqifibz/r+PDFZLg==}
+  '@conform-to/react@1.20.0':
+    resolution: {integrity: sha512-zjK+f3GTWAHdHfTMtN6iJ7ImPnuuRsAl9/KfcEYA4e76TLgdDmkRLSoq7xnoROsokfhyWP3/Zi5kZmUpsiBJqw==}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
@@ -3934,11 +3934,11 @@ snapshots:
       react-lifecycles-compat: 3.0.4
       warning: 3.0.0
 
-  '@conform-to/dom@1.19.4': {}
+  '@conform-to/dom@1.20.0': {}
 
-  '@conform-to/react@1.19.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@conform-to/react@1.20.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@conform-to/dom': 1.19.4
+      '@conform-to/dom': 1.20.0
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
