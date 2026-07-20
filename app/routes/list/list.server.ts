@@ -6,7 +6,7 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
-import { isAddItemIntent } from "./intents";
+import { ADD_ITEM_INTENT } from "./intents";
 
 const zMutateListRpcResult = v.union([
   v.object({
@@ -186,7 +186,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     };
   }
 
-  const toAdd = isAddItemIntent(result.output["new-submit"]);
+  const toAdd = submission.intent === ADD_ITEM_INTENT;
 
   const allItems = rpcResult.output.items;
 

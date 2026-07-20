@@ -2,7 +2,7 @@ import { type FieldMetadata, useFormData } from "@conform-to/react/future";
 import { type PointerEventHandler, type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
 import { getFirstLink } from "~/lib/extract-link";
-import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
+import { deleteItemIntent, isDeleteItemIntent } from "~/routes/list/intents";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
@@ -61,10 +61,7 @@ export function Item({
     intent === deleteItemIntent(fieldset.id.defaultValue ?? "");
 
   const isSavingEdit =
-    edited &&
-    navigation.state !== "idle" &&
-    !isDeleteItemIntent(effectiveIntent) &&
-    !isUndeleteItemIntent(effectiveIntent);
+    edited && navigation.state !== "idle" && !isDeleteItemIntent(effectiveIntent);
 
   const autoResize = (element: HTMLTextAreaElement) => {
     const startHeight = element.offsetHeight;

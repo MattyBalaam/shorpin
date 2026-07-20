@@ -22,7 +22,7 @@ import { zList } from "./data";
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
-import { ADD_ITEM_INTENT, isAddItemIntent, isDeleteItemIntent } from "./intents";
+import { ADD_ITEM_INTENT, addItemIntent, deleteItemIntentHandler } from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -71,7 +71,7 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     }
 
     const currentItems = result.output.items;
-    const toAdd = isAddItemIntent(result.output["new-submit"]);
+    const toAdd = submission.intent === ADD_ITEM_INTENT;
 
     if (result.output.new && toAdd) {
       currentItems.push({
@@ -246,10 +246,14 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
+    intents: {
+      "add-item": addItemIntent,
+      "delete-item-*": deleteItemIntentHandler,
+    },
     onValidate: (ctx) => {
       // skip validation when deleting items so the intent is sent server side
       // (this route has no undelete intent — recreate is browser-only)
-      if (isDeleteItemIntent(ctx.intent?.type)) {
+      if (ctx.intent?.type.startsWith("delete-item-")) {
         return null;
       }
 
@@ -356,7 +360,7 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
-    recreateData.set("new-submit", ADD_ITEM_INTENT);
+    recreateData.set("__INTENT__", ADD_ITEM_INTENT);
     submit(recreateData, { method: "POST" });
     setLastDeletedValue(null);
   }
@@ -373,7 +377,7 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
       <Form {...form.props} ref={formRef} method="POST" className={styles.form}>
         {/* hidden submit button captures Enter key presses to add a new item */}
         <VisuallyHidden>
-          <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
+          <button type="submit" name="__INTENT__" value={ADD_ITEM_INTENT}>
             Update
           </button>
         </VisuallyHidden>
@@ -398,7 +402,7 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             edited={edited}
             newItems={loaderData.newItemIds}
             pendingItem={
-              state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
+              state === "submitting" && formData?.get("__INTENT__") === ADD_ITEM_INTENT
                 ? (formData.get(fields.new.name) as string)
                 : null
             }
@@ -424,7 +428,7 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             <Button
               type="submit"
               value={ADD_ITEM_INTENT}
-              name="new-submit"
+              name="__INTENT__"
               isSubmitting={state === "submitting"}
               className={styles.addButton}
             >
