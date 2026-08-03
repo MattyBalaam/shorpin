@@ -2,6 +2,7 @@ node_modules
 
 /.cache
 .env
+.env.test.local
 .react-router
 
 # Local Netlify folder

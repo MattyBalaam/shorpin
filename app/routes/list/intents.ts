@@ -1,37 +1,41 @@
-import type { IntentHandler } from "@conform-to/react/future";
+import { defineIntent } from "@conform-to/react/future";
 
 export const ADD_ITEM_INTENT = "add-item";
 
-export const addItemIntent: IntentHandler = {
-  parse([formData]) {
-    const submitter = formData.get("__INTENT__");
-    if (submitter === ADD_ITEM_INTENT) {
-      return {};
-    }
-    throw new Error("Not an add-item intent");
+// Dispatched via a plain submit button (name="__INTENT__" value={ADD_ITEM_INTENT}).
+// With no args, Conform's transport format is the bare type string ("add-item"),
+// so parse() is called with no arguments.
+export const addItemIntent = defineIntent({
+  parse() {
+    return {};
   },
-};
+});
 
-const DELETE_PREFIX = "delete-item-";
+export const DELETE_ITEM_INTENT = "delete-item";
 
-export function deleteItemIntent(id: string) {
-  return `${DELETE_PREFIX}${id}`;
-}
-
-export const deleteItemIntentHandler: IntentHandler = {
-  parse([formData]) {
-    const submitter = formData.get("__INTENT__");
-    if (typeof submitter === "string" && submitter?.startsWith(DELETE_PREFIX)) {
-      return { id: submitter.slice(DELETE_PREFIX.length) };
-    }
-    throw new Error("Not a delete-item intent");
+// Dispatched imperatively via the form's intent dispatcher (useIntent(formId)["delete-item"](id)),
+// which serializes to `delete-item("<uuid>")` — a fixed type name with the id as a transport
+// arg, since Conform resolves custom intents by an exact type-name lookup (no wildcard support
+// for a dynamic per-item type like the old "delete-item-<uuid>").
+export const deleteItemIntent = defineIntent<(id: string) => void, { id: string }>({
+  parse(id) {
+    return { id };
   },
-};
+});
 
-export function isAddItemIntent(intent: string | null | undefined) {
-  return intent === ADD_ITEM_INTENT;
-}
+const DELETE_ITEM_PREFIX = `${DELETE_ITEM_INTENT}("`;
+const DELETE_ITEM_SUFFIX = '")';
 
 export function isDeleteItemIntent(intent: string | null | undefined) {
-  return intent?.startsWith(DELETE_PREFIX) ?? false;
+  return (intent ?? "").startsWith(DELETE_ITEM_PREFIX);
+}
+
+// Reads the item id back out of a raw `__INTENT__` field value (e.g. from
+// navigation.formData) without re-parsing the whole submission — mirrors the
+// wire format Conform's dispatcher produces for the "delete-item" intent above.
+export function deleteItemIdFromIntent(intent: string | null | undefined): string | null {
+  if (!intent || !intent.startsWith(DELETE_ITEM_PREFIX) || !intent.endsWith(DELETE_ITEM_SUFFIX)) {
+    return null;
+  }
+  return intent.slice(DELETE_ITEM_PREFIX.length, -DELETE_ITEM_SUFFIX.length);
 }

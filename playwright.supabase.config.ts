@@ -1,10 +1,17 @@
 import { loadEnvFile } from "node:process";
 import { defineConfig } from "@playwright/test";
 
-try {
-  loadEnvFile(".env");
-} catch {
-  // .env is optional in CI (vars come from secrets)
+// .env.test.local holds the e2e Supabase project's credentials (see
+// .env.test.local.example) and is loaded first so it wins over the
+// default .env. Node's loadEnvFile keeps the first value seen for a given
+// key, so .env only fills in anything .env.test.local doesn't set (e.g.
+// SESSION_SECRET). Neither file exists in CI — vars come from secrets.
+for (const envFile of [".env.test.local", ".env"]) {
+  try {
+    loadEnvFile(envFile);
+  } catch {
+    // optional file, fall through
+  }
 }
 
 const appPort = "5175";

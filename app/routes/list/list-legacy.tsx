@@ -23,7 +23,7 @@ export { action, loader } from "./list.server";
 
 import { report } from "@conform-to/react/future";
 import { toast } from "sonner";
-import { ADD_ITEM_INTENT, addItemIntent, deleteItemIntentHandler } from "./intents";
+import { ADD_ITEM_INTENT, DELETE_ITEM_INTENT, addItemIntent, deleteItemIntent } from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -220,12 +220,12 @@ export default function list({ actionData, loaderData }: Route.ComponentProps) {
     shouldValidate: "onBlur",
     intents: {
       "add-item": addItemIntent,
-      "delete-item-*": deleteItemIntentHandler,
+      "delete-item": deleteItemIntent,
     },
     onValidate: (ctx) => {
       if (
         // skip validation when deleting items so the intent is sent server side
-        ctx.intent?.type.startsWith("delete-item-")
+        ctx.intent?.type === DELETE_ITEM_INTENT
       ) {
         return null;
       }

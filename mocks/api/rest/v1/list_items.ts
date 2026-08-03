@@ -54,7 +54,6 @@ export const handlers = [
       p_list_slug: string;
       p_payload: {
         new?: string;
-        "new-submit"?: string;
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
@@ -81,7 +80,7 @@ export const handlers = [
       return maxOrder + 1;
     };
 
-    if (body.p_payload["new-submit"] === ADD_ITEM_INTENT && body.p_payload.new) {
+    if (body.p_intent === ADD_ITEM_INTENT && body.p_payload.new) {
       await listItems.create({
         id: crypto.randomUUID(),
         list_id: list.id,

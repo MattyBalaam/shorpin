@@ -6,7 +6,7 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
-import { ADD_ITEM_INTENT } from "./intents";
+import { ADD_ITEM_INTENT, deleteItemIdFromIntent } from "./intents";
 
 const zMutateListRpcResult = v.union([
   v.object({
@@ -145,10 +145,16 @@ export async function action({ request, params: { list }, context }: Route.Actio
   const supabase = context.get(supabaseContext);
   await requireUser(supabase);
 
+  // mutate_list still expects the legacy "delete-item-<uuid>" wire format;
+  // translate Conform's dispatcher-serialized delete-item("<uuid>") back to
+  // it here so the SQL function stays unaware of Conform's own serialization.
+  const deleteId = deleteItemIdFromIntent(submission.intent);
+  const rpcIntent = deleteId ? `delete-item-${deleteId}` : submission.intent;
+
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
     p_payload: result.output,
-    p_intent: submission.intent ?? null,
+    p_intent: rpcIntent ?? null,
     p_mutated_at: updatedAt,
   });
 

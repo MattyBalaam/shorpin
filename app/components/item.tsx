@@ -1,8 +1,12 @@
-import { type FieldMetadata, useFormData } from "@conform-to/react/future";
+import { type FieldMetadata, useFormData, useIntent } from "@conform-to/react/future";
 import { type PointerEventHandler, type RefObject, useRef } from "react";
 import { useNavigation } from "react-router";
 import { getFirstLink } from "~/lib/extract-link";
-import { deleteItemIntent, isDeleteItemIntent } from "~/routes/list/intents";
+import {
+  deleteItemIdFromIntent,
+  deleteItemIntent,
+  isDeleteItemIntent,
+} from "~/routes/list/intents";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
@@ -32,6 +36,9 @@ export function Item({
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
+  const intentDispatcher = useIntent<{ "delete-item": typeof deleteItemIntent }>(
+    fieldset.value.formId,
+  );
   const defaultValue = fieldset.value.defaultValue ?? "";
   const currentValue =
     useFormData(
@@ -58,7 +65,7 @@ export function Item({
 
   const isDeleting =
     navigation.state === "submitting" &&
-    intent === deleteItemIntent(fieldset.id.defaultValue ?? "");
+    deleteItemIdFromIntent(intent) === (fieldset.id.defaultValue ?? "");
 
   const isSavingEdit =
     edited && navigation.state !== "idle" && !isDeleteItemIntent(effectiveIntent);
@@ -185,14 +192,17 @@ export function Item({
         <span className={styles.deleteButton}>
           <Button
             className={reorderable ? styles.deleteReorderable : styles.tick}
-            type="submit"
-            name="__INTENT__"
-            value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
+            type="button"
             ref={deleteButtonRef}
-            // Capture the deleted value here — fires for the real click and for
-            // the swipe path (which calls deleteButtonRef.current?.click()) — so
-            // the parent can offer a browser-only "recreate last deleted".
-            onClick={() => onDelete?.(fieldset.value.defaultValue ?? "")}
+            // Fires for the real click and for the swipe path (which calls
+            // deleteButtonRef.current?.click()). Captures the deleted value so
+            // the parent can offer a browser-only "recreate last deleted", then
+            // dispatches the delete-item intent (id as a transport arg, since
+            // Conform resolves custom intents by exact type name).
+            onClick={() => {
+              onDelete?.(fieldset.value.defaultValue ?? "");
+              intentDispatcher["delete-item"](fieldset.id.defaultValue ?? "");
+            }}
           >
             <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
             {reorderable ? "✕" : "☑️"}
