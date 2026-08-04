@@ -15,7 +15,7 @@ function findFreePort(start) {
       if (err.code === "EADDRINUSE") resolve(findFreePort(start + 1));
       else reject(err);
     });
-    server.listen(start, "127.0.0.1", () => server.close(() => resolve(start)));
+    server.listen(start, () => server.close(() => resolve(start)));
   });
 }
 
