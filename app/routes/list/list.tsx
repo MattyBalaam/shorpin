@@ -339,9 +339,13 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
 
   // Recreate re-adds the captured value through the normal add path, so it
   // returns as a fresh item at the end of the list — hence "recreate", not "undo".
+  // Guarded against firing while the triggering delete's own submission is
+  // still in flight: two overlapping navigations to the same route race,
+  // and the delete's stale response can land after recreate's and wipe the
+  // recreated item back out (see integration-tests/list.spec.ts's recreate test).
   function recreateLastDeleted() {
     const formElement = formRef.current;
-    if (!formElement || !lastDeletedValue) return;
+    if (!formElement || !lastDeletedValue || state !== "idle") return;
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
@@ -426,7 +430,12 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             </Button>
 
             {lastDeletedValue ? (
-              <button type="button" onClick={recreateLastDeleted} className={styles.undoButton}>
+              <button
+                type="button"
+                onClick={recreateLastDeleted}
+                disabled={state !== "idle"}
+                className={styles.undoButton}
+              >
                 Recreate last deleted
               </button>
             ) : null}
