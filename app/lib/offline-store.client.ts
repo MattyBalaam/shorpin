@@ -130,20 +130,17 @@ export async function dequeueMutations(seqs: number[]): Promise<void> {
 }
 
 /**
- * Drains whatever's queued for `routeKey` via `replay`, dequeuing only on
- * success. `replay` receives the full grouped batch so route-specific
- * callers can decide how to collapse it (e.g. list.tsx rebases onto a single
- * submission; home.tsx's create-list replays every row in order).
+ * Wipes all three stores — used on logout so a shared device doesn't leak
+ * one account's cached lists/queued edits into the next session.
  */
-export async function drainQueueForRoute(
-  routeKey: string,
-  replay: (grouped: QueuedMutation[]) => Promise<"ok" | "retry-later">,
-): Promise<void> {
-  const grouped = await listQueuedMutations(routeKey);
-  if (grouped.length === 0) return;
-
-  const outcome = await replay(grouped);
-  if (outcome === "ok") {
-    await dequeueMutations(grouped.map((entry) => entry.seq));
-  }
+export async function clearAllOfflineData(): Promise<void> {
+  await tx(
+    [STORES.homeCache, STORES.listSnapshots, STORES.mutationQueue],
+    "readwrite",
+    (transaction) => {
+      transaction.objectStore(STORES.homeCache).clear();
+      transaction.objectStore(STORES.listSnapshots).clear();
+      transaction.objectStore(STORES.mutationQueue).clear();
+    },
+  );
 }

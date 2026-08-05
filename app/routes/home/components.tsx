@@ -29,7 +29,7 @@ export function ReorderableListItem({
   onDrop: () => void;
 }) {
   const dragControls = useDragControls();
-  const { id, name, slug, user_id, unreadCount, totalCount } = list;
+  const { id, name, slug, user_id, unreadCount, totalCount, pending } = list;
   const isOwner = user_id === userId;
 
   return (
@@ -44,9 +44,15 @@ export function ReorderableListItem({
       onDragEnd={onDrop}
     >
       <div className={styles.item}>
-        <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
-          {name}
-        </Link>
+        {pending ? (
+          <span className={styles.pendingItemLink}>
+            {name} <VisuallyHidden>(pending — will sync when back online)</VisuallyHidden>
+          </span>
+        ) : (
+          <Link className={styles.itemLink} to={href("/lists/:list", { list: slug })}>
+            {name}
+          </Link>
+        )}
 
         <span
           className={styles.itemDragHandle}
@@ -57,7 +63,7 @@ export function ReorderableListItem({
           <span aria-hidden>|-|-|-|-|</span>
         </span>
 
-        {isOwner && (
+        {isOwner && !pending && (
           <Link
             className={styles.itemConfig}
             variant="primary"

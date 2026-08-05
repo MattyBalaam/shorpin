@@ -15,6 +15,47 @@ test("owner can create a new list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
 
+test("owner can create a list while offline, synced on reconnect", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  await context.setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  await page.getByLabel("New list").fill("Camping");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  // Offline creation can't redirect into the new list — there's no
+  // server-confirmed slug yet — so it stays on `/` showing a non-navigable
+  // pending row instead.
+  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
+
+  const syncSubmitted = page.waitForResponse(
+    // The offline-queued replay is a raw fetch to the plain route path
+    // (entry.route, captured from clientAction's request.url — RR's own
+    // .data protocol is only used for JS-driven submissions that reach
+    // serverAction(), not for the logical request clientAction sees), so
+    // match on path rather than a .data suffix.
+    (response) =>
+      new URL(response.url()).pathname === "/" && response.request().method() === "POST",
+  );
+
+  await context.setOffline(false);
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
+  await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
+
+  // The pending row is replaced by the real, navigable list once the
+  // post-sync revalidate() lands — checked without reloading, since a
+  // reload can race and abort that still-in-flight revalidate/cache-write
+  // (the JS context survives here, so it always gets to finish).
+  await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
+});
+
 test("owner sees their two lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
@@ -58,6 +99,71 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
 
   await page.reload();
 
+  await expect(async () => {
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
+  }).toPass();
+});
+
+test("owner can reorder lists while offline, synced on reconnect", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  const getListOrder = async () =>
+    page
+      .locator('li a[href^="/lists/"]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
+      );
+
+  await context.setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  const fromHandle = page.getByLabel("Reorder Owner Empty");
+  const toHandle = page.getByLabel("Reorder Shopping");
+  const fromBox = await fromHandle.boundingBox();
+  const toBox = await toHandle.boundingBox();
+  if (!fromBox || !toBox) {
+    throw new Error("Unable to determine drag handle positions for home reorder");
+  }
+
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2 - 20, {
+    steps: 25,
+  });
+  await page.mouse.up();
+
+  await expect(async () => {
+    expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
+  }).toPass();
+
+  // The visual order updates live during the drag, but onReorderComplete's
+  // actual submit is deferred a frame past drop settling — give it a moment
+  // to fire (and land in the offline queue) before reconnecting, or it may
+  // fire late, after setOffline(false), and go out as a normal online
+  // request instead of exercising the offline path (matches the timing
+  // margin the non-offline reorder test above already waits out).
+  await page.waitForTimeout(200);
+
+  const syncSubmitted = page.waitForResponse(
+    // The offline-queued replay is a raw fetch to the plain route path
+    // (entry.route, captured from clientAction's request.url — RR's own
+    // .data protocol is only used for JS-driven submissions that reach
+    // serverAction(), not for the logical request clientAction sees), so
+    // match on path rather than a .data suffix.
+    (response) =>
+      new URL(response.url()).pathname === "/" && response.request().method() === "POST",
+  );
+
+  await context.setOffline(false);
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
+  await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
+
+  await page.reload();
   await expect(async () => {
     expect(await getListOrder()).toEqual(["Owner Empty", "Shopping"]);
   }).toPass();

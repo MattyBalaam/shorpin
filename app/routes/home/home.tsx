@@ -9,17 +9,22 @@ import {
   useRevalidator,
   useRouteError,
 } from "react-router";
+import { toast } from "sonner";
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
+import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
+import { pairsToFormData } from "~/lib/form-data-codec";
+import { dequeueMutations, listQueuedMutations } from "~/lib/offline-store.client";
 
 import type { Route } from "./+types/home";
 import * as styles from "./home.css";
 import { zCreate } from "./home.schema";
 
 export { action, loader } from "./home.server";
+export { clientAction } from "./client-action";
 import { clientLoader, Revalidator } from "./client-cache";
 import { Spinner } from "~/components/spinner/spinner";
 import { Lists, PendingSignUps } from "./components";
@@ -53,6 +58,34 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
   });
 
   const { state } = useNavigation();
+  const { revalidate } = useRevalidator();
+
+  // Neither create-list nor reorder-lists needs list.tsx's rebase treatment
+  // (creation is append-only and de-duplicated server-side; reorder updates
+  // each row's sort_order independently, with no diff-against-submitted-array
+  // to resurrect anything) — so queued entries just replay verbatim, in
+  // order, same as list.tsx's offline sync did before it needed rebasing.
+  useIsOnline({
+    onOnline: async () => {
+      const queued = await listQueuedMutations("home");
+      if (queued.length === 0) return;
+
+      toast.success("Back online - syncing changes");
+
+      for (const entry of queued) {
+        try {
+          await fetch(entry.route, { method: "POST", body: pairsToFormData(entry.fields) });
+        } catch {
+          // Went offline again mid-sync — leave what's left queued for the
+          // next reconnect.
+          return;
+        }
+        await dequeueMutations([entry.seq]);
+      }
+
+      revalidate();
+    },
+  });
 
   return (
     <>

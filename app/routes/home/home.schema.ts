@@ -16,4 +16,6 @@ export const zReorderLists = v.object({
 export type ListItem = Pick<ListItemDB, "id" | "name" | "slug" | "user_id"> & {
   unreadCount: number;
   totalCount: number;
+  /** Client-only: created offline, not yet confirmed by the server. */
+  pending?: boolean;
 };

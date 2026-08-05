@@ -66,6 +66,14 @@ export const itemLink = style({
   },
 });
 
+export const pendingItemLink = style({
+  gridColumn: "name",
+  minWidth: 0,
+  marginRight: "auto",
+  opacity: 0.6,
+  fontStyle: "italic",
+});
+
 export const itemConfig = style({
   gridColumn: "config",
   zIndex: 1,
