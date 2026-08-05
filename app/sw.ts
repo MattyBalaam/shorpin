@@ -9,7 +9,7 @@
 // at all, plus a best-effort Background Sync backstop for draining simple
 // queued mutations. See README.md's "Offline / Local-first" section.
 
-import { precacheAndRoute } from "workbox-precaching";
+import { matchPrecache, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { pairsToFormData } from "~/lib/form-data-codec";
 
@@ -23,15 +23,17 @@ interface SyncEvent extends ExtendableEvent {
 
 precacheAndRoute(self.__WB_MANIFEST);
 
-const OFFLINE_URL = "/offline.html";
-
 registerRoute(
   ({ request }) => request.mode === "navigate",
   async ({ request }) => {
     try {
       return await fetch(request);
     } catch {
-      const offlineShell = await caches.match(OFFLINE_URL);
+      // Not a plain caches.match("/offline.html") — workbox's precache
+      // stores non-hashed entries under a cache key with a
+      // ?__WB_REVISION__=... query param appended for cache-busting, so a
+      // literal-URL lookup misses; matchPrecache resolves that correctly.
+      const offlineShell = await matchPrecache("offline.html");
       return offlineShell ?? Response.error();
     }
   },

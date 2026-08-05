@@ -99,10 +99,15 @@ export async function freezeListBaseline(slug: string, baseline: ListItemRef[]):
   });
 }
 
+// The Background Sync API isn't part of TypeScript's built-in DOM lib.
+interface SyncManager {
+  register(tag: string): Promise<void>;
+}
+
 export async function enqueueMutation(
   entry: Omit<QueuedMutation, "seq" | "queuedAt">,
 ): Promise<number> {
-  return tx(STORES.mutationQueue, "readwrite", (transaction) =>
+  const seq = await tx(STORES.mutationQueue, "readwrite", (transaction) =>
     requestToPromise(
       transaction.objectStore(STORES.mutationQueue).add({
         ...entry,
@@ -110,6 +115,28 @@ export async function enqueueMutation(
       }) as IDBRequest<number>,
     ),
   );
+
+  // Best-effort backstop so a queued mutation can still drain (for the
+  // simple kinds app/sw.ts's `sync` listener handles) even if the tab
+  // closes before reconnecting. No effect on Safari/iOS (no SyncManager
+  // there) — the `online` event listener (useIsOnline) remains the primary,
+  // universal trigger regardless. Deliberately NOT awaited: the mutation is
+  // already durably queued above, and navigator.serviceWorker.ready has no
+  // bound on how long it can take to settle — awaiting it here would let a
+  // purely best-effort registration step stall the actual offline write.
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
+    navigator.serviceWorker.ready
+      .then((registration) =>
+        (registration as ServiceWorkerRegistration & { sync: SyncManager }).sync.register(
+          "drain-mutation-queue",
+        ),
+      )
+      .catch(() => {
+        // Best-effort only.
+      });
+  }
+
+  return seq;
 }
 
 export async function listQueuedMutations(routeKey?: string): Promise<QueuedMutation[]> {

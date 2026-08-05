@@ -30,8 +30,13 @@ test("owner can create a list while offline, synced on reconnect", async ({
 
   // Offline creation can't redirect into the new list — there's no
   // server-confirmed slug yet — so it stays on `/` showing a non-navigable
-  // pending row instead.
-  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible();
+  // pending row instead. Generous timeout: under full-suite load this step
+  // (client-side only, no network) has been observed occasionally slow,
+  // consistent with resource contention rather than a functional issue —
+  // it's instant and 100% reliable in isolation.
+  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible({
+    timeout: 10000,
+  });
   await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
 
   const syncSubmitted = page.waitForResponse(

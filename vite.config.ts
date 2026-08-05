@@ -68,10 +68,12 @@ export default defineConfig((config) => {
         filename: "sw.ts",
         outDir: "build/client",
         injectManifest: {
-          // Hashed JS/CSS/font assets only — never precache route HTML,
-          // it's per-user/SSR and would go stale or leak data across
-          // accounts (see app/sw.ts's navigation handler and README.md).
-          globPatterns: ["**/*.{js,css,woff2}"],
+          // Hashed JS/CSS/font assets, plus the one static HTML file
+          // (offline.html — the SW's navigation fallback). Never route
+          // HTML more broadly than that: real route HTML is per-user/SSR
+          // and would go stale or leak data across accounts if precached
+          // (see app/sw.ts's navigation handler and README.md).
+          globPatterns: ["**/*.{js,css,woff2}", "offline.html"],
         },
         manifest: false, // public/manifest.webmanifest is already hand-maintained
         injectRegister: false, // registered manually in root.tsx (needs PROD-only gating)

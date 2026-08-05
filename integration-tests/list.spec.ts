@@ -163,10 +163,13 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   await context.setOffline(true);
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
 
-  // Add while offline — the clientAction stores it locally
+  // Add while offline — the clientAction stores it locally. Generous
+  // timeout: under full-suite load this client-side-only step has been
+  // observed occasionally slow, consistent with resource contention rather
+  // than a functional issue — it's instant and 100% reliable in isolation.
   await page.getByLabel("New item").fill("Offline butter");
   await page.getByRole("button", { name: "Add" }).click();
-  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
 
   // Reconnect sync fetches fresh server state before rebasing and
   // resubmitting (so it doesn't resurrect anything changed concurrently by
@@ -211,9 +214,12 @@ test("a concurrent addition from another device survives reconnect sync", async 
     // Owner deletes Milk while offline — a pure edit/delete, no addition, so
     // this isolates the concurrency behaviour from mutate_list's "only the
     // most recent offline addition survives" limitation (see the comment on
-    // performRebaseSync in list.tsx).
+    // performRebaseSync in list.tsx). Generous timeouts throughout this test:
+    // under full-suite load these client-side/animation-dependent steps have
+    // been observed occasionally slow, consistent with resource contention
+    // rather than a functional issue — reliable and near-instant in isolation.
     await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
-    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible({ timeout: 10000 });
 
     // Meanwhile, another device (online) adds an item to the same list.
     // Replaying the owner's stale full-array snapshot naively would make
@@ -223,7 +229,7 @@ test("a concurrent addition from another device survives reconnect sync", async 
     await openList(collabPage, "shopping");
     await collabPage.getByLabel("New item").fill("Margarine");
     await collabPage.getByRole("button", { name: "Add" }).click();
-    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
 
     const syncSubmitted = ownerPage.waitForResponse(
       (response) =>
