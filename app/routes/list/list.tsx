@@ -15,14 +15,13 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
-import { reorderViaConform } from "~/components/reorderable/reorder-strategies";
+import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import type { Route } from "./+types/list";
 import { zList } from "./data";
 
 export { action, loader } from "./list.server";
 
 import { toast } from "sonner";
-import { ADD_ITEM_INTENT, isAddItemIntent, isDeleteItemIntent } from "./intents";
 
 // Cache loader data for offline support
 let cachedLoaderData: Awaited<ReturnType<typeof import("./list.server").loader>> | null = null;
@@ -71,7 +70,7 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     }
 
     const currentItems = result.output.items;
-    const toAdd = isAddItemIntent(result.output["new-submit"]);
+    const toAdd = Boolean(result.output.new);
 
     if (result.output.new && toAdd) {
       currentItems.push({
@@ -246,15 +245,6 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
-    onValidate: (ctx) => {
-      // skip validation when deleting items so the intent is sent server side
-      // (this route has no undelete intent — recreate is browser-only)
-      if (isDeleteItemIntent(ctx.intent?.type)) {
-        return null;
-      }
-
-      return ctx;
-    },
   });
 
   const itemsKey = defaultValue.items.map((i) => `${i.id}:${i.value}`).join(",");
@@ -315,17 +305,6 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
         return [];
       }
 
-      // Guard: AnimatePresence keeps a deleted item's <input> elements in the
-      // DOM during its exit animation. Conform re-numbers the remaining items
-      // into those same positions, causing two inputs to share the same name
-      // (e.g. items[1][id]). parseSubmission stores an array for that field,
-      // UUID validation fails, v.fallback fires → items becomes [].
-      // When that happens every defaultValue item looks "edited". Return []
-      // instead so we don't show false indicators during the brief animation.
-      if (result.output.items.length === 0 && defaultValue.items.length > 0) {
-        return [];
-      }
-
       return defaultValue.items
         .filter(
           ({ value, id }) => result.output.items?.find((item) => item?.id === id)?.value !== value,
@@ -341,22 +320,36 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
     formRef,
   });
 
-  // Browser-only "recreate last deleted": the delete itself is a Conform intent
-  // that updates the DB, but we keep the recreate affordance client-side rather
-  // than round-tripping the server's soft-deleted row. The deleted value is
-  // captured directly in the delete button's click handler (fires for the real
-  // click and the swipe path) — see Items `onDelete`.
+  // Delete shrinks the items field (once the row's exit animation finishes —
+  // see items.tsx) then submits; the server infers "delete" from whichever
+  // id is now missing from the submitted array (see mutate_list).
+  const onRemove = removeViaConform({
+    fieldName: fields.items.name,
+    intent,
+    submit,
+    formRef,
+  });
+
+  // Browser-only "recreate last deleted": deletion itself is inferred
+  // server-side from the submitted array, so we keep the recreate affordance
+  // client-side rather than round-tripping the server's soft-deleted row. The
+  // deleted value is captured directly in commitRemoval (items.tsx), which
+  // fires for both the real click and the swipe path — see Items `onDelete`.
   const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
 
   // Recreate re-adds the captured value through the normal add path, so it
   // returns as a fresh item at the end of the list — hence "recreate", not "undo".
+  // Guarded against firing while the triggering delete's own submission is
+  // still in flight: two overlapping navigations to the same route race,
+  // and the delete's stale response can land after recreate's and wipe the
+  // recreated item back out (see integration-tests/list.spec.ts's recreate test).
   function recreateLastDeleted() {
     const formElement = formRef.current;
-    if (!formElement || !lastDeletedValue) return;
+    if (!formElement || !lastDeletedValue || state !== "idle") return;
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
-    recreateData.set("new-submit", ADD_ITEM_INTENT);
+    recreateData.set("submitAction", "add");
     submit(recreateData, { method: "POST" });
     setLastDeletedValue(null);
   }
@@ -371,9 +364,13 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
       </div>
 
       <Form {...form.props} ref={formRef} method="POST" className={styles.form}>
-        {/* hidden submit button captures Enter key presses to add a new item */}
+        {/* hidden submit button captures Enter key presses to add a new item.
+            submitAction is a plain (non-reserved) field used only to tell
+            client-side "was this particular submission an add" for the
+            pendingItem skeleton below — the server infers add purely from
+            fields.new having a value. */}
         <VisuallyHidden>
-          <button type="submit" name="new-submit" value={ADD_ITEM_INTENT}>
+          <button type="submit" name="submitAction" value="add">
             Update
           </button>
         </VisuallyHidden>
@@ -398,13 +395,14 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             edited={edited}
             newItems={loaderData.newItemIds}
             pendingItem={
-              state === "submitting" && formData?.get("new-submit") === ADD_ITEM_INTENT
+              state === "submitting" && formData?.get("submitAction") === "add"
                 ? (formData.get(fields.new.name) as string)
                 : null
             }
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
             onDelete={setLastDeletedValue}
+            onRemove={onRemove}
             reorderable
           />
         </ScrollArea>
@@ -423,8 +421,8 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             />
             <Button
               type="submit"
-              value={ADD_ITEM_INTENT}
-              name="new-submit"
+              value="add"
+              name="submitAction"
               isSubmitting={state === "submitting"}
               className={styles.addButton}
             >
@@ -432,7 +430,12 @@ export default function listNew({ actionData, loaderData }: Route.ComponentProps
             </Button>
 
             {lastDeletedValue ? (
-              <button type="button" onClick={recreateLastDeleted} className={styles.undoButton}>
+              <button
+                type="button"
+                onClick={recreateLastDeleted}
+                disabled={state !== "idle"}
+                className={styles.undoButton}
+              >
                 Recreate last deleted
               </button>
             ) : null}

@@ -1,8 +1,7 @@
 import { type FieldMetadata, useFormData } from "@conform-to/react/future";
-import { type PointerEventHandler, type RefObject, useRef } from "react";
+import { type PointerEventHandler } from "react";
 import { useNavigation } from "react-router";
 import { getFirstLink } from "~/lib/extract-link";
-import { deleteItemIntent, isDeleteItemIntent, isUndeleteItemIntent } from "~/routes/list/intents";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
@@ -11,10 +10,9 @@ export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
   isNew: boolean;
-  deleteButtonRef: RefObject<HTMLButtonElement | null>;
   isDismissing: boolean;
   onDragHandlePointerDown: PointerEventHandler<HTMLSpanElement>;
-  onDelete?: (value: string) => void;
+  onRequestDelete: () => void;
   reorderable?: boolean;
 }
 
@@ -23,10 +21,9 @@ export function Item({
   fieldsetMetadata,
   edited,
   isNew,
-  deleteButtonRef,
   isDismissing,
   onDragHandlePointerDown,
-  onDelete,
+  onRequestDelete,
   reorderable,
 }: ItemRenderProps) {
   const navigation = useNavigation();
@@ -40,31 +37,13 @@ export function Item({
       { fallback: defaultValue },
     ) ?? defaultValue;
 
-  const intent = navigation.formData?.get("__INTENT__") as string | null;
-
-  // Persist the last known intent through the full navigation cycle.
-  // navigation.formData (and therefore intent) is only populated during
-  // "submitting" — it becomes null during "loading". Without this ref,
-  // isSavingEdit incorrectly flips true for any edited item while a delete
-  // navigates through its loading phase.
-  const lastIntentRef = useRef<string | null>(null);
-  if (navigation.state === "submitting") {
-    lastIntentRef.current = intent;
-  } else if (navigation.state === "idle") {
-    lastIntentRef.current = null;
-  }
-  const effectiveIntent = navigation.state === "submitting" ? intent : lastIntentRef.current;
   const firstLink = getFirstLink(currentValue);
 
-  const isDeleting =
-    navigation.state === "submitting" &&
-    intent === deleteItemIntent(fieldset.id.defaultValue ?? "");
-
-  const isSavingEdit =
-    edited &&
-    navigation.state !== "idle" &&
-    !isDeleteItemIntent(effectiveIntent) &&
-    !isUndeleteItemIntent(effectiveIntent);
+  // Delete is committed locally (intent.remove) only once its exit animation
+  // finishes, so by the time any submission is in flight for this row it's
+  // already unmounted — any in-flight submission still showing this row is
+  // an edit save, never a delete.
+  const isSavingEdit = edited && navigation.state !== "idle";
 
   const autoResize = (element: HTMLTextAreaElement) => {
     const startHeight = element.offsetHeight;
@@ -86,7 +65,6 @@ export function Item({
         .filter(Boolean)
         .join(" ")}
       data-dismissing={isDismissing}
-      data-deleting={isDeleting}
       data-new={isNew}
     >
       <div className={styles.item}>
@@ -188,14 +166,8 @@ export function Item({
         <span className={styles.deleteButton}>
           <Button
             className={reorderable ? styles.deleteReorderable : styles.tick}
-            type="submit"
-            name="__INTENT__"
-            value={deleteItemIntent(fieldset.id.defaultValue ?? "")}
-            ref={deleteButtonRef}
-            // Capture the deleted value here — fires for the real click and for
-            // the swipe path (which calls deleteButtonRef.current?.click()) — so
-            // the parent can offer a browser-only "recreate last deleted".
-            onClick={() => onDelete?.(fieldset.value.defaultValue ?? "")}
+            type="button"
+            onClick={onRequestDelete}
           >
             <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
             {reorderable ? "✕" : "☑️"}

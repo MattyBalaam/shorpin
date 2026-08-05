@@ -6,7 +6,6 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
-import { isAddItemIntent } from "./intents";
 
 const zMutateListRpcResult = v.union([
   v.object({
@@ -134,7 +133,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   if (!result.success) {
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: result.issues,
         },
@@ -148,14 +147,13 @@ export async function action({ request, params: { list }, context }: Route.Actio
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
     p_payload: result.output,
-    p_intent: submission.intent ?? null,
     p_mutated_at: updatedAt,
   });
 
   if (rpcError) {
     console.error("Error mutating list:", rpcError);
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "Failed to update list. Please try again." }],
         },
@@ -168,7 +166,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
   if (!rpcResult.success) {
     console.error("Unexpected mutate_list payload:", rpcData);
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "Failed to update list. Please try again." }],
         },
@@ -178,7 +176,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   if (!rpcResult.output.ok) {
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "List not found" }],
         },
@@ -186,7 +184,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     };
   }
 
-  const toAdd = isAddItemIntent(result.output["new-submit"]);
+  const toAdd = Boolean(result.output.new);
 
   const allItems = rpcResult.output.items;
 

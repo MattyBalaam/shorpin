@@ -9,10 +9,14 @@
 #   - scoped e2e tests fail
 # Formatter changes are auto-staged so retries are not needed.
 
-# Non-interactive bash doesn't source ~/.zshrc, where fnm's shell integration
-# lives, so pnpm/node are invisible here even though they resolve in a normal
-# terminal. Fall back to fnm's stable "default" alias dir if not already on PATH.
-if ! command -v pnpm >/dev/null 2>&1 && [ -d "$HOME/.local/share/fnm/aliases/default/bin" ]; then
+# PreToolUse hooks run in a bare subprocess that may not have node/pnpm on
+# PATH (e.g. version managers like fnm/nvm that only activate in a login
+# shell). Prefer fnm's own env (respects any project-pinned version); fall
+# back to fnm's stable "default" alias dir if the fnm command itself isn't
+# reachable either.
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env)"
+elif ! command -v pnpm >/dev/null 2>&1 && [ -d "$HOME/.local/share/fnm/aliases/default/bin" ]; then
   export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
 fi
 

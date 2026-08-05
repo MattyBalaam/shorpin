@@ -14,10 +14,6 @@ export const itemContainer = style({
     "&[data-dismissing=true]": {
       background: vars.palette.error,
     },
-    "&[data-deleting=true]": {
-      opacity: 0.4,
-      transition: "opacity 0.15s ease",
-    },
   },
 });
 

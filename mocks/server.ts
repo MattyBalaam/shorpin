@@ -228,6 +228,13 @@ broadcastEmitter.on("message", (message: BroadcastMessage) => {
 });
 
 function shutdown() {
+  // httpServer.close() waits for existing connections (e.g. an open browser
+  // tab's Realtime websocket) to end on their own, which they may never do —
+  // force everything closed instead so this actually exits.
+  for (const ws of wss.clients) {
+    ws.terminate();
+  }
+  httpServer.closeAllConnections();
   httpServer.close(() => process.exit(0));
 }
 process.on("SIGTERM", shutdown);
