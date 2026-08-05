@@ -16,6 +16,19 @@ This is partly for me and my friends to use (product need), but also for me to g
 - [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
 
+## Environment Files
+
+Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
+
+| File                                                    | Mode      | Used by                                         | Notes                                                                                                                   |
+| ------------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
+| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
+| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
+| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
+
+`.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.test.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
+
 ## Development Workflow
 
 - Run `pnpm verify` before opening a PR or asking an agent to commit. It applies formatting, runs lint, runs typecheck, then confirms formatting is clean with `pnpm fmt:check`.
