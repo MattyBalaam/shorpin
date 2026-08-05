@@ -4,6 +4,13 @@
 # Gives Claude immediate feedback on type errors, lint issues, and formatting.
 #
 
+# Non-interactive bash doesn't source ~/.zshrc, where fnm's shell integration
+# lives, so pnpm/node are invisible here even though they resolve in a normal
+# terminal. Fall back to fnm's stable "default" alias dir if not already on PATH.
+if ! command -v pnpm >/dev/null 2>&1 && [ -d "$HOME/.local/share/fnm/aliases/default/bin" ]; then
+  export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
+fi
+
 block() {
   printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","decision":"block","reason":"%s"}}' "$1"
   exit 0

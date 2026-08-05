@@ -45,7 +45,7 @@ These secrets are not baked into the image and must be set in Coolify's **Enviro
 ## How deployments work after setup
 
 ```
-git push master
+git push main
   → GitHub Actions runs CI (test, e2e, e2e-supabase)
   → on success: builds Docker image, pushes to ghcr.io/mattybalaam/shorpin:latest
   → calls COOLIFY_WEBHOOK_URL
