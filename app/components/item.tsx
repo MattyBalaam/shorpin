@@ -1,12 +1,7 @@
-import { type FieldMetadata, useFormData, useIntent } from "@conform-to/react/future";
-import { type PointerEventHandler, type RefObject, useRef } from "react";
+import { type FieldMetadata, useFormData } from "@conform-to/react/future";
+import { type PointerEventHandler } from "react";
 import { useNavigation } from "react-router";
 import { getFirstLink } from "~/lib/extract-link";
-import {
-  deleteItemIdFromIntent,
-  deleteItemIntent,
-  isDeleteItemIntent,
-} from "~/routes/list/intents";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
@@ -15,10 +10,9 @@ export interface ItemRenderProps {
   fieldsetMetadata: FieldMetadata<{ id: string; value: string }>;
   edited: boolean;
   isNew: boolean;
-  deleteButtonRef: RefObject<HTMLButtonElement | null>;
   isDismissing: boolean;
   onDragHandlePointerDown: PointerEventHandler<HTMLSpanElement>;
-  onDelete?: (value: string) => void;
+  onRequestDelete: () => void;
   reorderable?: boolean;
 }
 
@@ -27,18 +21,14 @@ export function Item({
   fieldsetMetadata,
   edited,
   isNew,
-  deleteButtonRef,
   isDismissing,
   onDragHandlePointerDown,
-  onDelete,
+  onRequestDelete,
   reorderable,
 }: ItemRenderProps) {
   const navigation = useNavigation();
 
   const fieldset = fieldsetMetadata.getFieldset();
-  const intentDispatcher = useIntent<{ "delete-item": typeof deleteItemIntent }>(
-    fieldset.value.formId,
-  );
   const defaultValue = fieldset.value.defaultValue ?? "";
   const currentValue =
     useFormData(
@@ -47,28 +37,13 @@ export function Item({
       { fallback: defaultValue },
     ) ?? defaultValue;
 
-  const intent = navigation.formData?.get("__INTENT__") as string | null;
-
-  // Persist the last known intent through the full navigation cycle.
-  // navigation.formData (and therefore intent) is only populated during
-  // "submitting" — it becomes null during "loading". Without this ref,
-  // isSavingEdit incorrectly flips true for any edited item while a delete
-  // navigates through its loading phase.
-  const lastIntentRef = useRef<string | null>(null);
-  if (navigation.state === "submitting") {
-    lastIntentRef.current = intent;
-  } else if (navigation.state === "idle") {
-    lastIntentRef.current = null;
-  }
-  const effectiveIntent = navigation.state === "submitting" ? intent : lastIntentRef.current;
   const firstLink = getFirstLink(currentValue);
 
-  const isDeleting =
-    navigation.state === "submitting" &&
-    deleteItemIdFromIntent(intent) === (fieldset.id.defaultValue ?? "");
-
-  const isSavingEdit =
-    edited && navigation.state !== "idle" && !isDeleteItemIntent(effectiveIntent);
+  // Delete is committed locally (intent.remove) only once its exit animation
+  // finishes, so by the time any submission is in flight for this row it's
+  // already unmounted — any in-flight submission still showing this row is
+  // an edit save, never a delete.
+  const isSavingEdit = edited && navigation.state !== "idle";
 
   const autoResize = (element: HTMLTextAreaElement) => {
     const startHeight = element.offsetHeight;
@@ -90,7 +65,6 @@ export function Item({
         .filter(Boolean)
         .join(" ")}
       data-dismissing={isDismissing}
-      data-deleting={isDeleting}
       data-new={isNew}
     >
       <div className={styles.item}>
@@ -193,16 +167,7 @@ export function Item({
           <Button
             className={reorderable ? styles.deleteReorderable : styles.tick}
             type="button"
-            ref={deleteButtonRef}
-            // Fires for the real click and for the swipe path (which calls
-            // deleteButtonRef.current?.click()). Captures the deleted value so
-            // the parent can offer a browser-only "recreate last deleted", then
-            // dispatches the delete-item intent (id as a transport arg, since
-            // Conform resolves custom intents by exact type name).
-            onClick={() => {
-              onDelete?.(fieldset.value.defaultValue ?? "");
-              intentDispatcher["delete-item"](fieldset.id.defaultValue ?? "");
-            }}
+            onClick={onRequestDelete}
           >
             <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
             {reorderable ? "✕" : "☑️"}

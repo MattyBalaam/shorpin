@@ -104,6 +104,21 @@ vars.palette.secondary; // Secondary color
 - Co-located styles using Vanilla Extract
 - Conform for form validation and state management
 
+### List Mutations (Add/Delete)
+
+The list route (`app/routes/list/list.tsx`, `list-legacy.tsx`) does **not** use Conform's `__INTENT__`/`intents:` custom-intent system for add-item or delete-item. Conform's formal intent handlers always call `preventDefault()` for any named intent — only a bare `type: 'submit'` submission ever reaches the network — so anything routed through `__INTENT__` for a server mutation silently never fires (see PR #64 for the full investigation).
+
+Instead:
+
+- **Add** is signalled purely by a non-empty `new` field on an ordinary submit. The server (`mutate_list` RPC, and its mock in `mocks/api/rest/v1/list_items.ts`) inserts whenever that field is present — no intent needed.
+- **Delete** is inferred server-side by diffing the submitted `items[]` array against the DB: any row that's currently active but missing from the array gets marked deleted. The client already submits the full items array on every request (edits/reorders rely on this too), so this needed no new payload shape.
+- Conform itself is still used for schema validation and its **built-in** array intents (`intent.update`/`intent.remove`, used by `reorderViaConform`/`removeViaConform` in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts)) — only the custom named-intent layer was removed.
+
+**Delete sequencing matters:** shrinking Conform's tracked items array renumbers every later item's field name (e.g. `items[2]` becomes `items[1]`). If that happens while the outgoing row's `<input>`s are still mid-exit-animation, two inputs can briefly share one name and corrupt the submission — which the diff-based delete would read as "delete everything missing," not just a cosmetic glitch. `items.tsx`'s `ReorderableItem` closes this two ways:
+
+- It never calls `intent.remove()` until the row's own exit fade has actually finished (`handleDeleteClick`/`handleDragEnd`'s fling both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already faded out.
+- `Reorder.Item`'s `exit` transition is set to `duration: 0`. Without that, `AnimatePresence` plays a _second_, independent exit animation once the item is removed from the array — keeping the same stale, soon-to-be-renumbered node mounted for another full animation cycle and reopening the exact race the first fix was meant to close. There's nothing left to animate at that point (the manual fade already handled the visible part), so this exit is instant.
+
 ### Authentication (Supabase)
 
 The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:

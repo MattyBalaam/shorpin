@@ -210,7 +210,6 @@ export type Database = {
       };
       mutate_list: {
         Args: {
-          p_intent: string | null;
           p_list_slug: string;
           p_mutated_at: number;
           p_payload: Json;

@@ -195,7 +195,7 @@ test("own changes do not trigger the updated-by-another-user notification", asyn
     await openList(ownerPage, "shopping");
     await openList(collabPage, "shopping");
 
-    await ownerPage.getByLabel("New item").fill("Butter");
+    await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Anchor timing on actual broadcast delivery: the collaborator sees it...
@@ -231,9 +231,9 @@ test("item added by collaborator appears as unread for owner on home page", asyn
 
     // Collab adds a new item to the same list
     await openList(collabPage, "shopping");
-    await collabPage.getByLabel("New item").fill("Butter");
+    await collabPage.getByLabel("New item").fill("Margarine");
     await collabPage.getByRole("button", { name: "Add" }).click();
-    await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
 
     // Owner refreshes home — the new item's updated_at is after owner's viewed_at
     await ownerPage.reload();
@@ -261,13 +261,15 @@ test("new item is marked in the list since last opening", async ({ browser, ctx 
     await expect(ownerPage.getByText(/unread/)).not.toBeVisible();
 
     await openList(collabPage, "shopping");
-    await collabPage.getByLabel("New item").fill("Butter");
+    await collabPage.getByLabel("New item").fill("Margarine");
     await collabPage.getByRole("button", { name: "Add" }).click();
-    await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
 
     await openList(ownerPage, "shopping");
     await expect(
-      ownerPage.locator('[data-new="true"]').filter({ has: ownerPage.getByLabel("Edit Butter") }),
+      ownerPage
+        .locator('[data-new="true"]')
+        .filter({ has: ownerPage.getByLabel("Edit Margarine") }),
     ).toHaveCount(1);
     await expect(
       ownerPage.locator('[data-new="true"]').filter({ has: ownerPage.getByLabel("Edit Milk") }),
@@ -294,13 +296,13 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
     await openList(collabPage, "shopping");
 
     // Owner adds a new item
-    await ownerPage.getByLabel("New item").fill("Butter");
+    await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Collab should receive the broadcast and see the notification
     await expect(collabPage.getByText("List updated by another user")).toBeVisible();
     // And the new item should appear after revalidation
-    await expect(collabPage.getByLabel("Edit Butter")).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
   } finally {
     await ownerContext.close();
     await collabContext.close();

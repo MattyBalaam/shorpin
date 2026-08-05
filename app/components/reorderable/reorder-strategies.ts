@@ -46,6 +46,42 @@ export function reorderViaConform({
   };
 }
 
+// Minimal structural type for Conform's `intent` so we don't couple to its
+// internals — we only ever call `remove`.
+interface RemoveIntent {
+  remove: (options: { name: string; index: number }) => void;
+}
+
+/**
+ * Persist a delete via a Conform-managed form: shrink the items field, then
+ * submit. Callers must only invoke this once the item's exit animation has
+ * already removed it from the DOM — shrinking the array any earlier races
+ * the animation renumbering a sibling into the outgoing node's still-mounted
+ * name (see items.tsx's ReorderableItem for the animate-then-remove sequencing
+ * this depends on).
+ */
+export function removeViaConform({
+  fieldName,
+  intent,
+  submit,
+  formRef,
+}: {
+  fieldName: string;
+  intent: RemoveIntent;
+  submit: SubmitFunction;
+  formRef: RefObject<HTMLFormElement | null>;
+}) {
+  return function onRemove(index: number) {
+    intent.remove({ name: fieldName, index });
+    // Wait for React to flush intent.remove() before submitting.
+    requestAnimationFrame(() => {
+      if (formRef.current) {
+        submit(formRef.current);
+      }
+    });
+  };
+}
+
 /**
  * Persist via a freshly-built FormData submission carrying an intent and the
  * ordered ids (used by routes without a Conform field for the list, e.g. home).

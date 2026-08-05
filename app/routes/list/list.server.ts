@@ -6,7 +6,6 @@ import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
 import { type Items, sortData, zItems, zList } from "./data";
-import { ADD_ITEM_INTENT, deleteItemIdFromIntent } from "./intents";
 
 const zMutateListRpcResult = v.union([
   v.object({
@@ -134,7 +133,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   if (!result.success) {
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: result.issues,
         },
@@ -145,23 +144,16 @@ export async function action({ request, params: { list }, context }: Route.Actio
   const supabase = context.get(supabaseContext);
   await requireUser(supabase);
 
-  // mutate_list still expects the legacy "delete-item-<uuid>" wire format;
-  // translate Conform's dispatcher-serialized delete-item("<uuid>") back to
-  // it here so the SQL function stays unaware of Conform's own serialization.
-  const deleteId = deleteItemIdFromIntent(submission.intent);
-  const rpcIntent = deleteId ? `delete-item-${deleteId}` : submission.intent;
-
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
     p_payload: result.output,
-    p_intent: rpcIntent ?? null,
     p_mutated_at: updatedAt,
   });
 
   if (rpcError) {
     console.error("Error mutating list:", rpcError);
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "Failed to update list. Please try again." }],
         },
@@ -174,7 +166,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
   if (!rpcResult.success) {
     console.error("Unexpected mutate_list payload:", rpcData);
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "Failed to update list. Please try again." }],
         },
@@ -184,7 +176,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   if (!rpcResult.output.ok) {
     return {
-      result: report(submission, {
+      lastResult: report(submission, {
         error: {
           issues: [{ message: "List not found" }],
         },
@@ -192,7 +184,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     };
   }
 
-  const toAdd = submission.intent === ADD_ITEM_INTENT;
+  const toAdd = Boolean(result.output.new);
 
   const allItems = rpcResult.output.items;
 

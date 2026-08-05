@@ -9,6 +9,11 @@ block() {
   exit 0
 }
 
+# PostToolUse hooks run in a bare subprocess that may not have node/pnpm on
+# PATH (e.g. version managers like fnm/nvm that only activate in a login
+# shell). Bootstrap fnm if it's present; no-op otherwise.
+command -v fnm >/dev/null 2>&1 && eval "$(fnm env)"
+
 # 1. Typecheck (fast — uses tsgo / @typescript/native-preview)
 if ! pnpm typecheck >&2; then
   block "Type errors after edit — fix before continuing."

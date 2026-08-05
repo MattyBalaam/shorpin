@@ -9,6 +9,11 @@
 #   - scoped e2e tests fail
 # Formatter changes are auto-staged so retries are not needed.
 
+# PreToolUse hooks run in a bare subprocess that may not have node/pnpm on
+# PATH (e.g. version managers like fnm/nvm that only activate in a login
+# shell). Bootstrap fnm if it's present; no-op otherwise.
+command -v fnm >/dev/null 2>&1 && eval "$(fnm env)"
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 

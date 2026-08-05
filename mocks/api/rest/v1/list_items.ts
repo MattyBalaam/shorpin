@@ -14,10 +14,6 @@ function hasListAccess(userId: string, listId: string) {
   return Boolean(membership);
 }
 
-const ADD_ITEM_INTENT = "add-item";
-const DELETE_PREFIX = "delete-item-";
-const UNDELETE_PREFIX = "undelete-item-";
-
 export const handlers = [
   http.get("*/rest/v1/list_items", async ({ request }) => {
     await delay();
@@ -58,7 +54,6 @@ export const handlers = [
         themePrimary?: string;
         themeSecondary?: string;
       };
-      p_intent?: string | null;
       p_mutated_at: number;
     };
 
@@ -80,19 +75,11 @@ export const handlers = [
       return maxOrder + 1;
     };
 
-    if (body.p_intent === ADD_ITEM_INTENT && body.p_payload.new) {
-      await listItems.create({
-        id: crypto.randomUUID(),
-        list_id: list.id,
-        value: body.p_payload.new,
-        state: "active",
-        sort_order: getNextSortOrder(),
-        updated_at: updatedAt,
-      });
-      hasItemMutation = true;
-    }
+    const submittedIds = new Set<string>();
 
     for (const [index, item] of itemsPayload.entries()) {
+      submittedIds.add(item.id);
+
       const existing = listItems.findFirst((q) => q.where({ id: item.id, list_id: list.id }));
       if (!existing) continue;
       if (existing.value === item.value && existing.sort_order === index) continue;
@@ -107,45 +94,46 @@ export const handlers = [
       hasItemMutation = true;
     }
 
-    const intent = body.p_intent ?? "";
+    // Anything active in the mock DB but missing from the submitted array was
+    // removed client-side (see Item's delete button) — mark it deleted. This
+    // must run before the add-insert below: the newly-added item obviously
+    // isn't in the submitted array either, and would otherwise look deleted
+    // in the very same request that created it.
+    const activeItems = listItems.findMany((q) => q.where({ list_id: list.id, state: "active" }));
+    const removedItems = activeItems.filter((item) => !submittedIds.has(item.id));
 
-    if (intent.startsWith(UNDELETE_PREFIX)) {
-      const undeleteId = intent.slice(UNDELETE_PREFIX.length);
-      const existing = listItems.findFirst((q) => q.where({ id: undeleteId, list_id: list.id }));
-      if (existing) {
-        await listItems.update((q) => q.where({ id: undeleteId }), {
-          data(draft) {
-            draft.state = "active";
-            draft.sort_order = getNextSortOrder();
-            draft.updated_at = updatedAt;
-          },
-        });
-        hasItemMutation = true;
-      }
-    }
-
-    if (intent.startsWith(DELETE_PREFIX)) {
-      const deleteId = intent.slice(DELETE_PREFIX.length);
-      const existing = listItems.findFirst((q) => q.where({ id: deleteId, list_id: list.id }));
-      if (existing) {
-        await listItems.update((q) => q.where({ id: deleteId }), {
+    if (removedItems.length > 0) {
+      for (const item of removedItems) {
+        await listItems.update((q) => q.where({ id: item.id }), {
           data(draft) {
             draft.state = "deleted";
             draft.updated_at = updatedAt;
           },
         });
-        hasItemMutation = true;
+      }
+      hasItemMutation = true;
 
-        const deletedItems = listItems
-          .findMany((q) => q.where({ list_id: list.id, state: "deleted" }))
-          .sort((a, b) => b.updated_at - a.updated_at);
+      const deletedItems = listItems
+        .findMany((q) => q.where({ list_id: list.id, state: "deleted" }))
+        .sort((a, b) => b.updated_at - a.updated_at);
 
-        if (deletedItems.length > 10) {
-          for (const staleItem of deletedItems.slice(10)) {
-            listItems.delete((q) => q.where({ id: staleItem.id }));
-          }
+      if (deletedItems.length > 10) {
+        for (const staleItem of deletedItems.slice(10)) {
+          listItems.delete((q) => q.where({ id: staleItem.id }));
         }
       }
+    }
+
+    if (body.p_payload.new) {
+      await listItems.create({
+        id: crypto.randomUUID(),
+        list_id: list.id,
+        value: body.p_payload.new,
+        state: "active",
+        sort_order: getNextSortOrder(),
+        updated_at: updatedAt,
+      });
+      hasItemMutation = true;
     }
 
     if (body.p_payload.themePrimary && body.p_payload.themeSecondary) {
