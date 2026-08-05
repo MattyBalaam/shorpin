@@ -140,12 +140,31 @@ export default function App() {
     [pathname],
   );
 
-  useEffect(function unregisterStaleServiceWorkers() {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
+  useEffect(function manageServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+
+    // Clean up any pre-existing registration that isn't our current SW
+    // (e.g. the splash-screen SW removed in 4d22c02, still registered in
+    // some returning users' browsers) — but leave our own alone, unlike the
+    // old unconditional unregister-everything effect this replaces, which
+    // would have killed this SW on every load too.
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        const scriptUrl =
+          registration.active?.scriptURL ??
+          registration.installing?.scriptURL ??
+          registration.waiting?.scriptURL;
+        if (scriptUrl && !scriptUrl.endsWith("/sw.js")) {
           registration.unregister();
         }
+      }
+    });
+
+    // Only registered for real builds — vite-plugin-pwa's devOptions.enabled
+    // is false, so there's no compiled sw.js to register under `pnpm dev`.
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.error("Service worker registration failed", error);
       });
     }
   }, []);

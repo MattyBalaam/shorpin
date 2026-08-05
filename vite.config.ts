@@ -5,6 +5,7 @@ import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 import babel from "@rolldown/plugin-babel";
 import devtoolsJson from "vite-plugin-devtools-json";
+import { VitePWA } from "vite-plugin-pwa";
 
 const sentryConfig: SentryReactRouterBuildOptions = {
   org: process.env.SENTRY_ORG,
@@ -61,6 +62,21 @@ export default defineConfig((config) => {
       babel({ plugins: ["babel-plugin-react-compiler"] }),
       reactRouter(),
       sentryReactRouter(sentryConfig, config),
+      VitePWA({
+        strategies: "injectManifest",
+        srcDir: "app",
+        filename: "sw.ts",
+        outDir: "build/client",
+        injectManifest: {
+          // Hashed JS/CSS/font assets only — never precache route HTML,
+          // it's per-user/SSR and would go stale or leak data across
+          // accounts (see app/sw.ts's navigation handler and README.md).
+          globPatterns: ["**/*.{js,css,woff2}"],
+        },
+        manifest: false, // public/manifest.webmanifest is already hand-maintained
+        injectRegister: false, // registered manually in root.tsx (needs PROD-only gating)
+        devOptions: { enabled: false }, // don't run under `pnpm dev`/mock — SW only matters for real builds
+      }),
       ...(mode === "analyse"
         ? [
             visualizer({
