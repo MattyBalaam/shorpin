@@ -168,15 +168,83 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
 
+  // Reconnect sync fetches fresh server state before rebasing and
+  // resubmitting (so it doesn't resurrect anything changed concurrently by
+  // another device) — wait for that resubmission to actually land before
+  // reloading, rather than just the "syncing" toast, since a full reload
+  // aborts any request still in flight.
+  const syncSubmitted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+
   await context.setOffline(false);
 
   // onOnline fires: resubmit persists the local edits, indicator clears
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
   await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
 
   // The offline item must survive a full reload — i.e. it reached the server
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
+test("a concurrent addition from another device survives reconnect sync", async ({
+  browser,
+  ctx,
+}) => {
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await openList(ownerPage, "shopping");
+
+    await ownerContext.setOffline(true);
+    await expect(ownerPage.getByText("Offline", { exact: true })).toBeVisible();
+
+    // Owner deletes Milk while offline — a pure edit/delete, no addition, so
+    // this isolates the concurrency behaviour from mutate_list's "only the
+    // most recent offline addition survives" limitation (see the comment on
+    // performRebaseSync in list.tsx).
+    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+
+    // Meanwhile, another device (online) adds an item to the same list.
+    // Replaying the owner's stale full-array snapshot naively would make
+    // mutate_list treat Margarine as "not in what I submitted" and
+    // soft-delete it — this is exactly the bug rebaseListItems exists to
+    // avoid.
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
+
+    const syncSubmitted = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+    );
+
+    await ownerContext.setOffline(false);
+    await expect(ownerPage.getByText("Back online - syncing changes")).toBeVisible();
+    await syncSubmitted;
+    await expect(ownerPage.getByText("Offline", { exact: true })).not.toBeVisible();
+
+    // Reload to confirm both changes actually reached the server: the
+    // collaborator's concurrent addition survived, and the owner's own
+    // offline deletion was applied.
+    await openList(ownerPage, "shopping");
+    await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
 });
 
 test("own changes do not trigger the updated-by-another-user notification", async ({

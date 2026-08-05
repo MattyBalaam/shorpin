@@ -11,18 +11,16 @@ export interface HomeSnapshot<TListItem = unknown> {
   cachedAt: number;
 }
 
-export interface ListSnapshot {
+export interface ListSnapshot<TLoaderData = unknown> {
   slug: string;
   listId: string;
-  name: string;
-  themePrimary?: string;
-  themeSecondary?: string;
-  /** Last confirmed-from-server item state, frozen the moment we go offline. */
+  /** Last successful loader payload, cached verbatim for offline reads. */
+  serverData: TLoaderData;
+  /** id/value projection of serverData's items, frozen the moment we go offline. */
   baseline: ListItemRef[];
   baselineFetchedAt: number;
   /** Net local edits — what we'd submit right now if asked to. */
   desired: ListItemRef[];
-  newItemIds: string[];
   cachedAt: number;
 }
 
@@ -54,17 +52,21 @@ export async function putHomeSnapshot<TListItem>(snapshot: HomeSnapshot<TListIte
   });
 }
 
-export async function getListSnapshot(slug: string): Promise<ListSnapshot | undefined> {
+export async function getListSnapshot<TLoaderData>(
+  slug: string,
+): Promise<ListSnapshot<TLoaderData> | undefined> {
   return tx(STORES.listSnapshots, "readonly", (transaction) =>
     requestToPromise(
       transaction.objectStore(STORES.listSnapshots).get(slug) as IDBRequest<
-        ListSnapshot | undefined
+        ListSnapshot<TLoaderData> | undefined
       >,
     ),
   );
 }
 
-export async function putListSnapshot(snapshot: ListSnapshot): Promise<void> {
+export async function putListSnapshot<TLoaderData>(
+  snapshot: ListSnapshot<TLoaderData>,
+): Promise<void> {
   await tx(STORES.listSnapshots, "readwrite", (transaction) => {
     transaction.objectStore(STORES.listSnapshots).put(snapshot);
   });
