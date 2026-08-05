@@ -132,6 +132,26 @@ Instead:
 - It never calls `intent.remove()` until the row's own exit fade has actually finished (`handleDeleteClick`/`handleDragEnd`'s fling both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already faded out.
 - `Reorder.Item`'s `exit` transition is set to `duration: 0`. Without that, `AnimatePresence` plays a _second_, independent exit animation once the item is removed from the array — keeping the same stale, soon-to-be-renumbered node mounted for another full animation cycle and reopening the exact race the first fix was meant to close. There's nothing left to animate at that point (the manual fade already handled the visible part), so this exit is instant.
 
+### Offline / Local-first (Home + List)
+
+The home (`/`) and list (`/lists/:list`) routes work offline: reads are served from a local cache, writes queue locally and sync once reconnected, and the app shell itself boots from a service worker cache with zero network. Other routes (auth, sign-ups, config) are online-only.
+
+**Why not a service worker that fabricates `action` responses:** React Router 8's `.data` protocol encodes loader/action payloads with a vendored, unversioned `turbo-stream` serializer (`node_modules/react-router/dist/*/vendor/turbo-stream-v2/`), not JSON. A service worker hand-constructing that shape would be brittle against any React Router version bump and would duplicate logic that already works one layer up. Instead, offline handling lives in each route's `clientLoader`/`clientAction` — React Router's native extension point, which runs in JS _before_ any network request is attempted — backed by IndexedDB for durability across reloads. The service worker's job is narrower: precache the app shell/static assets, and act as a best-effort reliability backstop (via Background Sync) for draining the mutation queue.
+
+**IndexedDB (`shorpin-offline`, v1)** — three object stores, accessed through `app/lib/offline-store.client.ts`:
+
+- `home-cache` — singleton snapshot of the lists-of-lists view, replacing what used to be a `localStorage` cache.
+- `list-snapshots` (keyed by slug) — a `baseline` (last confirmed-from-server item state, frozen the moment the app goes offline) alongside `desired` (net local edits). Keeping both is what makes reconnect sync correct rather than just "replay the last thing we sent."
+- `mutation-queue` — durable FIFO of queued submissions, serialized as `[key, value][]` pairs (not a plain object — `FormData` isn't structured-clone-safe, and some forms repeat a key, e.g. `list-order`, which an object would collapse).
+
+A small hand-rolled promisifying wrapper (`app/lib/idb.client.ts`) is used instead of a dependency like `idb` — the schema is a single version with only get/put/cursor/index operations, well inside "the platform is fine here."
+
+**Reconnect sync — why list mutations need a rebase, not a replay:** `list.server.ts`'s `action` calls a single Postgres RPC, `mutate_list`, which diffs the _entire submitted `items[]` array_ against live DB rows — anything active in the DB but missing from the submitted array gets soft-deleted. Blindly replaying a stale offline-queued snapshot is indistinguishable, server-side, from "the user deleted everything they didn't type" — so if another device adds an item while this one is offline, a naive replay would resurrect-delete it. To avoid that, reconnect first revalidates to get fresh server state, then computes a bounded three-way merge (`app/lib/offline-merge.ts`'s `rebaseListItems`, given `baseline`/`desired`/`fresh`): concurrent additions/edits by other devices survive by default; our own deletions and edits win only for the specific ids we touched; only our own reordering overrides relative order. The rebased result is submitted as a single POST — collapsing the whole offline session into one request, since `mutate_list` is idempotent on final state anyway.
+
+Home's list-reordering doesn't need this treatment: it updates `sort_order` per-row directly (no diff-against-submitted-array), so it structurally can't resurrect or delete anything — last-write-wins is correct there, not just simpler. List creation is append-only and already de-duplicates slugs server-side, so it just replays in order.
+
+**Service worker (`app/sw.ts`, via `vite-plugin-pwa`'s `injectManifest` strategy):** precaches hashed static assets (`generateSW`/hand-rolling a precache list was ruled out — hashed chunk filenames change every build, so a hand-maintained list goes stale on the next deploy, which is exactly the kind of build-time problem the platform can't solve on its own). Navigation requests fall back to a static offline shell when the network is unavailable. Every POST and every `.data` GET passes straight through untouched — the service worker never participates in React Router's wire protocol. It also listens for a Background Sync event as a best-effort backstop for draining simple queued mutations (list creation, list reordering) even if the tab has closed; this has no effect on Safari/iOS, where the `online` event listener (already the primary sync trigger everywhere) remains the only mechanism.
+
 ### Authentication (Supabase)
 
 The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:
