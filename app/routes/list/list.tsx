@@ -501,6 +501,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // id is now missing from the submitted array (see mutate_list).
   const onRemove = removeViaConform({
     fieldName: fields.items.name,
+    items: defaultValue.items,
     intent,
     submit,
     formRef,

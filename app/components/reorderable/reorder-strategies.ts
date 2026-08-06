@@ -55,30 +55,64 @@ interface RemoveIntent {
 /**
  * Persist a delete via a Conform-managed form: shrink the items field, then
  * submit. Callers must only invoke this once the item's exit animation has
- * already removed it from the DOM — shrinking the array any earlier races
- * the animation renumbering a sibling into the outgoing node's still-mounted
- * name (see items.tsx's ReorderableItem for the animate-then-remove sequencing
- * this depends on).
+ * already removed it from the DOM.
+ *
+ * Every item's live value is snapshotted from the DOM *before* intent.remove()
+ * runs — at that point every field name still matches `items` 1:1, since
+ * nothing has been renumbered yet. This preserves any unsaved edit on another
+ * row (the whole array — not just the one being deleted — gets persisted by
+ * this same submission; see integration-tests/list.spec.ts's "edited icon"
+ * test) while sidestepping a real race: AnimatePresence unmounts the outgoing
+ * row on its own schedule, independent of Conform's synchronous array-shrink,
+ * so a read taken *after* intent.remove() can still find the just-vacated
+ * field name claimed by both the stale outgoing node and the sibling
+ * renumbered into it, corrupting whichever the browser serializes last
+ * (observed in CI as the recreated item's slot silently losing its id and
+ * value — see the same file's recreate test). Reading first and mutating
+ * second avoids that window entirely rather than racing it.
  */
 export function removeViaConform({
   fieldName,
+  items,
   intent,
   submit,
   formRef,
 }: {
   fieldName: string;
+  items: Array<{ id: string; value: string }>;
   intent: RemoveIntent;
   submit: SubmitFunction;
   formRef: RefObject<HTMLFormElement | null>;
 }) {
   return function onRemove(index: number) {
+    const formElement = formRef.current;
+    if (!formElement) {
+      intent.remove({ name: fieldName, index });
+      return;
+    }
+
+    const formData = new FormData(formElement);
+    const liveValues = items.map(
+      (item, i) => String(formData.get(`${fieldName}[${i}].value`) ?? "") || item.value,
+    );
+
     intent.remove({ name: fieldName, index });
-    // Wait for React to flush intent.remove() before submitting.
-    requestAnimationFrame(() => {
-      if (formRef.current) {
-        submit(formRef.current);
+
+    const itemFieldPattern = new RegExp(`^${fieldName}\\[\\d+\\]\\.(id|value)$`);
+    for (const key of Array.from(formData.keys())) {
+      if (itemFieldPattern.test(key)) {
+        formData.delete(key);
       }
+    }
+    let position = 0;
+    items.forEach((item, i) => {
+      if (i === index) return;
+      formData.append(`${fieldName}[${position}].id`, item.id);
+      formData.append(`${fieldName}[${position}].value`, liveValues[i]);
+      position += 1;
     });
+
+    submit(formData, { method: "POST" });
   };
 }
 
