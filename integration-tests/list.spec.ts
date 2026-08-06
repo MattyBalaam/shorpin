@@ -290,7 +290,14 @@ test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flu
 test("a concurrent addition from another device survives reconnect sync", async ({
   browser,
   ctx,
-}) => {
+}, testInfo) => {
+  // Two browser contexts, two logins, two offline round-trips — inherently
+  // slower than most tests here, and has been observed to butt up against
+  // the default per-test timeout under full-suite CI load, surfacing as a
+  // misleading "Target page has been closed" once Playwright tears down
+  // the contexts mid-test rather than a clear timeout error.
+  testInfo.slow();
+
   const ownerContext = await browser.newContext({ baseURL });
   const collabContext = await browser.newContext({ baseURL });
   try {
