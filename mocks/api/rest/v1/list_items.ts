@@ -50,6 +50,7 @@ export const handlers = [
       p_list_slug: string;
       p_payload: {
         new?: string;
+        newItems?: string[];
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
@@ -129,6 +130,20 @@ export const handlers = [
         id: crypto.randomUUID(),
         list_id: list.id,
         value: body.p_payload.new,
+        state: "active",
+        sort_order: getNextSortOrder(),
+        updated_at: updatedAt,
+      });
+      hasItemMutation = true;
+    }
+
+    for (const value of body.p_payload.newItems ?? []) {
+      if (!value) continue;
+
+      await listItems.create({
+        id: crypto.randomUUID(),
+        list_id: list.id,
+        value,
         state: "active",
         sort_order: getNextSortOrder(),
         updated_at: updatedAt,

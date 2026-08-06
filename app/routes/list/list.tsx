@@ -235,19 +235,34 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // defined after useForm) without disturbing what's currently on screen.
   const syncFetcher = useFetcher<typeof clientLoader>();
 
-  // useIsOnline fires onOnline only on a genuine offline→online transition,
-  // driven off the shared navigator.onLine store. It only kicks off the
-  // fresh-data fetch here — the actual rebase-and-resubmit happens once
-  // syncFetcher resolves, in the effect below.
-  const isOnline = useIsOnline({
-    onOnline: async () => {
-      const queued = await listQueuedMutations(listRouteKey(slug));
-      if (queued.length === 0) return;
+  // Kicks off the fresh-data fetch when there's a queued edit to rebase —
+  // the actual rebase-and-resubmit happens once syncFetcher resolves, in
+  // the effect below. Wrapped in useEffectEvent so it can be triggered both
+  // by a genuine offline→online transition (the common case, via onOnline)
+  // and once on mount (covers a queue left behind by a stale-session
+  // redirect mid-sync — see performRebaseSync's route check below — where
+  // no further online/offline transition occurs once the user
+  // re-authenticates and comes back).
+  const syncIfPending = useEffectEvent(async () => {
+    const queued = await listQueuedMutations(listRouteKey(slug));
+    if (queued.length === 0) return;
 
-      toast.success("Back online - syncing changes");
-      syncFetcher.load(window.location.pathname);
+    toast.success("Back online - syncing changes");
+    syncFetcher.load(window.location.pathname);
+  });
+
+  const isOnline = useIsOnline({
+    onOnline: () => {
+      void syncIfPending();
     },
   });
+
+  useEffect(() => {
+    if (isOnline) void syncIfPending();
+    // Mount-only: retries whatever's already queued, regardless of how it
+    // got left there. Online/offline transitions are covered by onOnline
+    // above.
+  }, []);
 
   // Event response, separated from the subscription so the channel's lifetime
   // depends only on listId — reacting to a message shouldn't be reactive to
@@ -305,18 +320,19 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // clientAction re-queues the resubmission, so this just retries cleanly on
   // the next reconnect.
   //
-  // Additions need special handling: mutate_list only ever creates a new row
-  // from the single `new` field, never from an items[] entry with an
-  // unrecognized id (an offline add's client-generated uuid) — an id it
-  // doesn't recognize is just a no-op there, not an insert. So we rebase
-  // items[] as usual (harmless to include our own fake-id addition rows —
-  // the RPC's delete pass runs *before* its insert pass, so an unmatched id
-  // can't cause a real row to be deleted), and separately carry the most
-  // recent offline addition's value through the `new` field, matching how
-  // recreateLastDeleted below submits a manually-built FormData. If more
-  // than one item was added while offline, only the most recent survives —
-  // the RPC mints one real id per request and we don't round-trip between
-  // additions to learn each one before submitting the next.
+  // Additions need special handling: mutate_list never creates a row from an
+  // items[] entry with an unrecognized id (an offline add's client-generated
+  // uuid) — an id it doesn't recognize is just a no-op there, not an insert.
+  // So we rebase items[] as usual (harmless to include our own fake-id
+  // addition rows — the RPC's delete pass runs *before* its insert passes,
+  // so an unmatched id can't cause a real row to be deleted), and separately
+  // carry every offline addition's value through the `newItems` array field
+  // (mutate_list migration 20260806000000), one real row minted per entry.
+  // `new` (the single-value field the live add-input and recreateLastDeleted
+  // use) is explicitly cleared here — offline additions are carried through
+  // `newItems` instead, and leaving `new` untouched would resubmit whatever
+  // happens to be sitting in the live add-input's DOM snapshot as a phantom
+  // extra add.
   //
   // Guarded against re-entrancy: React Router revalidates every active
   // fetcher (including syncFetcher) after any action submission, so our own
@@ -340,7 +356,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       const freshItems = toItemRefs(freshData.defaultValue.items);
 
       const baselineIds = new Set(baseline.map((item) => item.id));
-      const lastAddition = desired.filter((item) => !baselineIds.has(item.id)).at(-1);
+      const additions = desired.filter((item) => !baselineIds.has(item.id));
       const rebased = rebaseListItems({ baseline, desired, fresh: freshItems });
 
       // Update Conform's local state for immediate visual feedback, but
@@ -367,12 +383,25 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         syncData.append(`items[${index}].id`, item.id);
         syncData.append(`items[${index}].value`, item.value);
       });
-      if (lastAddition) {
-        syncData.set(fields.new.name, lastAddition.value);
-      }
+      syncData.set(fields.new.name, "");
+      additions.forEach((item, index) => {
+        syncData.append(`newItems[${index}]`, item.value);
+      });
 
       try {
         await submit(syncData, { method: "POST" });
+
+        // submit() doesn't throw on a redirected response — React Router's
+        // data router just follows it as a normal completed navigation
+        // (e.g. a stale session bouncing this POST to /login). Checking we
+        // actually stayed on this list is what tells a genuine delivery
+        // apart from a redirect masquerading as one; see
+        // app/lib/mutation-replay.ts for the equivalent check on the raw
+        // fetch()-based replay paths (home.tsx, app/sw.ts).
+        if (window.location.pathname !== href("/lists/:list", { list: slug })) {
+          return;
+        }
+
         // Only drop the queue once the resubmission has actually completed —
         // if we're still offline (or go offline again mid-request), leave it
         // intact so the next reconnect retries automatically.

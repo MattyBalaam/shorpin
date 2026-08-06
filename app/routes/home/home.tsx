@@ -1,5 +1,5 @@
 import { useForm } from "@conform-to/react/future";
-import { Suspense } from "react";
+import { Suspense, useEffect, useEffectEvent } from "react";
 import {
   isRouteErrorResponse,
   type MetaFunction,
@@ -17,6 +17,7 @@ import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import { pairsToFormData } from "~/lib/form-data-codec";
+import { isSuccessfulReplay } from "~/lib/mutation-replay";
 import { dequeueMutations, listQueuedMutations } from "~/lib/offline-store.client";
 
 import type { Route } from "./+types/home";
@@ -65,27 +66,49 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
   // each row's sort_order independently, with no diff-against-submitted-array
   // to resurrect anything) — so queued entries just replay verbatim, in
   // order, same as list.tsx's offline sync did before it needed rebasing.
-  useIsOnline({
-    onOnline: async () => {
-      const queued = await listQueuedMutations("home");
-      if (queued.length === 0) return;
+  //
+  // Wrapped in useEffectEvent so it can be called from two triggers below:
+  // the online transition (the common case) and once on mount (covers a
+  // queue left behind by a stale-session redirect mid-sync — see
+  // isSuccessfulReplay — where no further online/offline transition occurs
+  // once the user re-authenticates and comes back).
+  const syncPendingQueue = useEffectEvent(async () => {
+    const queued = await listQueuedMutations("home");
+    if (queued.length === 0) return;
 
-      toast.success("Back online - syncing changes");
+    toast.success("Back online - syncing changes");
 
-      for (const entry of queued) {
-        try {
-          await fetch(entry.route, { method: "POST", body: pairsToFormData(entry.fields) });
-        } catch {
-          // Went offline again mid-sync — leave what's left queued for the
-          // next reconnect.
-          return;
-        }
-        await dequeueMutations([entry.seq]);
+    for (const entry of queued) {
+      let response: Response;
+      try {
+        response = await fetch(entry.route, {
+          method: "POST",
+          body: pairsToFormData(entry.fields),
+        });
+      } catch {
+        // Went offline again mid-sync — leave what's left queued for the
+        // next reconnect.
+        return;
       }
+      if (!isSuccessfulReplay(response)) return;
+      await dequeueMutations([entry.seq]);
+    }
 
-      revalidate();
+    revalidate();
+  });
+
+  const isOnline = useIsOnline({
+    onOnline: () => {
+      void syncPendingQueue();
     },
   });
+
+  useEffect(() => {
+    if (isOnline) void syncPendingQueue();
+    // Mount-only: retries whatever's already queued, regardless of how it
+    // got left there. Online/offline transitions are covered by onOnline
+    // above.
+  }, []);
 
   return (
     <>

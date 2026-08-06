@@ -61,6 +61,57 @@ test("owner can create a list while offline, synced on reconnect", async ({
   await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
 });
 
+test("a stale-session redirect during reconnect sync doesn't drop a queued list, and it flushes once retried", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  await context.setOffline(true);
+  await page.getByLabel("New list").fill("Camping");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible({
+    timeout: 10000,
+  });
+
+  // Home's replay is a raw fetch() to the plain route (see the previous
+  // test's comment on entry.route), not RR's .data protocol, so the real
+  // middleware redirect for a stale session comes back as a genuine 302
+  // with a Location header — fetch() would silently follow that and
+  // resolve "successfully" against /login without isSuccessfulReplay's
+  // redirect: "manual" check (app/lib/mutation-replay.ts).
+  let redirectedPostSeen = false;
+  const isRootPath = (url: URL) => url.pathname === "/";
+  const redirectToLogin: Parameters<typeof page.route>[1] = async (route) => {
+    if (route.request().method() === "POST") {
+      redirectedPostSeen = true;
+      await route.fulfill({ status: 302, headers: { location: "/login" } });
+      return;
+    }
+    await route.continue();
+  };
+  await page.route(isRootPath, redirectToLogin);
+
+  await context.setOffline(false);
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await expect.poll(() => redirectedPostSeen).toBe(true);
+
+  // Redirected-away, not delivered: the pending row must survive rather
+  // than silently vanishing or falsely resolving into a real list link.
+  // fetch() following a redirect never navigates the page itself, so this
+  // assertion (unlike list.tsx's) needs no waitForURL.
+  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
+
+  await page.unroute(isRootPath, redirectToLogin);
+
+  // No further online/offline transition occurs here — only the mount-time
+  // retry (not just onOnline) can pick this queued entry back up.
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
+});
+
 test("owner sees their two lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 

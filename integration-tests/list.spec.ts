@@ -193,6 +193,100 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
 });
 
+test("multiple items added offline all sync to the server on reconnect", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  await page.getByLabel("New item").fill("Offline flour");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline flour")).toBeVisible({ timeout: 10000 });
+
+  await page.getByLabel("New item").fill("Offline sugar");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline sugar")).toBeVisible({ timeout: 10000 });
+
+  const syncSubmitted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+
+  await context.setOffline(false);
+
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
+  await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
+
+  // Both offline additions must survive a full reload — i.e. both actually
+  // reached the server, not just the most recent one. mutate_list previously
+  // only ever inserted a single new row per resync request (see migration
+  // 20260806000000), so before that fix only "Offline sugar" would persist.
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline flour")).toBeVisible();
+  await expect(page.getByLabel("Edit Offline sugar")).toBeVisible();
+});
+
+test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flushes once retried", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await page.getByLabel("New item").fill("Offline butter");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+  // The rebase-and-resubmit sync goes through RR's single-fetch protocol
+  // (submit(), not a raw fetch), so a middleware redirect arrives encoded
+  // as a 204 + X-Remix-Redirect/-Status headers, not a raw 3xx — see
+  // fetchAndDecodeViaTurboStream in react-router's single-fetch client.
+  // This is what supabaseMiddleware's redirect(href("/login")) actually
+  // produces for a stale/unrefreshable session.
+  let redirectedPostSeen = false;
+  await page.route("**/lists/shopping.data", async (route) => {
+    if (route.request().method() === "POST") {
+      redirectedPostSeen = true;
+      await route.fulfill({
+        status: 204,
+        headers: { "X-Remix-Redirect": "/login", "X-Remix-Status": "302" },
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await context.setOffline(false);
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await expect.poll(() => redirectedPostSeen).toBe(true);
+  // React Router follows the redirect as a normal completed navigation.
+  await page.waitForURL("/login");
+
+  await page.unroute("**/lists/shopping.data");
+
+  // Log back in and return — no further online/offline transition occurs
+  // here, so only the mount-time retry (not just onOnline) can pick the
+  // still-queued edit back up.
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+  // Must survive a fresh reload — proves it actually reached the server
+  // this time, not just optimistic local state.
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
 test("a concurrent addition from another device survives reconnect sync", async ({
   browser,
   ctx,
