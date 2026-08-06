@@ -15,6 +15,7 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
+import { toast } from "sonner";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
@@ -163,9 +164,27 @@ export default function App() {
     // Only registered for real builds — vite-plugin-pwa's devOptions.enabled
     // is false, so there's no compiled sw.js to register under `pnpm dev`.
     if (import.meta.env.PROD) {
-      navigator.serviceWorker.register("/sw.js").catch((error) => {
-        console.error("Service worker registration failed", error);
-      });
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          // installing/waiting is only set while a *new* worker is taking
+          // over (first-ever install, or an update after a redeploy) — on
+          // an ordinary page load where the SW is already active and
+          // controlling, both are null and this is a no-op. Surfacing this
+          // is mostly for confirming, without digging into DevTools,
+          // exactly when a rebuilt SW has actually taken over — the
+          // precache/runtime cache it's responsible for isn't usable until
+          // this fires.
+          const worker = registration.installing ?? registration.waiting;
+          worker?.addEventListener("statechange", () => {
+            if (worker.state === "activated") {
+              toast.success("Offline support ready");
+            }
+          });
+        })
+        .catch((error) => {
+          console.error("Service worker registration failed", error);
+        });
     }
   }, []);
 
@@ -173,6 +192,14 @@ export default function App() {
     // Recover from stale/deployed chunk mismatches by clearing Cache Storage
     // and reloading when route module scripts fail to load.
     const handleError = (event: ErrorEvent) => {
+      // A module failing to load while genuinely offline isn't a stale
+      // deployed chunk — it's just the network being down. Clearing caches
+      // here would destroy the offline.html precache and the shorpin-pages
+      // runtime cache (see app/sw.ts) right when they're needed most, and
+      // the reload this triggers can itself fail to load a chunk offline,
+      // re-firing this same handler in a loop.
+      if (!navigator.onLine) return;
+
       if (
         event.message.includes("Error loading route module") ||
         event.message.includes("Importing a module script failed")

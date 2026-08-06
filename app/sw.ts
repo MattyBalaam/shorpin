@@ -5,13 +5,21 @@
 // Router's own wire protocol); offline reads/writes are handled one layer up
 // by each route's clientLoader/clientAction, backed by IndexedDB (see
 // app/lib/offline-store.client.ts). This SW only precaches hashed static
-// assets and provides a fallback shell for navigations made with no network
-// at all, plus a best-effort Background Sync backstop for draining simple
-// queued mutations. See README.md's "Offline / Local-first" section.
+// assets, runtime-caches home/list's rendered HTML (network-first, so a
+// hard reload/cold-open while offline shows the user's own last-seen page
+// instead of a generic message), and provides a fallback shell for
+// navigations made with no network at all and no runtime-cached copy, plus
+// a best-effort Background Sync backstop for draining simple queued
+// mutations. See README.md's "Offline / Local-first" section.
 
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
 import { matchPrecache, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
+import { NetworkFirst } from "workbox-strategies";
 import { pairsToFormData } from "~/lib/form-data-codec";
+import { isSuccessfulReplay } from "~/lib/mutation-replay";
+import { isCacheablePageUrl, PAGE_CACHE_NAME } from "~/lib/page-cache";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -23,12 +31,28 @@ interface SyncEvent extends ExtendableEvent {
 
 precacheAndRoute(self.__WB_MANIFEST);
 
+// Only ever populated with home ("/") and list ("/lists/:list") responses —
+// see isCacheablePageUrl. Cleared on logout (app/routes/auth/logout.tsx)
+// alongside clearAllOfflineData(), since this is per-user SSR HTML.
+const pageCache = new NetworkFirst({
+  cacheName: PAGE_CACHE_NAME,
+  plugins: [
+    new CacheableResponsePlugin({ statuses: [200] }),
+    new ExpirationPlugin({ maxEntries: 50, purgeOnQuotaError: true }),
+  ],
+});
+
 registerRoute(
   ({ request }) => request.mode === "navigate",
-  async ({ request }) => {
+  async (args) => {
+    const { request, url } = args;
     try {
-      return await fetch(request);
+      return isCacheablePageUrl(url.pathname) ? await pageCache.handle(args) : await fetch(request);
     } catch {
+      // Either a plain network failure on a non-cacheable route, or
+      // NetworkFirst exhausted both network and cache (a cacheable route
+      // never visited while online) — same fallback either way.
+      //
       // Not a plain caches.match("/offline.html") — workbox's precache
       // stores non-hashed entries under a cache key with a
       // ?__WB_REVISION__=... query param appended for cache-busting, so a
@@ -114,7 +138,11 @@ async function drainSimpleMutations(): Promise<void> {
 
   for (const entry of queued) {
     try {
-      await fetch(entry.route, { method: "POST", body: pairsToFormData(entry.fields) });
+      const response = await fetch(entry.route, {
+        method: "POST",
+        body: pairsToFormData(entry.fields),
+      });
+      if (!isSuccessfulReplay(response)) return;
       await dequeueMutation(entry.seq);
     } catch {
       // Still offline — stop here, the rest retries on the next sync event

@@ -69,10 +69,14 @@ export default defineConfig((config) => {
         outDir: "build/client",
         injectManifest: {
           // Hashed JS/CSS/font assets, plus the one static HTML file
-          // (offline.html — the SW's navigation fallback). Never route
-          // HTML more broadly than that: real route HTML is per-user/SSR
-          // and would go stale or leak data across accounts if precached
-          // (see app/sw.ts's navigation handler and README.md).
+          // (offline.html — the SW's navigation fallback). Never precache
+          // real route HTML more broadly than that: it's per-user/SSR and
+          // would go stale or leak data across accounts (see
+          // app/sw.ts's navigation handler and README.md). Home/list page
+          // HTML is cached separately, at runtime rather than build time
+          // (Workbox NetworkFirst in app/sw.ts, cleared on logout) — that
+          // doesn't belong in globPatterns since it's populated by the SW's
+          // fetch handler, not precached from this build's output.
           globPatterns: ["**/*.{js,css,woff2}", "offline.html"],
         },
         manifest: false, // public/manifest.webmanifest is already hand-maintained

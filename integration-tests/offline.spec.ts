@@ -50,6 +50,27 @@ test("navigating offline to an uncached route shows the offline fallback shell, 
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
 });
 
+test("hard reload while offline shows the last-cached page, not the generic offline shell", async ({
+  page,
+  context,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  // A real (non-SPA) navigation, so the SW's navigate handler actually sees
+  // it and runtime-caches the response — matches how a hard reload/cold
+  // open reaches the SW, unlike React Router's client-side transitions.
+  await page.goto("/lists/shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "You're offline" })).toHaveCount(0);
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+});
+
 test("an offline edit still queues successfully even when Background Sync is unavailable", async ({
   page,
   context,
