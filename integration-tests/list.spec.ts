@@ -163,20 +163,195 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   await context.setOffline(true);
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
 
-  // Add while offline — the clientAction stores it locally
+  // Add while offline — the clientAction stores it locally. Generous
+  // timeout: under full-suite load this client-side-only step has been
+  // observed occasionally slow, consistent with resource contention rather
+  // than a functional issue — it's instant and 100% reliable in isolation.
   await page.getByLabel("New item").fill("Offline butter");
   await page.getByRole("button", { name: "Add" }).click();
-  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+  // Reconnect sync fetches fresh server state before rebasing and
+  // resubmitting (so it doesn't resurrect anything changed concurrently by
+  // another device) — wait for that resubmission to actually land before
+  // reloading, rather than just the "syncing" toast, since a full reload
+  // aborts any request still in flight.
+  const syncSubmitted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
 
   await context.setOffline(false);
 
   // onOnline fires: resubmit persists the local edits, indicator clears
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
   await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
 
   // The offline item must survive a full reload — i.e. it reached the server
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
+test("multiple items added offline all sync to the server on reconnect", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  await page.getByLabel("New item").fill("Offline flour");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline flour")).toBeVisible({ timeout: 10000 });
+
+  await page.getByLabel("New item").fill("Offline sugar");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline sugar")).toBeVisible({ timeout: 10000 });
+
+  const syncSubmitted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+
+  await context.setOffline(false);
+
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await syncSubmitted;
+  await expect(page.getByText("Offline", { exact: true })).not.toBeVisible();
+
+  // Both offline additions must survive a full reload — i.e. both actually
+  // reached the server, not just the most recent one. mutate_list previously
+  // only ever inserted a single new row per resync request (see migration
+  // 20260806000000), so before that fix only "Offline sugar" would persist.
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline flour")).toBeVisible();
+  await expect(page.getByLabel("Edit Offline sugar")).toBeVisible();
+});
+
+test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flushes once retried", async ({
+  page,
+  ctx,
+  context,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  await context.setOffline(true);
+  await page.getByLabel("New item").fill("Offline butter");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+  // The rebase-and-resubmit sync goes through RR's single-fetch protocol
+  // (submit(), not a raw fetch), so a middleware redirect arrives encoded
+  // as a 204 + X-Remix-Redirect/-Status headers, not a raw 3xx — see
+  // fetchAndDecodeViaTurboStream in react-router's single-fetch client.
+  // This is what supabaseMiddleware's redirect(href("/login")) actually
+  // produces for a stale/unrefreshable session.
+  let redirectedPostSeen = false;
+  await page.route("**/lists/shopping.data", async (route) => {
+    if (route.request().method() === "POST") {
+      redirectedPostSeen = true;
+      await route.fulfill({
+        status: 204,
+        headers: { "X-Remix-Redirect": "/login", "X-Remix-Status": "302" },
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await context.setOffline(false);
+  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
+  await expect.poll(() => redirectedPostSeen).toBe(true);
+  // React Router follows the redirect as a normal completed navigation.
+  await page.waitForURL("/login");
+
+  await page.unroute("**/lists/shopping.data");
+
+  // Log back in and return — no further online/offline transition occurs
+  // here, so only the mount-time retry (not just onOnline) can pick the
+  // still-queued edit back up.
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+  // Must survive a fresh reload — proves it actually reached the server
+  // this time, not just optimistic local state.
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
+test("a concurrent addition from another device survives reconnect sync", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  // Two browser contexts, two logins, two offline round-trips — inherently
+  // slower than most tests here, and has been observed to butt up against
+  // the default per-test timeout under full-suite CI load, surfacing as a
+  // misleading "Target page has been closed" once Playwright tears down
+  // the contexts mid-test rather than a clear timeout error.
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await openList(ownerPage, "shopping");
+
+    await ownerContext.setOffline(true);
+    await expect(ownerPage.getByText("Offline", { exact: true })).toBeVisible();
+
+    // Owner deletes Milk while offline — a pure edit/delete, no addition, so
+    // this isolates the concurrency behaviour from mutate_list's "only the
+    // most recent offline addition survives" limitation (see the comment on
+    // performRebaseSync in list.tsx). Generous timeouts throughout this test:
+    // under full-suite load these client-side/animation-dependent steps have
+    // been observed occasionally slow, consistent with resource contention
+    // rather than a functional issue — reliable and near-instant in isolation.
+    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible({ timeout: 10000 });
+
+    // Meanwhile, another device (online) adds an item to the same list.
+    // Replaying the owner's stale full-array snapshot naively would make
+    // mutate_list treat Margarine as "not in what I submitted" and
+    // soft-delete it — this is exactly the bug rebaseListItems exists to
+    // avoid.
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
+
+    const syncSubmitted = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+    );
+
+    await ownerContext.setOffline(false);
+    await expect(ownerPage.getByText("Back online - syncing changes")).toBeVisible();
+    await syncSubmitted;
+    await expect(ownerPage.getByText("Offline", { exact: true })).not.toBeVisible();
+
+    // Reload to confirm both changes actually reached the server: the
+    // collaborator's concurrent addition survived, and the owner's own
+    // offline deletion was applied.
+    await openList(ownerPage, "shopping");
+    await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
 });
 
 test("own changes do not trigger the updated-by-another-user notification", async ({

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#A9CBB7" />
+    <title>Offline | Shorpin</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        background: #a9cbb7;
+        color: #1a1a1a;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1f2b25;
+          color: #f2f2f2;
+        }
+      }
+
+      main {
+        text-align: center;
+        max-width: 32ch;
+      }
+
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        opacity: 0.8;
+        line-height: 1.5;
+      }
+
+      button {
+        margin-top: 1.5rem;
+        padding: 0.6rem 1.4rem;
+        font-size: 1rem;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        background: #1a1a1a;
+        color: #a9cbb7;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        button {
+          background: #f2f2f2;
+          color: #1f2b25;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>You're offline</h1>
+      <p>
+        Shorpin couldn't reach the network for this page. Lists and items you've already opened stay
+        available offline — try going back, or reconnect and reload.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

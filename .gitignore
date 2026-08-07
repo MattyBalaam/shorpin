@@ -16,3 +16,6 @@ supabase/.temp/
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# mkcert-generated local dev certs (per-machine, contain private keys — see serve:https)
+.certs

@@ -43,6 +43,7 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically be
 | `integration-tests/home*`                                                                         | `integration-tests/home.spec.ts`                                                                           |
 | `integration-tests/list*`                                                                         | `integration-tests/list.spec.ts` + `integration-tests/delete.spec.ts` + `integration-tests/config.spec.ts` |
 | `integration-tests/delete*`                                                                       | `integration-tests/delete.spec.ts`                                                                         |
+| `integration-tests/offline*`                                                                      | `integration-tests/offline.spec.ts`                                                                        |
 | `integration-tests/auth/**`                                                                       | `integration-tests/auth.spec.ts`                                                                           |
 | `integration-tests/sign-ups*`                                                                     | `integration-tests/sign-ups.spec.ts`                                                                       |
 | `integration-tests/*.spec.ts` changed                                                             | That spec                                                                                                  |

@@ -65,27 +65,27 @@ If this fails it means React has not taken over the page within 300ms of navigat
 
 The `ctx` fixture forwards all browser console messages and uncaught page errors to the test runner's stdout, prefixed with `[browser][type]`. On CI these appear in the Actions log alongside the Playwright webServer output (which is piped via `stdout: "pipe"`).
 
-### Service worker (`sw.spec.ts`)
+### Service worker (`offline.spec.ts`)
 
-The SW only registers in production builds (`import.meta.env.PROD`). Since the integration tests use `--mode mock` (which Vite treats as a production build), the SW is active during tests.
+The current SW (`app/sw.ts`) precaches the app shell and falls back to `public/offline.html` for navigations made with no network — see README.md's "Offline / Local-first" section for the full design. It only registers in production-ish builds (`import.meta.env.PROD`); since the integration tests use `--mode mock` (which Vite treats as a production build), it's active during tests, but only for the default (non-`--dev`) build variant — SW-dependent tests don't run under `pnpm test:integration --dev`.
 
-**Simulating a cold start** — `simulateColdStart` uses `context.route()` (not `page.route()`) to delay the first non-navigation, non-poll fetch by 700ms. `page.route()` intercepts the browser's navigate event before the SW sees it; `context.route()` also covers sub-requests the SW makes to the origin, which is the fetch we need to slow. Navigation requests are skipped (via `isNavigationRequest()`) so the SW receives the navigation event immediately and only its own outbound fetch is delayed. Poll requests (identified by the `x-sw-poll` header) are never delayed so the loading page can recover once the SW starts serving real HTML.
+**Background Sync can't be reliably asserted directly** — headless Chromium (including this test environment) commonly disables it outright (`UnknownError: Background Sync is disabled`), independent of `"SyncManager" in window` reporting `true`. `offline-store.client.ts`'s `enqueueMutation` treats the registration call as strictly best-effort for exactly this reason (wrapped in its own try/catch); the test verifies that property — an offline edit still queues successfully — rather than the registration call's own success, which this environment can't guarantee either way.
 
-**SW registration in `beforeEach`** — Each test first does a plain navigation to register and activate the SW (`skipWaiting` + `clients.claim`). It then waits for `navigator.serviceWorker.controller !== null` before setting up any route interceptors. This ensures the SW controls the page before the test exercises its behaviour.
+**Workbox precache cache keys aren't literal URLs** — non-hashed precached entries (like `offline.html`) get a `?__WB_REVISION__=...` query param appended to their cache key for cache-busting. A plain `caches.match("/offline.html")` misses; `app/sw.ts` uses `workbox-precaching`'s `matchPrecache("offline.html")` instead, which resolves this correctly.
 
-**Offline mode** — `context.setOffline(true)` is used for the error-state and retry tests. With no network, the poll requests all fail, exhausting the 30-attempt limit (~6s). These tests are marked `test.slow()` to extend their timeout.
+The per-route offline CRUD specs (list.spec.ts's and home.spec.ts's own offline tests) live in their respective files, not here — `offline.spec.ts` is reserved for assertions that need SW/browser-level state (Service Worker registration, Cache Storage) rather than app UI.
 
 ## Test files
 
-| File               | What it covers                                                       |
-| ------------------ | -------------------------------------------------------------------- |
-| `auth.spec.ts`     | Sign-out flow                                                        |
-| `config.spec.ts`   | Admin config modal — open, view collaborators, add collaborator      |
-| `delete.spec.ts`   | Soft-delete a list via the config modal                              |
-| `home.spec.ts`     | Home page — create list, list visibility per role, admin link counts |
-| `list.spec.ts`     | List detail — display items, add item, delete item with undo         |
-| `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled          |
-| `sw.spec.ts`       | Service worker — cold-start spinner, error state, retry, history     |
+| File               | What it covers                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `auth.spec.ts`     | Sign-out flow                                                                                |
+| `config.spec.ts`   | Admin config modal — open, view collaborators, add collaborator                              |
+| `delete.spec.ts`   | Soft-delete a list via the config modal                                                      |
+| `home.spec.ts`     | Home page — create list, list visibility per role, admin link counts, offline create/reorder |
+| `list.spec.ts`     | List detail — display items, add/delete item, offline sync, concurrent-edit rebase           |
+| `offline.spec.ts`  | Service worker — registration/precache, offline navigation fallback, Background Sync         |
+| `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled                                  |
 
 ## Helpers (`helpers.ts`)
 
