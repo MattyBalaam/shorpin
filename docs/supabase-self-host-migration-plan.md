@@ -35,10 +35,10 @@ Only the **connection target and secrets**, plus a few deploy-config lines.
 
 - Run the existing migrations against the new Postgres via the Supabase CLI already in `devDependencies`:
   ```sh
-  supabase link --project-ref <new-instance-ref>   # or use --db-url directly
-  supabase db push
+  supabase db push --db-url "postgresql://<user>:<password>@<host>:5432/postgres"
   ```
-  This replays all 15 files in `supabase/migrations/` in order, recreating `lists`, `list_items`, `list_views`, `list_members`, `profiles`, `waitlist`, the `has_list_access()`/`mutate_list()`/`handle_new_user()` functions, RLS policies, and the `auth.users` triggers/FKs — identically to production.
+  This replays every file in `supabase/migrations/` (18 as of writing — recount before running) in order, recreating `lists`, `list_items`, `list_views`, `list_members`, `profiles`, `waitlist`, the `has_list_access()`/`mutate_list()`/`handle_new_user()` functions, RLS policies, and the `auth.users` triggers/FKs — identically to production.
+- Skip `supabase link` and go straight to `--db-url`. `.github/workflows/ci.yml`'s `migrate-prod` job (see the comments above its `db push` step) already hit two issues worth avoiding here: `supabase link`'s project-linking API call has a known CLI parsing bug (SchemaError on `inserted_at`, CLI 2.108–2.112), and if the connection goes through a pooler, it must be **session mode**, not transaction mode — the CLI's migration runner uses prepared statements, which collide across pooled connections (`"prepared statement already exists"`, SQLSTATE 42P05) in transaction mode. If Coolify's self-host stack fronts Postgres with any pooler, use its session-mode port; if it's a direct connection, this doesn't apply.
 
 ### 3. Migrate data (Supabase-native dump/restore)
 
@@ -68,7 +68,7 @@ Two different mechanisms currently supply Supabase config (per `Dockerfile` and 
 
 Because the `VITE_*` vars are **baked at build time**, changing them requires a fresh image build + push (not just a Coolify redeploy of the existing image) — call this out explicitly in the cutover step so it isn't missed.
 
-Also fix the existing inconsistency in `.env.example` (`VITE_SUPABASE_PUBLISHABLE_KEY`) — the app actually reads `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` (per `supabase.server.ts`/`supabase.client.ts`); update the example file to match so local setup docs aren't misleading.
+(The `.env.example` naming inconsistency noted in an earlier draft of this plan — `VITE_SUPABASE_PUBLISHABLE_KEY` vs. the actual `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` — has since been fixed independently; no action needed here.)
 
 ### 5. Update the real-Supabase e2e suite
 
@@ -79,7 +79,7 @@ Also fix the existing inconsistency in `.env.example` (`VITE_SUPABASE_PUBLISHABL
 1. Stand up self-hosted Supabase on Coolify (step 1), apply migrations (step 2).
 2. Do a rehearsal data migration (step 3) against it; run `pnpm test:e2e` (step 5) to confirm login, RLS, and `mutate_list` work identically.
 3. Freeze writes on the old hosted project (brief maintenance window), take the final `pg_dump`, restore to the new instance.
-4. Update GitHub Actions secrets + Coolify runtime env (step 4); trigger a rebuild so the new `VITE_*` values get baked in; let the existing deploy pipeline (`git push master` → CI → GHCR → Coolify webhook, per [coolify-setup.md](coolify-setup.md)) roll it out.
+4. Update GitHub Actions secrets + Coolify runtime env (step 4); trigger a rebuild so the new `VITE_*` values get baked in; let the existing deploy pipeline (`git push main` → CI → GHCR → Coolify webhook, per [coolify-setup.md](coolify-setup.md)) roll it out.
 5. Verify `app/routes/health.ts` (already pings `lists`) is healthy against the new instance, then smoke-test login/list/realtime manually.
 6. Keep the old hosted Supabase project intact but paused/read-only for a rollback window (e.g. 1–2 weeks) before cancelling it.
 
