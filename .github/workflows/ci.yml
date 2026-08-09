@@ -211,9 +211,15 @@ jobs:
         # CLI parsing bug (github.com/supabase/cli/issues/4775-adjacent —
         # SchemaError on inserted_at) as of CLI 2.108-2.112. --db-url talks to
         # Postgres directly and sidesteps that endpoint entirely.
+        #
+        # Uses `pnpm exec supabase` rather than the `db:push` package.json
+        # script: pnpm always inserts a literal `--` before args forwarded to
+        # a script (`pnpm db:push -- --db-url ...`), which the Supabase CLI's
+        # flag parser treats as "end of flags", so --db-url is parsed as a
+        # positional arg instead of a flag and silently ignored.
         run: |
           encoded_password=$(jq -rn --arg v "$SUPABASE_DB_PASSWORD" '$v|@uri')
-          pnpm db:push -- --db-url "postgresql://postgres:${encoded_password}@db.${SUPABASE_PROJECT_REF}.supabase.co:5432/postgres"
+          pnpm exec supabase db push --db-url "postgresql://postgres:${encoded_password}@db.${SUPABASE_PROJECT_REF}.supabase.co:5432/postgres"
         env:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
