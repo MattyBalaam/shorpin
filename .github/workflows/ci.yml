@@ -60,11 +60,15 @@ jobs:
         with:
           script: |
             const marker = '<!-- secret-preflight -->'
+            const isDependabot = context.actor === 'dependabot[bot]'
+            const dependabotNote = isDependabot
+              ? `\n\nThis is expected for Dependabot PRs: GitHub withholds repository secrets from workflow runs triggered by \`dependabot[bot]\`. Push any commit to this branch (e.g. \`git commit --allow-empty -m 'trigger ci' && git push\`, or click "Update branch") to re-run CI as a human and unlock the secrets.`
+              : ''
             const body = `${marker}
             ⚠️ CI secret preflight failed.
 
             Missing required Supabase secrets:
-            ${process.env.MISSING_MD}`
+            ${process.env.MISSING_MD}${dependabotNote}`
 
             const { owner, repo } = context.repo
             const issue_number = context.issue.number
