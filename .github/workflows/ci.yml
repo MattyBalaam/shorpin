@@ -218,14 +218,18 @@ jobs:
         # flag parser treats as "end of flags", so --db-url is parsed as a
         # positional arg instead of a flag and silently ignored.
         #
-        # Connects via the Supavisor transaction pooler (port 6543, username
+        # Connects via the Supavisor session pooler (port 5432, username
         # postgres.<project-ref>) rather than the direct db.<ref>.supabase.co
         # host: the direct host is IPv6-only, and GitHub-hosted runners don't
         # support outbound IPv6, so a direct connection fails with "network
-        # is unreachable".
+        # is unreachable". Session mode (not the transaction pooler on 6543)
+        # is required here: the transaction pooler multiplexes connections
+        # across shared backends, and the CLI's migration runner uses
+        # prepared statements, which collide across pooled connections
+        # ("prepared statement already exists", SQLSTATE 42P05).
         run: |
           encoded_password=$(jq -rn --arg v "$SUPABASE_DB_PASSWORD" '$v|@uri')
-          pnpm exec supabase db push --db-url "postgresql://postgres.${SUPABASE_PROJECT_REF}:${encoded_password}@aws-1-eu-west-1.pooler.supabase.com:6543/postgres"
+          pnpm exec supabase db push --db-url "postgresql://postgres.${SUPABASE_PROJECT_REF}:${encoded_password}@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
         env:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
