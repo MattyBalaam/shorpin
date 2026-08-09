@@ -60,11 +60,11 @@ Only the **connection target and secrets**, plus a few deploy-config lines.
 
 Two different mechanisms currently supply Supabase config (per `Dockerfile` and [coolify-setup.md](coolify-setup.md)):
 
-| Var | Currently supplied via | Change |
-|---|---|---|
-| `VITE_SUPABASE_URL` | GitHub Actions build secret → Docker `ARG` → baked into client bundle | Update the GitHub Actions secret to the new Kong gateway URL |
-| `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Same (build-time) | Update to the new instance's anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Coolify runtime env var | Update to the new instance's service-role key |
+| Var                                     | Currently supplied via                                                | Change                                                       |
+| --------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `VITE_SUPABASE_URL`                     | GitHub Actions build secret → Docker `ARG` → baked into client bundle | Update the GitHub Actions secret to the new Kong gateway URL |
+| `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Same (build-time)                                                     | Update to the new instance's anon key                        |
+| `SUPABASE_SERVICE_ROLE_KEY`             | Coolify runtime env var                                               | Update to the new instance's service-role key                |
 
 Because the `VITE_*` vars are **baked at build time**, changing them requires a fresh image build + push (not just a Coolify redeploy of the existing image) — call this out explicitly in the cutover step so it isn't missed.
 
