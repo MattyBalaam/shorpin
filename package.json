@@ -40,7 +40,7 @@
     "@supabase/ssr": "0.12.0",
     "@supabase/supabase-js": "2.108.2",
     "isbot": "5.1.44",
-    "linkify-it": "^5.0.1",
+    "linkify-it": "^6.1.0",
     "motion": "12.42.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
