@@ -22,6 +22,6 @@ jobs:
       - uses: preactjs/compressed-size-action@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          build-script: build
+          build-script: pnpm build
           strip-hash: "-[A-Za-z0-9_-]{8}(?=\\.)"
           pattern: "./build/client/**/*.{js,css}"
