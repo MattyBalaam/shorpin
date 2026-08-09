@@ -1,12 +1,14 @@
 import * as Sentry from "@sentry/react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
-import type { EntryContext } from "react-router";
+import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
 
 export const handleError = Sentry.createSentryHandleError({
   logErrors: false,
 });
+
+export const streamTimeout = 5_000;
 
 // In preview builds, intercept all Supabase calls with MSW so the Netlify
 // Function doesn't need a real Supabase project. Runs once on cold start;
@@ -35,13 +37,23 @@ async function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
+  _loadContext: RouterContextProvider,
 ) {
+  // https://httpwg.org/specs/rfc9110.html#HEAD
+  if (request.method.toUpperCase() === "HEAD") {
+    return new Response(null, {
+      status: responseStatusCode,
+      headers: responseHeaders,
+    });
+  }
+
   let shellRendered = false;
   const userAgent = request.headers.get("user-agent");
 
   const body = await renderToReadableStream(
     <ServerRouter context={routerContext} url={request.url} />,
     {
+      signal: AbortSignal.timeout(streamTimeout + 1000),
       onError(error: unknown) {
         responseStatusCode = 500;
         if (shellRendered) console.error(error);
@@ -51,7 +63,7 @@ async function handleRequest(
 
   shellRendered = true;
 
-  if (userAgent && isbot(userAgent)) {
+  if ((userAgent && isbot(userAgent)) || routerContext.isSpaMode) {
     await body.allReady;
   }
 

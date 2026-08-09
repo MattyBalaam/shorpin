@@ -54,7 +54,7 @@ jobs:
 
       - name: Post PR comment when secrets are missing
         if: failure() && github.event.pull_request.head.repo.fork == false
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           MISSING_MD: ${{ steps.check.outputs.missing_md }}
         with:
@@ -101,9 +101,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -125,9 +125,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -136,7 +136,7 @@ jobs:
 
       - run: pnpm test:integration
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -145,7 +145,7 @@ jobs:
 
       - name: Deploy report to GitHub Pages
         if: failure()
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report
@@ -163,9 +163,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -182,7 +182,7 @@ jobs:
           VITE_PR_NUMBER: ${{ github.event.number }}
           VITE_BRANCH: ${{ github.ref_name }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-supabase
@@ -197,9 +197,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -211,9 +211,15 @@ jobs:
         # CLI parsing bug (github.com/supabase/cli/issues/4775-adjacent —
         # SchemaError on inserted_at) as of CLI 2.108-2.112. --db-url talks to
         # Postgres directly and sidesteps that endpoint entirely.
+        #
+        # Uses `pnpm exec supabase` rather than the `db:push` package.json
+        # script: pnpm always inserts a literal `--` before args forwarded to
+        # a script (`pnpm db:push -- --db-url ...`), which the Supabase CLI's
+        # flag parser treats as "end of flags", so --db-url is parsed as a
+        # positional arg instead of a flag and silently ignored.
         run: |
           encoded_password=$(jq -rn --arg v "$SUPABASE_DB_PASSWORD" '$v|@uri')
-          pnpm db:push -- --db-url "postgresql://postgres:${encoded_password}@db.${SUPABASE_PROJECT_REF}.supabase.co:5432/postgres"
+          pnpm exec supabase db push --db-url "postgresql://postgres:${encoded_password}@db.${SUPABASE_PROJECT_REF}.supabase.co:5432/postgres"
         env:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
