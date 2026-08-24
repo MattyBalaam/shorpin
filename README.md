@@ -2,7 +2,7 @@ A todo style app built with React Router SSR Framework mode. Oringally running o
 
 This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
-- **Framework**: React Router v7 (SSR)
+- **Framework**: React Router v8 (SSR)
 - **Language**: TypeScript
 - **Styling**: Vanilla Extract CSS-in-JS
 - **Build Tool**: Vite
