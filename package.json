@@ -27,7 +27,8 @@
     "knip": "knip",
     "test": "vitest",
     "test:e2e": "playwright test --config playwright.supabase.config.ts",
-    "test:integration": "node scripts/test-integration.mjs"
+    "test:integration": "node scripts/test-integration.mjs",
+    "keepalive:supabase": "node scripts/supabase-keepalive.mjs"
   },
   "dependencies": {
     "@conform-to/react": "1.20.2",
