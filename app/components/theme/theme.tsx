@@ -78,8 +78,8 @@ export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps
       }}
     >
       {colors && (
-        <style>
-          {`:root {
+        <style href={`theme-${JSON.stringify(colors)}`} precedence="high">
+          {`:root:root {
             ${primaryVarName}: ${colors.primary};
             ${secondaryVarName}: ${colors.secondary};
           }`}

@@ -4,9 +4,10 @@ import { vars } from "./styles/theme.css";
 export const main = style({
   margin: "0 auto",
   display: "grid",
-  minHeight: "100svh",
+  height: "100svh",
+  overflow: "hidden",
   paddingBlockStart: vars.spacing.md,
-  gridTemplateRows: "[breadcrumbs] auto [content] 1fr [actions] auto",
+  gridTemplateRows: "[breadcrumbs] auto [content] minmax(0, 1fr) [actions] auto",
   gridTemplateColumns:
     "[left] minmax(20px, 1fr) [content] minmax(auto, 60ch) [right] minmax(20px, 1fr)",
 });
@@ -22,4 +23,9 @@ export const loading = style({
 
 globalStyle("body, h1", {
   margin: 0,
+});
+
+globalStyle("html, body", {
+  height: "100%",
+  overflow: "hidden",
 });
