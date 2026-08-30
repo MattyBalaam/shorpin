@@ -52,15 +52,3 @@ export const topActions = style({
   display: "flex",
   gap: vars.spacing.sm,
 });
-
-export const errorState = style({
-  gridColumn: "content",
-  gridRow: "content / -1",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: vars.spacing.lg,
-  textAlign: "center",
-  paddingInline: vars.spacing.appMargin,
-});

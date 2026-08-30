@@ -1,7 +1,6 @@
 import { useForm } from "@conform-to/react/future";
 import { Suspense, useEffect, useEffectEvent } from "react";
 import {
-  isRouteErrorResponse,
   type MetaFunction,
   Outlet,
   Form as RouterForm,
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
+import { ErrorState } from "~/components/error-state/error-state";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
@@ -152,19 +152,6 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const { revalidate, state } = useRevalidator();
 
-  const message =
-    isRouteErrorResponse(error) && error.status === 503
-      ? "Couldn't reach the server."
-      : "Something went wrong.";
-
-  return (
-    <div className={styles.errorState}>
-      <p>{message}</p>
-      <Button onClick={revalidate} isSubmitting={state === "loading"}>
-        Retry
-      </Button>
-    </div>
-  );
+  return <ErrorState error={error} />;
 }

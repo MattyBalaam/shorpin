@@ -39,3 +39,46 @@ test("admin can handle sign-ups", async ({ page, ctx }) => {
     await expect(page.getByText(ctx.waitlistEmail)).not.toBeVisible();
   }
 });
+
+test("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  // /sign-ups has no clientLoader and no route-level ErrorBoundary (unlike
+  // home/list), so it's a convenient stand-in for any route that falls
+  // through to root.tsx's boundary. Aborting just this request (rather than
+  // going fully offline) reproduces the app's own server being unreachable
+  // while the browser otherwise has a connection — root's ErrorBoundary
+  // should still catch the resulting fetch failure with a friendly, retryable
+  // message rather than a raw error dump.
+  await page.route(/\/sign-ups\.data(\?|$)/, (route) => route.abort());
+
+  await page.getByRole("link", { name: /pending/ }).click();
+
+  await expect(page.getByText("Couldn't reach the server.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+});
+
+test("client-side navigation to a route with no offline handling of its own shows an offline message when the browser itself has no connection", async ({
+  page,
+  context,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  // Genuinely offline (not just this one request aborted), distinguishing
+  // ErrorState's two branches: navigator.onLine false takes priority over
+  // the generic "server unreachable" wording. A real (non-SPA) navigation
+  // would instead hit the service worker's offline.html fallback — clicking
+  // the in-app link here keeps this on React Router's client-side data path,
+  // which the service worker never touches (see README's "Error boundaries &
+  // network-down UX").
+  await context.setOffline(true);
+
+  await page.getByRole("link", { name: /pending/ }).click();
+
+  await expect(page.getByText("You're offline.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+});
