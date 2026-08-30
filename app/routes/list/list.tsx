@@ -146,7 +146,7 @@ export async function clientAction({ params, request, serverAction }: Route.Clie
     return {
       lastResult: report(submission, {
         reset: toAdd && Boolean(result.output.new),
-        value: {
+        targetValue: {
           ...submission.payload,
           new: toAdd ? "" : (result.output.new ?? ""),
           items: currentItems,

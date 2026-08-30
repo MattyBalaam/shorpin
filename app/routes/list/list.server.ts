@@ -197,7 +197,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
     lastDeleted: sortData(allItems.filter(({ state }) => state === "deleted")).at(-1),
     lastResult: report(submission, {
       reset: toAdd && Boolean(result.output.new),
-      value: {
+      targetValue: {
         ...result.output,
         new: toAdd ? "" : (result.output.new ?? ""),
         items: sortData(allItems.filter(({ state }) => state === "active")).map((item) => ({
