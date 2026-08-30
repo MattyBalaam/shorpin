@@ -169,6 +169,8 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
+import { ErrorState } from "~/components/error-state/error-state";
+import * as errorStateStyles from "~/components/error-state/error-state.css";
 import * as itemsStyles from "~/components/items.css";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
@@ -625,28 +627,15 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const { revalidate, state } = useRevalidator();
 
   if (isRouteErrorResponse(error) && error.status === 404) {
     return (
-      <div className={styles.errorState}>
+      <div className={errorStateStyles.errorState}>
         <p>{error.data?.message ?? "List not found."}</p>
         <Link to={href("/")}>Back to home</Link>
       </div>
     );
   }
 
-  const message =
-    isRouteErrorResponse(error) && error.status === 503
-      ? "Couldn't reach the server."
-      : "Something went wrong.";
-
-  return (
-    <div className={styles.errorState}>
-      <p>{message}</p>
-      <Button onClick={revalidate} isSubmitting={state === "loading"}>
-        Retry
-      </Button>
-    </div>
-  );
+  return <ErrorState error={error} />;
 }

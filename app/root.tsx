@@ -17,6 +17,7 @@ import {
 import { getToast, toastMiddleware } from "remix-toast/middleware";
 import { toast } from "sonner";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
+import { isNetworkOrServerError } from "~/lib/network-error";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
@@ -24,6 +25,7 @@ import "~/styles/reset.css";
 import "./app.css";
 import "~/styles/typography.css";
 
+import { ErrorState } from "./components/error-state/error-state";
 import { Link } from "./components/link/link";
 import { Spinner } from "./components/spinner/spinner";
 import * as styles from "./root.css";
@@ -235,6 +237,19 @@ export default function App() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
+
+  // A dead server or no connection reaches every route the same way — a
+  // fetch() that never got a response, or a 5xx bubbled up as a route error
+  // response. Routes without their own boundary (auth, /sign-ups, etc.) fall
+  // through to this one, so it needs the same network-awareness home.tsx and
+  // list.tsx already have, rather than dumping a raw fetch-failure message.
+  if (isNetworkOrServerError(error)) {
+    return (
+      <main className={styles.main}>
+        <ErrorState error={error} />
+      </main>
+    );
+  }
 
   if (isRouteErrorResponse(error)) {
     const message = typeof error.data === "string" ? error.data : error.data?.message;
