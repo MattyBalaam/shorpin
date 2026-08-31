@@ -12,7 +12,7 @@ if (!url || !anonKey) {
 }
 
 const response = await fetch(new URL("/rest/v1/", url), {
-  headers: { apikey: anonKey },
+  headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
 });
 
 if (!response.ok) {
