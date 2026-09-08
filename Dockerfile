@@ -35,6 +35,7 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/instrument.server.mjs ./instrument.server.mjs
+COPY --from=builder /app/server.js ./server.js
 
 EXPOSE 3000
 

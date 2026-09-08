@@ -15,6 +15,9 @@ importers:
       '@conform-to/react':
         specifier: 1.21.1
         version: 1.21.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@react-router/express':
+        specifier: 8.3.1
+        version: 8.3.1(express@5.2.1)(react-router@8.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@7.0.2)
       '@react-router/node':
         specifier: 8.3.1
         version: 8.3.1(react-router@8.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@7.0.2)
@@ -39,12 +42,21 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.114.0
         version: 2.114.0(@opentelemetry/api@1.9.1)
+      compression:
+        specifier: 1.8.1
+        version: 1.8.1
+      express:
+        specifier: 5.2.1
+        version: 5.2.1
       isbot:
         specifier: 5.2.2
         version: 5.2.2
       linkify-it:
         specifier: ^6.1.0
         version: 6.1.0
+      morgan:
+        specifier: 1.12.0
+        version: 1.12.0
       motion:
         specifier: 13.2.0
         version: 13.2.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1770,7 +1782,6 @@ packages:
   '@rolldown/binding-linux-x64-gnu@1.2.7':
     resolution: {integrity: sha512-r8/z8n7GFaYRln3xmP1Cxy0HH/HLM0uBUPkEuSVEfKGDA89M0FsZRZJRSwe/tJjRx+fpH/gjorfhB8tmEbSFLA==}
     engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
     os: [linux]
 
   '@rolldown/binding-linux-x64-musl@1.2.6':
