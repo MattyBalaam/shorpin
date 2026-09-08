@@ -65,7 +65,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 
 **Root Layout** ([app/root.tsx](app/root.tsx)):
 
-- Single `<main>` container with centered max-width (60ch)
+- Single `<main>` container with centered max-width
 - Breadcrumbs navigation component
 - Sonner toast notifications
 - Motion/React for stagger animations
