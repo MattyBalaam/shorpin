@@ -258,7 +258,19 @@ rejected (sanitised `400`) unless its `Origin` header matches the origin of
 `request.url`. The server must therefore reconstruct `request.url` with the
 _external_ scheme and host, not the proxy's internal `http://…`.
 
-`react-router.config.ts` sets `allowedActionOrigins` to the public host(s) as a
-safety net. The durable fix is a custom server that trusts the proxy headers so
-`request.url` is correct for every host (including preview deployments) without
-an allow-list entry — see the follow-up PR that replaces `react-router-serve`.
+`server.js` is a small Express wrapper — replacing `react-router-serve`, which
+gives no way to opt into proxy trust — that calls `app.set("trust proxy", true)`
+before `@react-router/express`'s `createRequestHandler`. With proxy trust on,
+`req.protocol` / `req.hostname` follow `X-Forwarded-Proto` / `X-Forwarded-Host`,
+so `request.url` is rebuilt as the external `https://<public-host>/…` and the
+origin check passes for every host, including preview deployments, with no
+allow-list entry needed. It also serves the client build (`build/client`, with
+immutable caching for hashed `/assets`) and gzip-compresses responses, matching
+what `react-router-serve` did.
+
+`allowedActionOrigins` in `react-router.config.ts` stays as a backstop in case
+the proxy headers are ever missing. `react-router-serve` is still used by the
+`serve:https` / `preview:https` local scripts.
+
+`trust proxy` is set to `true` (trust every hop) because the container is only
+reachable through Traefik. Tighten it to a hop count or subnet if that changes.
