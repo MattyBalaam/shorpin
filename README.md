@@ -244,3 +244,21 @@ Implementation files:
 
 - Client metrics collection: `app/lib/performance.client.ts`
 - Metric ingestion route: `app/routes/perf.ts`
+
+## Deployment
+
+Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts
+the container with a Traefik reverse proxy that terminates TLS and forwards
+plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
+
+### Forwarded-proto / action origin validation
+
+React Router 8.3.1 added an action-origin CSRF check: a POST to a UI route is
+rejected (sanitised `400`) unless its `Origin` header matches the origin of
+`request.url`. The server must therefore reconstruct `request.url` with the
+_external_ scheme and host, not the proxy's internal `http://…`.
+
+`react-router.config.ts` sets `allowedActionOrigins` to the public host(s) as a
+safety net. The durable fix is a custom server that trusts the proxy headers so
+`request.url` is correct for every host (including preview deployments) without
+an allow-list entry — see the follow-up PR that replaces `react-router-serve`.
