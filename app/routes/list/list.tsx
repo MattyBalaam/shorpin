@@ -27,6 +27,7 @@ import {
   putListSnapshot,
   updateListDesired,
 } from "~/lib/offline-store.client";
+import { withStaleVersionRetry } from "~/lib/version-guard.client";
 import type { Route } from "./+types/list";
 import { zList } from "./data";
 
@@ -155,7 +156,7 @@ export async function clientAction({ params, request, serverAction }: Route.Clie
     };
   }
 
-  return serverAction();
+  return withStaleVersionRetry(serverAction);
 }
 
 // Prevent revalidation when offline, but allow initial navigation to this route
