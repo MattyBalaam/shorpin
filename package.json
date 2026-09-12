@@ -96,7 +96,8 @@
   "pnpm": {
     "overrides": {
       "vite-plugin-devtools-json>vite": "$vite",
-      "playwright-core": "$@playwright/test"
+      "playwright-core": "$@playwright/test",
+      "uuid": "^14.0.2"
     }
   },
   "msw": {
