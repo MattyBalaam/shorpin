@@ -293,3 +293,22 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
             -w "\nHTTP Status: %{http_code}\n" \
             -f
+
+      - name: Smoke test deploy
+        run: |
+          for i in $(seq 1 30); do
+            deployed=$(curl -fsS https://shorpin.matthewbalaam.co.uk/version | jq -r .hash)
+            [ "$deployed" = "${{ github.sha }}" ] && break
+            sleep 5
+          done
+          [ "$deployed" = "${{ github.sha }}" ] || { echo "::error::still on $deployed, expected ${{ github.sha }}"; exit 1; }
+
+          status=$(curl -s -o /tmp/body.txt -w '%{http_code}' -X POST https://shorpin.matthewbalaam.co.uk/login \
+            -H "Origin: https://shorpin.matthewbalaam.co.uk" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "email=smoketest@example.com" \
+            --data-urlencode "password=smoke-test")
+          if [ "$status" = "400" ] && grep -q "Bad Request" /tmp/body.txt; then
+            echo "::error::action-origin check is rejecting real requests (proxy/Origin misconfig)"
+            exit 1
+          fi
