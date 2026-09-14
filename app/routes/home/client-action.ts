@@ -11,11 +11,12 @@ import {
   putHomeSnapshot,
 } from "~/lib/offline-store.client";
 import { resolveSlug, slugify } from "~/lib/slugify";
+import { withStaleVersionRetry } from "~/lib/version-guard.client";
 import type { Route } from "./+types/home";
 import { type ListItem, REORDER_LISTS_INTENT, zCreate } from "./home.schema";
 
 export async function clientAction({ request, serverAction }: Route.ClientActionArgs) {
-  if (navigator.onLine) return serverAction();
+  if (navigator.onLine) return withStaleVersionRetry(serverAction);
 
   const formData = await request.formData();
 
