@@ -62,7 +62,7 @@ jobs:
             const marker = '<!-- secret-preflight -->'
             const isDependabot = context.actor === 'dependabot[bot]'
             const dependabotNote = isDependabot
-              ? `\n\nThis is expected for Dependabot PRs: GitHub withholds repository secrets from workflow runs triggered by \`dependabot[bot]\`. Push any commit to this branch (e.g. \`git commit --allow-empty -m 'trigger ci' && git push\`, or click "Update branch") to re-run CI as a human and unlock the secrets.`
+              ? `\n\nThis is expected for Dependabot PRs: GitHub withholds repository secrets from workflow runs triggered by \`dependabot[bot]\`. The \`e2e-supabase\` job needs Supabase secrets and is gated behind the \`ci-secrets\` environment — open this PR's checks, find the "Review deployments" prompt on that job, and approve it to grant secrets for this run. No new commit needed.`
               : ''
             const body = `${marker}
             ⚠️ CI secret preflight failed.
@@ -174,6 +174,7 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: playwright-version
     runs-on: ubuntu-latest
+    environment: ci-secrets
     container:
       image: ${{ needs.playwright-version.outputs.image }}
       options: --ipc=host
