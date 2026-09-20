@@ -243,6 +243,19 @@ on every Dependabot Playwright bump), a `playwright-version` job reads
 `needs.playwright-version.outputs.image` — the container tag always tracks
 whatever version is actually installed.
 
+### CI secrets on Dependabot PRs
+
+GitHub withholds repository secrets from any workflow run triggered by
+`dependabot[bot]`, so `e2e-supabase` fails on Dependabot PRs with "Missing
+VITE_SUPABASE_URL". Rather than working around that boundary, `e2e-supabase`
+is gated behind a `ci-secrets` GitHub Environment
+(`.github/workflows/ci.yml`) with a required reviewer. On a Dependabot PR the
+job shows as "Waiting" with a "Review deployments" prompt inline in the PR's
+checks; approving it after reviewing the diff releases the secrets to that
+run — no empty commit or "Update branch" click needed. The `secret-preflight`
+job posts a PR comment explaining this when it detects a Dependabot-triggered
+run with no secrets available.
+
 ### Performance Instrumentation
 
 The app includes lightweight client-side telemetry to help diagnose slow pages and route transitions:
