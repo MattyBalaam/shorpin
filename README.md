@@ -231,6 +231,18 @@ without API activity. `.github/workflows/supabase-keepalive.yml` runs daily
 job and intentionally avoids `SUPABASE_SERVICE_ROLE_KEY` — no table access is
 needed just to keep the project active.
 
+### CI Playwright container version
+
+The `integration` and `e2e-supabase` jobs run inside the
+`mcr.microsoft.com/playwright` Docker image, which bundles a specific browser
+build. That build must match the `@playwright/test` version installed from
+`package.json`, or tests fail with `browserType.launch: Executable doesn't
+exist`. Rather than hardcoding the image tag in both jobs (and re-breaking it
+on every Dependabot Playwright bump), a `playwright-version` job reads
+`@playwright/test` from `package.json` and both jobs consume its output as
+`needs.playwright-version.outputs.image` — the container tag always tracks
+whatever version is actually installed.
+
 ### Performance Instrumentation
 
 The app includes lightweight client-side telemetry to help diagnose slow pages and route transitions:
