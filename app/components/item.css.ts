@@ -80,8 +80,8 @@ export const newIndicator = style({
   paddingInline: vars.spacing.sm,
   borderRadius: vars.radius.pill,
   background: vars.palette.primary,
-  color: vars.palette.text,
-  border: `1px solid ${vars.palette.text}`,
+  color: vars.palette.textOnPalette,
+  border: `1px solid ${vars.palette.textOnPalette}`,
   fontSize: vars.fontSize.xs,
   lineHeight: 1,
   textTransform: "uppercase",
@@ -128,7 +128,7 @@ export const linkButton = style({
       background: "rgb(255 255 255 / 0.4)",
     },
     "&:focus-visible": {
-      outline: `2px solid ${vars.palette.text}`,
+      outline: `2px solid ${vars.palette.textOnPalette}`,
       outlineOffset: "2px",
       background: "rgb(255 255 255 / 0.4)",
     },
@@ -173,7 +173,7 @@ export const itemContainerReorderable = style({
   // the Theme component) rather than a flat grey, with dark text for contrast
   // against the light pastel theme colours.
   background: vars.palette.secondary,
-  color: vars.palette.text,
+  color: vars.palette.textOnPalette,
   selectors: {
     "&:has(textarea:focus)": {
       background: vars.palette.primary,
@@ -202,7 +202,7 @@ export const deleteReorderable = style({
       background: "rgb(0 0 0 / 0.1)",
     },
     "&:focus-visible": {
-      outline: `2px solid ${vars.palette.text}`,
+      outline: `2px solid ${vars.palette.textOnPalette}`,
       outlineOffset: "2px",
     },
   },

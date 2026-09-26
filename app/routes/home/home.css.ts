@@ -127,7 +127,7 @@ export const itemTotal = style({
 export const unreadBadge = style({
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
-  color: vars.palette.text,
+  color: vars.palette.textOnPalette,
   borderRadius: vars.radius.pill,
   paddingInline: vars.spacing.sm,
   minWidth: "1.5em",

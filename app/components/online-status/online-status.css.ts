@@ -7,7 +7,7 @@ export const indicator = style({
   right: vars.spacing.sm,
   padding: `${vars.spacing.xs} ${vars.spacing.sm}`,
   backgroundColor: vars.palette.secondary,
-  color: vars.palette.text,
+  color: vars.palette.textOnPalette,
   borderRadius: vars.spacing.xs,
   fontSize: "0.875rem",
   fontWeight: 500,

@@ -27,6 +27,7 @@ export const variant = styleVariants({
   primary: {
     ...buttonBase,
     background: vars.palette.primary,
+    color: vars.palette.textOnPalette,
   },
   outline: {
     ...buttonBase,
