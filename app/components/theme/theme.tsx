@@ -1,10 +1,18 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
+import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
+import { PalettePreview } from "./palette-preview";
+
+type Colors = { primary: string; secondary: string };
 
 interface ThemeContextValue {
-  colors: { primary: string; secondary: string } | null;
-  generateColors: () => void;
+  colors: Colors | null;
+  candidate: Colors | null;
+  generateCandidate: () => void;
+  confirmCandidate: () => void;
+  dismissCandidate: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -15,22 +23,6 @@ function useThemeContext() {
     throw new Error("Theme compound components must be used within Theme");
   }
   return context;
-}
-
-function generateComplementaryColors() {
-  // Random hue between 0-360
-  const hue = Math.floor(Math.random() * 360);
-  // Complementary hue is 180 degrees away
-  const complementaryHue = (hue + 180) % 360;
-
-  // Pastel colors: moderate saturation, high lightness
-  const saturation = 40 + Math.random() * 20; // 40-60%
-  const lightness = 75 + Math.random() * 10; // 75-85%
-
-  const primary = `hsl(${hue}, ${saturation.toFixed(0)}%, ${lightness.toFixed(0)}%)`;
-  const secondary = `hsl(${complementaryHue}, ${saturation.toFixed(0)}%, ${lightness.toFixed(0)}%)`;
-
-  return { primary, secondary };
 }
 
 // Extract CSS variable name from vanilla-extract var reference
@@ -47,15 +39,15 @@ interface ThemeProps {
 }
 
 export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps) {
-  const [colors, setColors] = useState<{
-    primary: string;
-    secondary: string;
-  } | null>(() => {
+  const [colors, setColors] = useState<Colors | null>(() => {
     if (defaultPrimary && defaultSecondary) {
       return { primary: defaultPrimary, secondary: defaultSecondary };
     }
     return null;
   });
+  // Colours shown in the preview dialog but not yet applied — kept separate
+  // from `colors` so cancelling the dialog never touches the live theme.
+  const [candidate, setCandidate] = useState<Colors | null>(null);
 
   // Sync colors when props change (e.g., after revalidation from another client)
   useEffect(
@@ -74,14 +66,23 @@ export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps
     <ThemeContext.Provider
       value={{
         colors,
-        generateColors: () => setColors(generateComplementaryColors()),
+        candidate,
+        generateCandidate: () => {
+          const { primary, secondary } = generateThemeColors();
+          setCandidate({ primary, secondary });
+        },
+        confirmCandidate: () => {
+          setColors(candidate);
+          setCandidate(null);
+        },
+        dismissCandidate: () => setCandidate(null),
       }}
     >
       {colors && (
         <style href={`theme-${JSON.stringify(colors)}`} precedence="high">
           {`:root:root {
-            ${primaryVarName}: ${colors.primary};
-            ${secondaryVarName}: ${colors.secondary};
+            ${primaryVarName}: ${toAdaptiveCss(colors.primary)};
+            ${secondaryVarName}: ${toAdaptiveCss(colors.secondary)};
           }`}
         </style>
       )}
@@ -113,10 +114,22 @@ interface ThemeButtonProps {
 }
 
 function ThemeButton({ formId }: ThemeButtonProps) {
-  const { generateColors } = useThemeContext();
+  const { candidate, generateCandidate, confirmCandidate, dismissCandidate } = useThemeContext();
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  function handleClick() {
-    generateColors();
+  // The dialog mounts only while there's a candidate to show; open it
+  // natively once it's in the DOM, and guard against calling showModal()
+  // again on re-shuffle while it's already open.
+  useEffect(
+    function showDialogForCandidate() {
+      const dialog = dialogRef.current;
+      if (candidate && dialog && !dialog.open) dialog.showModal();
+    },
+    [candidate],
+  );
+
+  function handleConfirm() {
+    confirmCandidate();
     // Submit the form after state updates
     requestAnimationFrame(() => {
       const form = document.getElementById(formId) as HTMLFormElement | null;
@@ -124,7 +137,38 @@ function ThemeButton({ formId }: ThemeButtonProps) {
     });
   }
 
-  return <Button onClick={handleClick}>🎨</Button>;
+  return (
+    <>
+      <Button onClick={generateCandidate}>🎨</Button>
+      {candidate && (
+        <dialog
+          ref={dialogRef}
+          className={modalStyles.dialog}
+          onClose={dismissCandidate}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              (e.currentTarget as HTMLDialogElement).close();
+            }
+          }}
+        >
+          <div className={modalStyles.content}>
+            <PalettePreview primary={candidate.primary} secondary={candidate.secondary} />
+            <div className={modalStyles.actions}>
+              <Button variant="outline" type="button" onClick={dismissCandidate}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={generateCandidate}>
+                Shuffle
+              </Button>
+              <Button type="button" onClick={handleConfirm}>
+                Use these colours
+              </Button>
+            </div>
+          </div>
+        </dialog>
+      )}
+    </>
+  );
 }
 
 Theme.Fields = Fields;
