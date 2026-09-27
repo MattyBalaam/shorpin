@@ -1,3 +1,4 @@
+import type { Response } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { login } from "./helpers";
 
@@ -352,4 +353,50 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
     .locator("li")
     .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
   await expect(shoppingRow.getByText("10 unread")).toBeVisible();
+});
+
+test("starred list opens on app launch, and un-starring falls back to home", async ({
+  page,
+  ctx,
+}) => {
+  // Only the star's own action response carries Set-Cookie — not e.g. the
+  // /perf beacon, which is also a POST.
+  const isStarSubmission = (response: Response) =>
+    new URL(response.url()).pathname.startsWith("/_.data") &&
+    response.request().method() === "POST";
+
+  await login(page, ctx.ownerEmail);
+
+  // With nothing starred, a launch lands on plain home (launch param dropped
+  // so a later revalidation can't re-trigger the redirect).
+  await page.goto("/?launch");
+  await expect(page).toHaveURL("/");
+
+  const star = page.getByRole("button", { name: "Open Shopping on launch" });
+  await expect(star).toHaveAttribute("aria-pressed", "false");
+
+  const starred = page.waitForResponse(isStarSubmission);
+  await star.click();
+  await starred;
+  await expect(star).toHaveAttribute("aria-pressed", "true");
+
+  // Starring another list moves the star rather than adding a second one.
+  const otherStar = page.getByRole("button", { name: "Open Owner Empty on launch" });
+  const moved = page.waitForResponse(isStarSubmission);
+  await otherStar.click();
+  await moved;
+  await expect(otherStar).toHaveAttribute("aria-pressed", "true");
+  await expect(star).toHaveAttribute("aria-pressed", "false");
+
+  await page.goto("/?launch");
+  await expect(page).toHaveURL("/lists/owner-empty");
+
+  await page.goto("/");
+  const cleared = page.waitForResponse(isStarSubmission);
+  await otherStar.click();
+  await cleared;
+  await expect(otherStar).toHaveAttribute("aria-pressed", "false");
+
+  await page.goto("/?launch");
+  await expect(page).toHaveURL("/");
 });

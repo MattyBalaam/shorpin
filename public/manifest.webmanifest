@@ -1,7 +1,7 @@
 {
   "name": "Shorpin",
   "short_name": "Shorpin",
-  "start_url": "/",
+  "start_url": "/?launch",
   "display": "standalone",
   "theme_color": "#A9CBB7",
   "background_color": "#A9CBB7",

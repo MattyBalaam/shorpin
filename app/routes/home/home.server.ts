@@ -1,21 +1,54 @@
 import { parseSubmission, report } from "@conform-to/react/future";
 
-import { href } from "react-router";
+import { data, href, redirect } from "react-router";
 import { redirectWithSuccess } from "remix-toast";
 import * as v from "valibot";
 
+import { isLaunchUrl, readDefaultListId, serializeDefaultListCookie } from "~/lib/default-list";
 import { resolveSlug, slugify } from "~/lib/slugify";
-import { supabaseContext } from "~/lib/supabase.middleware";
+import { type SupaBaseContext, supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/home";
 
-import { ListItem, REORDER_LISTS_INTENT, zCreate, zReorderLists } from "./home.schema";
+import {
+  ListItem,
+  REORDER_LISTS_INTENT,
+  SET_DEFAULT_LIST_INTENT,
+  zCreate,
+  zReorderLists,
+  zSetDefaultList,
+} from "./home.schema";
 
-export async function loader({ context }: Route.LoaderArgs) {
+// PWA launches (manifest start_url) always redirect away from `/?launch` —
+// into the starred list if there is one, otherwise to plain `/` — so a later
+// revalidation of home never re-triggers the launch redirect.
+async function launchRedirect(supabase: SupaBaseContext, id: string | null) {
+  if (!id) return redirect(href("/"));
+
+  const { data: list } = await supabase
+    .from("lists")
+    .select("slug")
+    .eq("id", id)
+    .eq("state", "active")
+    .maybeSingle();
+
+  // Re-issuing the cookie on each launch keeps it server-set (not subject to
+  // Safari's 7-day cap on script-written storage) and slides its expiry.
+  return redirect(list ? href("/lists/:list", { list: list.slug }) : href("/"), {
+    headers: { "Set-Cookie": serializeDefaultListCookie(list ? id : null) },
+  });
+}
+
+export async function loader({ request, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
   const user = await requireUser(supabase);
   const userId = user.id;
+  const defaultListId = readDefaultListId(request.headers.get("Cookie"));
+
+  if (isLaunchUrl(new URL(request.url))) {
+    throw await launchRedirect(supabase, defaultListId);
+  }
 
   const listsPromise = supabase
     .from("lists")
@@ -50,6 +83,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
   return {
     userId,
+    defaultListId,
     lists: Promise.all([listsPromise, viewedAtMapPromise]).then(([lists, viewedAtMap]) =>
       lists.map(({ list_items, ...list }) => {
         return {
@@ -73,6 +107,14 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
+
+  if (formData.get("intent") === SET_DEFAULT_LIST_INTENT) {
+    const result = v.safeParse(zSetDefaultList, Object.fromEntries(formData));
+    if (!result.success) return null;
+
+    const listId = result.output["list-id"] || null;
+    return data(null, { headers: { "Set-Cookie": serializeDefaultListCookie(listId) } });
+  }
 
   if (formData.get("intent") === REORDER_LISTS_INTENT) {
     const reorderPayload = {

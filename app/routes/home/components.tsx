@@ -1,13 +1,13 @@
 import { Reorder, useDragControls } from "motion/react";
 import { use } from "react";
-import { href, useSubmit } from "react-router";
+import { href, useFetcher, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
 import { useReorderIds } from "~/components/use-reorder-ids";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 import * as styles from "./home.css";
-import { ListItem, REORDER_LISTS_INTENT } from "./home.schema";
+import { ListItem, REORDER_LISTS_INTENT, SET_DEFAULT_LIST_INTENT } from "./home.schema";
 
 export function PendingSignUps({ countPromise }: { countPromise: Promise<number> }) {
   const count = use(countPromise);
@@ -19,13 +19,50 @@ export function PendingSignUps({ countPromise }: { countPromise: Promise<number>
   );
 }
 
+// Shared key so every row sees the in-flight submission and the previously
+// starred row un-stars optimistically along with the newly starred one.
+const DEFAULT_LIST_FETCHER_KEY = "default-list";
+
+function StarButton({
+  id,
+  name,
+  defaultListId,
+}: {
+  id: string;
+  name: string;
+  defaultListId: string | null;
+}) {
+  const fetcher = useFetcher({ key: DEFAULT_LIST_FETCHER_KEY });
+  const pendingId = fetcher.formData?.get("list-id");
+  const effectiveDefault = typeof pendingId === "string" ? pendingId || null : defaultListId;
+  const isDefault = effectiveDefault === id;
+
+  return (
+    <fetcher.Form method="post" className={styles.itemStar}>
+      <input type="hidden" name="intent" value={SET_DEFAULT_LIST_INTENT} />
+      <input type="hidden" name="list-id" value={isDefault ? "" : id} />
+      <button
+        type="submit"
+        className={styles.itemStarButton}
+        aria-pressed={isDefault}
+        title={isDefault ? "Opens when the app launches" : "Open when the app launches"}
+      >
+        <VisuallyHidden>Open {name} on launch</VisuallyHidden>
+        <span aria-hidden>{isDefault ? "★" : "☆"}</span>
+      </button>
+    </fetcher.Form>
+  );
+}
+
 export function ReorderableListItem({
   list,
   userId,
+  defaultListId,
   onDrop,
 }: {
   list: ListItem;
   userId: string;
+  defaultListId: string | null;
   onDrop: () => void;
 }) {
   const dragControls = useDragControls();
@@ -53,6 +90,8 @@ export function ReorderableListItem({
             {name}
           </Link>
         )}
+
+        {!pending && <StarButton id={id} name={name} defaultListId={defaultListId} />}
 
         <span
           className={styles.itemDragHandle}
@@ -103,9 +142,11 @@ export function ReorderableListItem({
 export function Lists({
   listsPromise,
   userId,
+  defaultListId,
 }: {
   listsPromise: Promise<ListItem[]>;
   userId: string;
+  defaultListId: string | null;
 }) {
   const lists = use(listsPromise);
   const submit = useSubmit();
@@ -146,6 +187,7 @@ export function Lists({
             key={id}
             list={listRecord[id]}
             userId={userId}
+            defaultListId={defaultListId}
             onDrop={handleReorderComplete}
           />
         ))}

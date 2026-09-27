@@ -29,6 +29,18 @@ export const handlers = [
       return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
     }
 
+    // Home's launch redirect: resolve the starred (default) list's slug by id.
+    const idParam = url.searchParams.get("id");
+    if (idParam?.startsWith("eq.")) {
+      const id = idParam.slice(3);
+      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      const memberListIds = new Set(memberships.map((m) => m.list_id));
+      const matching = lists
+        .findMany((q) => q.where({ id, state: "active" }))
+        .filter((l) => l.user_id === user.id || memberListIds.has(l.id));
+      return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
+    }
+
     if (slugParam?.startsWith("eq.")) {
       const slug = slugParam.slice(3);
       if (!user) return HttpResponse.json(null, { status: 401 });

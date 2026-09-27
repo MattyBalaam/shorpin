@@ -121,7 +121,11 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
       <ScrollArea>
         <nav className={styles.listWrapper}>
           <Suspense fallback={<Spinner />}>
-            <Lists listsPromise={loaderData.lists} userId={loaderData.userId} />
+            <Lists
+              listsPromise={loaderData.lists}
+              userId={loaderData.userId}
+              defaultListId={loaderData.defaultListId}
+            />
           </Suspense>{" "}
         </nav>
       </ScrollArea>
