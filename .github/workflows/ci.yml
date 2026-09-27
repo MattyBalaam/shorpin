@@ -296,6 +296,7 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
             VITE_GIT_HASH=${{ github.sha }}
             VITE_GIT_DATE=${{ github.event.head_commit.timestamp }}
             VITE_PR_NUMBER=${{ env.VITE_PR_NUMBER }}
