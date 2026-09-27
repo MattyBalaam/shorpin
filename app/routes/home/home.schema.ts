@@ -13,6 +13,14 @@ export const zReorderLists = v.object({
   "list-order": v.array(v.pipe(v.string(), v.uuid())),
 });
 
+export const SET_DEFAULT_LIST_INTENT = "set-default-list";
+
+export const zSetDefaultList = v.object({
+  intent: v.literal(SET_DEFAULT_LIST_INTENT),
+  // Empty string clears the default.
+  "list-id": v.union([v.literal(""), v.pipe(v.string(), v.uuid())]),
+});
+
 export type ListItem = Pick<ListItemDB, "id" | "name" | "slug" | "user_id"> & {
   unreadCount: number;
   totalCount: number;

@@ -2,6 +2,7 @@ import { parseSubmission, report } from "@conform-to/react/future";
 import { toast } from "sonner";
 import * as v from "valibot";
 
+import { serializeDefaultListCookie } from "~/lib/default-list";
 import { formDataToPairs } from "~/lib/form-data-codec";
 import {
   dequeueMutations,
@@ -13,12 +14,28 @@ import {
 import { resolveSlug, slugify } from "~/lib/slugify";
 import { withStaleVersionRetry } from "~/lib/version-guard.client";
 import type { Route } from "./+types/home";
-import { type ListItem, REORDER_LISTS_INTENT, zCreate } from "./home.schema";
+import {
+  type ListItem,
+  REORDER_LISTS_INTENT,
+  SET_DEFAULT_LIST_INTENT,
+  zCreate,
+  zSetDefaultList,
+} from "./home.schema";
 
 export async function clientAction({ request, serverAction }: Route.ClientActionArgs) {
   if (navigator.onLine) return withStaleVersionRetry(serverAction);
 
   const formData = await request.formData();
+
+  if (formData.get("intent") === SET_DEFAULT_LIST_INTENT) {
+    // Nothing to queue: the cookie is device-local state, so write it
+    // directly. The next online launch re-issues it server-side.
+    const result = v.safeParse(zSetDefaultList, Object.fromEntries(formData));
+    if (result.success) {
+      document.cookie = await serializeDefaultListCookie(result.output["list-id"] || null);
+    }
+    return null;
+  }
 
   if (formData.get("intent") === REORDER_LISTS_INTENT) {
     const orderedIds = formData.getAll("list-order").map(String);

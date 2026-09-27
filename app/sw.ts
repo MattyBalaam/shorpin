@@ -18,6 +18,7 @@ import { matchPrecache, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
 import { pairsToFormData } from "~/lib/form-data-codec";
+import { LAUNCH_PARAM } from "~/lib/default-list";
 import { isSuccessfulReplay } from "~/lib/mutation-replay";
 import { isCacheablePageUrl, PAGE_CACHE_NAME } from "~/lib/page-cache";
 
@@ -39,6 +40,16 @@ const pageCache = new NetworkFirst({
   plugins: [
     new CacheableResponsePlugin({ statuses: [200] }),
     new ExpirationPlugin({ maxEntries: 50, purgeOnQuotaError: true }),
+    {
+      // The manifest's start_url is `/?launch`, which online always
+      // redirects (never cached). Offline, look it up as plain `/` so the
+      // home clientLoader can hydrate and do the launch redirect itself.
+      cacheKeyWillBeUsed: async ({ request }) => {
+        const url = new URL(request.url);
+        url.searchParams.delete(LAUNCH_PARAM);
+        return url.href;
+      },
+    },
   ],
 });
 

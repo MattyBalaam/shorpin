@@ -45,7 +45,7 @@ export const itemWrapper = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[name] 1fr [drag] auto [config] auto [status] 3ch",
+  gridTemplateColumns: "[name] 1fr [star] auto [drag] auto [config] auto [status] 3ch",
   alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
@@ -77,6 +77,39 @@ export const pendingItemLink = style({
 export const itemConfig = style({
   gridColumn: "config",
   zIndex: 1,
+});
+
+export const itemStar = style({
+  gridColumn: "star",
+  zIndex: 1,
+  display: "flex",
+});
+
+export const itemStarButton = style({
+  appearance: "none",
+  background: "none",
+  border: 0,
+  padding: 0,
+  font: "inherit",
+  lineHeight: 1,
+  cursor: "pointer",
+  color: "inherit",
+  opacity: 0.5,
+  position: "relative",
+  ":hover": {
+    opacity: 1,
+  },
+  "::before": {
+    content: '""',
+    position: "absolute",
+    inset: "-0.75rem",
+  },
+  selectors: {
+    '&[aria-pressed="true"]': {
+      opacity: 1,
+      color: vars.palette.primary,
+    },
+  },
 });
 
 export const itemDragHandle = style({

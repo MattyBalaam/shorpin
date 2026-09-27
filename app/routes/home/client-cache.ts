@@ -1,5 +1,7 @@
 import React, { useEffectEvent } from "react";
-import { isRouteErrorResponse, useRevalidator } from "react-router";
+import { href, isRouteErrorResponse, redirect, useRevalidator } from "react-router";
+
+import { isLaunchUrl, readDefaultListId } from "~/lib/default-list";
 
 import {
   getHomeSnapshot,
@@ -10,9 +12,20 @@ import {
 import type { Route } from "./+types/home";
 import { type ListItem } from "./home.schema";
 
-function snapshotToLoaderData(snapshot: HomeSnapshot<ListItem>) {
+async function snapshotToLoaderData(request: Request, snapshot: HomeSnapshot<ListItem>) {
+  const defaultListId = await readDefaultListId(document.cookie);
+
+  // Offline mirror of home.server.ts's launchRedirect: the service worker
+  // serves the cached `/` HTML for `/?launch`, so the server never got to
+  // redirect. The cookie refresh waits for the next online launch.
+  if (isLaunchUrl(new URL(request.url))) {
+    const list = snapshot.lists.find(({ id, pending }) => id === defaultListId && !pending);
+    throw redirect(list ? href("/lists/:list", { list: list.slug }) : href("/"));
+  }
+
   return {
     userId: snapshot.userId,
+    defaultListId,
     lists: Promise.resolve(snapshot.lists),
     updatedKey: Promise.resolve(snapshot.updatedKey),
     waitlistCount: Promise.resolve(snapshot.waitlistCount),
@@ -21,11 +34,11 @@ function snapshotToLoaderData(snapshot: HomeSnapshot<ListItem>) {
 }
 
 // clientLoader - returns cached instantly, fetches fresh in background
-export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   const cached = await getHomeSnapshot<ListItem>();
 
   if (!navigator.onLine && cached) {
-    return snapshotToLoaderData(cached);
+    return snapshotToLoaderData(request, cached);
   }
 
   try {
@@ -71,7 +84,7 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
       (isRouteErrorResponse(error) && error.status >= 500);
 
     if (isNetworkOrServerError && cached) {
-      return snapshotToLoaderData(cached);
+      return snapshotToLoaderData(request, cached);
     }
     throw error;
   }

@@ -7,6 +7,11 @@ function emailFromRequest(request: Request): string | null {
   return token || null;
 }
 
+// Per-test users are `<role>-<uuid>@test.com`; the uuid identifies the tenant.
+function tenantOf(email: string) {
+  return email.replace(/^[^-]+-/, "");
+}
+
 export const handlers = [
   http.get("*/rest/v1/lists", async ({ request }) => {
     await delay();
@@ -18,14 +23,27 @@ export const handlers = [
     const slugParam = url.searchParams.get("slug");
 
     if (slugParam?.startsWith("like.")) {
+      // Mirrors RLS: owned + member lists, in any state unless filtered.
       const prefix = slugParam.slice(5).replace(/%$/, "");
-      const matching = lists.findMany((q) =>
-        q.where({
-          state: "active",
-          user_id: user.id,
-          slug: (s: string) => s.startsWith(prefix),
-        }),
-      );
+      const stateParam = url.searchParams.get("state");
+      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      const memberListIds = new Set(memberships.map((m) => m.list_id));
+      const matching = lists
+        .findMany((q) => q.where({ slug: (s: string) => s.startsWith(prefix) }))
+        .filter((l) => l.user_id === user.id || memberListIds.has(l.id))
+        .filter((l) => !stateParam?.startsWith("eq.") || l.state === stateParam.slice(3));
+      return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
+    }
+
+    // Home's launch redirect: resolve the starred (default) list's slug by id.
+    const idParam = url.searchParams.get("id");
+    if (idParam?.startsWith("eq.")) {
+      const id = idParam.slice(3);
+      const memberships = listMembers.findMany((q) => q.where({ user_id: user.id }));
+      const memberListIds = new Set(memberships.map((m) => m.list_id));
+      const matching = lists
+        .findMany((q) => q.where({ id, state: "active" }))
+        .filter((l) => l.user_id === user.id || memberListIds.has(l.id));
       return HttpResponse.json(matching.map((l) => ({ slug: l.slug })));
     }
 
@@ -92,6 +110,26 @@ export const handlers = [
       return HttpResponse.json(
         { code: "PGRST000", message: "Simulated DB error" },
         { status: 500 },
+      );
+    }
+
+    // `lists.slug` is globally unique in Postgres. Test tenants share seeded
+    // slugs, so enforce it among users of the same tenant (email suffix).
+    const owner = users.findFirst((q) => q.where({ id: body.user_id }));
+    const tenant = owner ? tenantOf(owner.email) : null;
+    const slugTaken = lists
+      .findMany((q) => q.where({ slug: body.slug }))
+      .some((l) => {
+        const listOwner = users.findFirst((q) => q.where({ id: l.user_id }));
+        return listOwner && tenantOf(listOwner.email) === tenant;
+      });
+    if (slugTaken) {
+      return HttpResponse.json(
+        {
+          code: "23505",
+          message: 'duplicate key value violates unique constraint "lists_slug_key"',
+        },
+        { status: 409 },
       );
     }
 
