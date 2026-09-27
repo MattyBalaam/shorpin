@@ -20,7 +20,7 @@ export const itemContainer = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[input] 1fr [state] auto [link] auto [drag] auto [done] auto",
+  gridTemplateColumns: "[input] minmax(0, 1fr) [state] auto [link] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",

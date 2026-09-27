@@ -9,7 +9,7 @@ export const main = style({
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] minmax(0, 1fr) [actions] auto",
   gridTemplateColumns:
-    "[left] minmax(20px, 1fr) [content] minmax(auto, 60ch) [right] minmax(20px, 1fr)",
+    "[left] minmax(20px, 1fr) [content] minmax(0, 60ch) [right] minmax(20px, 1fr)",
 });
 
 export const loading = style({
