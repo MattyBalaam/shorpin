@@ -206,6 +206,8 @@ https://shorpin.matthewbalaam.co.uk/set-password
 
 Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`).
 
+**Only a definitive auth failure logs the user out.** Access tokens last an hour, so the first request after a long offline spell always has to refresh the session server-side (`supabaseMiddleware`), and every loader calls `getUser()` (`requireUser`). Both used to redirect to `/login` on _any_ failure — including a network blip, timeout, 5xx or rate limit from Supabase auth, where supabase-js has deliberately left the session cookies intact. Those now throw a `503` instead (`isTransientAuthError` / `authUnavailable` in `app/lib/supabase.server.ts`); home and list clientLoaders already fall back to their IndexedDB copy on any 5xx, so the user stays on their data and the next request retries. Only rejections that mean the session is really gone (e.g. `refresh_token_already_used`, `session_not_found`) redirect. Every forced redirect, and every transient 503, is recorded via `Sentry.logger` with the auth error `code`/`status`, since the middleware's `console.log` lines don't reach Sentry.
+
 ### Database (Supabase)
 
 **Available Scripts:**

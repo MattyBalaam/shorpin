@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MiddlewareFunction } from "react-router";
 import { createContext, href, redirect } from "react-router";
 import type { Database, Tables } from "./database.types";
-import { createSupabaseClient } from "./supabase.server";
+import {
+  authUnavailable,
+  createSupabaseClient,
+  isTransientAuthError,
+  logAuthRedirect,
+} from "./supabase.server";
 
 export type SupaBaseContext = SupabaseClient<Database>;
 
@@ -104,6 +109,9 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
 
     if (!cookie || !hasAuthCookie) {
       logger(`no auth cookie, redirect to login`, true);
+      // Also hit by first visits and bots, but a returning user landing
+      // here means their cookie disappeared.
+      logAuthRedirect("no auth cookie", null, "info");
 
       throw redirect(href("/login"), { headers: cookieHeaders });
     }
@@ -119,10 +127,21 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
 
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession();
 
       if (!session) {
-        logger(`failed getting session, redirect to login`, true);
+        // Typically the first request after >1h offline, when the access
+        // token has expired and must be refreshed — a network blip here
+        // must not look like a logout. supabase-js keeps the session
+        // cookies intact on retryable failures, so the next request retries.
+        if (isTransientAuthError(error)) {
+          logger(`refresh failed transiently (${error?.status}), serving 503`, true);
+          throw authUnavailable(error, cookieHeaders);
+        }
+
+        logger(`failed getting session (${error?.code ?? "no session"}), redirect to login`, true);
+        logAuthRedirect("session refresh failed", error);
 
         throw redirect(href("/login"), { headers: cookieHeaders });
       }
