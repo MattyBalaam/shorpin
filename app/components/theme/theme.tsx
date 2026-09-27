@@ -79,7 +79,15 @@ export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps
       }}
     >
       {colors && (
-        <style href={`theme-${JSON.stringify(colors)}`} precedence="high">
+        // Deliberately a plain <style> — no href/precedence. Those opt into
+        // React's resource-hoisting cache, which assumes stable, reusable
+        // content per href and never removes an entry once inserted. Since
+        // href here was derived from the colour values, every distinct list
+        // visited left its own permanent override in <head>; the most
+        // recently inserted one then won the cascade everywhere, including
+        // on unrelated routes like home, after navigating away. A plain
+        // element updates/unmounts with the component like any normal node.
+        <style>
           {`:root:root {
             ${primaryVarName}: ${toAdaptiveCss(colors.primary)};
             ${secondaryVarName}: ${toAdaptiveCss(colors.secondary)};
