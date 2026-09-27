@@ -35,7 +35,7 @@
     "@react-router/node": "8.4.0",
     "@react-router/serve": "8.4.0",
     "@rolldown/binding-linux-x64-gnu": "1.2.10",
-    "@sentry/profiling-node": "^10.75.0",
+    "@sentry/profiling-node": "^11.0.0",
     "@sentry/react-router": "^10.75.0",
     "@supabase/realtime-js": "^2.117.1",
     "@supabase/ssr": "0.12.7",
