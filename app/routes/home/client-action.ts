@@ -32,7 +32,7 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     // directly. The next online launch re-issues it server-side.
     const result = v.safeParse(zSetDefaultList, Object.fromEntries(formData));
     if (result.success) {
-      document.cookie = serializeDefaultListCookie(result.output["list-id"] || null);
+      document.cookie = await serializeDefaultListCookie(result.output["list-id"] || null);
     }
     return null;
   }

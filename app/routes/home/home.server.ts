@@ -35,7 +35,7 @@ async function launchRedirect(supabase: SupaBaseContext, id: string | null) {
   // Re-issuing the cookie on each launch keeps it server-set (not subject to
   // Safari's 7-day cap on script-written storage) and slides its expiry.
   return redirect(list ? href("/lists/:list", { list: list.slug }) : href("/"), {
-    headers: { "Set-Cookie": serializeDefaultListCookie(list ? id : null) },
+    headers: { "Set-Cookie": await serializeDefaultListCookie(list ? id : null) },
   });
 }
 
@@ -44,7 +44,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const user = await requireUser(supabase);
   const userId = user.id;
-  const defaultListId = readDefaultListId(request.headers.get("Cookie"));
+  const defaultListId = await readDefaultListId(request.headers.get("Cookie"));
 
   if (isLaunchUrl(new URL(request.url))) {
     throw await launchRedirect(supabase, defaultListId);
@@ -113,7 +113,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (!result.success) return null;
 
     const listId = result.output["list-id"] || null;
-    return data(null, { headers: { "Set-Cookie": serializeDefaultListCookie(listId) } });
+    return data(null, { headers: { "Set-Cookie": await serializeDefaultListCookie(listId) } });
   }
 
   if (formData.get("intent") === REORDER_LISTS_INTENT) {

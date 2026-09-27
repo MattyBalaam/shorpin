@@ -12,8 +12,8 @@ import {
 import type { Route } from "./+types/home";
 import { type ListItem } from "./home.schema";
 
-function snapshotToLoaderData(request: Request, snapshot: HomeSnapshot<ListItem>) {
-  const defaultListId = readDefaultListId(document.cookie);
+async function snapshotToLoaderData(request: Request, snapshot: HomeSnapshot<ListItem>) {
+  const defaultListId = await readDefaultListId(document.cookie);
 
   // Offline mirror of home.server.ts's launchRedirect: the service worker
   // serves the cached `/` HTML for `/?launch`, so the server never got to
