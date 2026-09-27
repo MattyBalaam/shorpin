@@ -224,12 +224,17 @@ pnpx supabase gen types typescript --local > app/lib/database.types.ts
 **Keep-Alive:**
 
 The e2e Supabase project is on the free tier, which auto-pauses after ~7 days
-without API activity. `.github/workflows/supabase-keepalive.yml` runs daily
-(`pnpm keepalive:supabase`) and sends a single anon-keyed request to
-`/rest/v1/` to keep it warm ahead of PR runs. It reuses the same
-`E2E_SUPABASE_URL` / `E2E_SUPABASE_ANON_KEY` secrets as the `e2e-supabase` CI
-job and intentionally avoids `SUPABASE_SERVICE_ROLE_KEY` — no table access is
-needed just to keep the project active.
+without database activity. `.github/workflows/supabase-keepalive.yml` runs
+daily (`pnpm keepalive:supabase`) and sends a single anon-keyed query to
+`/rest/v1/lists` to keep it warm ahead of PR runs. This must be a real query
+against Postgres — Supabase's auto-pause check does not count a health-check
+ping (e.g. `/auth/v1/health` returns 200 without touching the database), so
+an earlier version of this script that pinged that endpoint still let the
+project get paused despite running "successfully" every day. RLS means the
+anon key gets back zero rows, but the query still counts as activity. It
+reuses the same `E2E_SUPABASE_URL` / `E2E_SUPABASE_ANON_KEY` secrets as the
+`e2e-supabase` CI job and intentionally avoids `SUPABASE_SERVICE_ROLE_KEY` —
+no real table access is needed, just a genuine query.
 
 ### CI Playwright container version
 
