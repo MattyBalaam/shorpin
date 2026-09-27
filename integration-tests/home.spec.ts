@@ -16,6 +16,38 @@ test("owner can create a new list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
 
+test("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+
+  await page
+    .locator("li")
+    .filter({ has: page.getByRole("link", { name: "Owner Empty" }) })
+    .getByRole("link", { name: "Configure" })
+    .click();
+  await page.getByRole("link", { name: "Delete list" }).click();
+  await page.getByRole("button", { name: "Yes" }).click();
+  await page.waitForURL("/");
+
+  // The soft-deleted row still holds the `owner-empty` slug.
+  await page.getByLabel("New list").fill("Owner Empty");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await page.waitForURL("/lists/owner-empty-1");
+});
+
+test("owner can create a list whose slug belongs to a list they can't see", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  // Collab's `collab-shopping` isn't shared with owner, so RLS hides it.
+  await page.getByLabel("New list").fill("Collab Shopping");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await page.waitForURL(/\/lists\/collab-shopping-[0-9a-f]{6}$/);
+});
+
 test("owner can create a list while offline, synced on reconnect", async ({
   page,
   ctx,

@@ -19,6 +19,9 @@ import {
   zSetDefaultList,
 } from "./home.schema";
 
+// Postgres unique_violation, surfaced by PostgREST as `error.code`.
+const UNIQUE_VIOLATION = "23505";
+
 // PWA launches (manifest start_url) always redirect away from `/?launch` —
 // into the starred list if there is one, otherwise to plain `/` — so a later
 // revalidation of home never re-triggers the launch redirect.
@@ -201,20 +204,31 @@ export async function action({ request, context }: Route.ActionArgs) {
   const nextSortOrder =
     Math.max(-1, ...(userLists ?? []).map((existingList) => existingList.sort_order)) + 1;
 
+  // `lists.slug` is unique across every row, including soft-deleted lists, so
+  // don't filter by state here.
   const { data: matches } = await supabase
     .from("lists")
     .select("slug")
-    .like("slug", `${baseSlug}%`)
-    .eq("state", "active");
+    .like("slug", `${baseSlug}%`);
 
-  const slug = resolveSlug(baseSlug, matches?.map((m: { slug: string }) => m.slug) ?? []);
+  let slug = resolveSlug(baseSlug, matches?.map((m: { slug: string }) => m.slug) ?? []);
 
-  const { error } = await supabase.from("lists").insert({
-    name: listName,
-    slug,
-    user_id: user.id,
-    sort_order: nextSortOrder,
-  });
+  const insertList = (candidate: string) =>
+    supabase.from("lists").insert({
+      name: listName,
+      slug: candidate,
+      user_id: user.id,
+      sort_order: nextSortOrder,
+    });
+
+  let { error } = await insertList(slug);
+
+  // RLS hides other users' lists from the lookup above, so the slug can still
+  // collide. Fall back to a random suffix rather than probing sequentially.
+  for (let attempt = 0; error?.code === UNIQUE_VIOLATION && attempt < 3; attempt++) {
+    slug = `${baseSlug}-${crypto.randomUUID().slice(0, 6)}`;
+    ({ error } = await insertList(slug));
+  }
 
   if (error) {
     console.error("Error creating list:", error);
