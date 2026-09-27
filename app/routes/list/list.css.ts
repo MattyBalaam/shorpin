@@ -19,12 +19,16 @@ export const undoButton = style({
 export const actions = style({
   gridColumn: "content",
   display: "flex",
+  flexWrap: "wrap",
   gap: "1em",
+  minWidth: 0,
 });
 
 // Inline, borderless "add item" input — the distinctive list treatment.
 export const addInput = style({
   flex: 1,
+  // Inputs have an intrinsic width from their default `size`; let it shrink.
+  minWidth: 0,
   paddingBlock: vars.spacing.sm,
   paddingInline: vars.spacing.md,
   fontSize: vars.fontSize.md,

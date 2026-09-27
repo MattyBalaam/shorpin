@@ -46,7 +46,7 @@ export const skeletonItem = style({
 export const skeletonContent = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[input] 1fr [state] auto [drag] auto [done] auto",
+  gridTemplateColumns: "[input] minmax(0, 1fr) [state] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
