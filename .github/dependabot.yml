@@ -10,6 +10,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # @types/node major versions track Node.js majors; engines.node pins us
+      # to the 24.x line, so skip 25/26+ until we actually upgrade Node.
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
