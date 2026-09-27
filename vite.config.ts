@@ -1,5 +1,5 @@
 import { reactRouter } from "@react-router/dev/vite";
-import { type SentryReactRouterBuildOptions, sentryReactRouter } from "@sentry/react-router";
+import { type SentryReactRouterBuildOptions, sentryReactRouter } from "@sentry/react-router/vite";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";

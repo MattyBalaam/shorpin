@@ -15,6 +15,10 @@ COPY . .
 # Vite bakes these into the client bundle at build time
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+# Without this the client Sentry.init() gets an undefined DSN and silently
+# does nothing. The server reads VITE_SENTRY_DSN at runtime instead (see
+# instrument.server.mjs), so it must also be set as a runtime variable.
+ARG VITE_SENTRY_DSN
 ARG VITE_GIT_HASH
 ARG VITE_GIT_DATE
 ARG VITE_PR_NUMBER
