@@ -432,3 +432,38 @@ test("starred list opens on app launch, and un-starring falls back to home", asy
   await page.goto("/?launch");
   await expect(page).toHaveURL("/");
 });
+
+test("installed app opens the starred list on launch even without start_url (iOS)", async ({
+  page,
+  ctx,
+}) => {
+  // iOS home screen apps ignore the manifest's `/?launch` start_url and open
+  // plain `/`; they're only identifiable as standalone.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "standalone", { value: true });
+  });
+
+  await login(page, ctx.ownerEmail);
+
+  const starred = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.startsWith("/_.data") &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Open Shopping on launch" }).click();
+  await starred;
+
+  // A fresh document load at `/` is a launch.
+  await page.goto("/");
+  await expect(page).toHaveURL("/lists/shopping");
+
+  // In-app navigation back to home is not.
+  await page.getByRole("link", { name: "Back to index" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible();
+
+  // Nor is a reload (pull-to-refresh) of home.
+  await page.reload();
+  await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/");
+});
