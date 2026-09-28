@@ -51,6 +51,20 @@ export const loader = async ({ context }: Route.LoaderArgs) => {
   return { toast };
 };
 
+// The root loader revalidates on client navigations too, so when the network
+// is down but navigator.onLine hasn't caught up yet (shouldRevalidate below
+// can't skip it), its failed fetch would take the whole app — including
+// home/list's perfectly good offline caches — down to the root error
+// boundary. Its only payload is a flash toast, so dropping it is harmless.
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  try {
+    return await serverLoader();
+  } catch (error) {
+    if (isNetworkOrServerError(error)) return { toast: undefined };
+    throw error;
+  }
+}
+
 // Skip revalidation while offline — the .data fetch would fail and throw the
 // whole app into the error boundary (e.g. after an offline clientAction on
 // the list route). Route-level shouldRevalidate guards only cover their own route;

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useRevalidator } from "react-router";
+import { href, useLocation, useNavigate, useRevalidator } from "react-router";
 import { Button } from "~/components/button/button";
 import * as styles from "~/components/modal/modal.css";
 import { isNetworkOrServerError } from "~/lib/network-error";
@@ -23,17 +23,41 @@ export function getErrorMessage(error: unknown): string {
 
 export function ErrorState({ error }: { error: unknown }) {
   const { revalidate, state } = useRevalidator();
+  const navigate = useNavigate();
+  const location = useLocation();
   const ref = useRef<HTMLDialogElement>(null);
+
+  // Back out to wherever the user came from (home and list both have offline
+  // caches to land on); if this was the first entry in the history stack
+  // there's nowhere to go back to, so fall back to home.
+  function cancel() {
+    if (location.key === "default") {
+      void navigate(href("/"));
+    } else {
+      void navigate(-1);
+    }
+  }
 
   useEffect(() => {
     ref.current?.showModal();
   }, []);
 
   return (
-    <dialog ref={ref} className={styles.dialog}>
+    <dialog
+      ref={ref}
+      className={styles.dialog}
+      onCancel={(event) => {
+        // Escape would otherwise just close the dialog over a blank page.
+        event.preventDefault();
+        cancel();
+      }}
+    >
       <div className={styles.content}>
         <p>{getErrorMessage(error)}</p>
         <div className={styles.actions}>
+          <Button variant="outline" onClick={cancel}>
+            Cancel
+          </Button>
           <Button onClick={revalidate} isSubmitting={state === "loading"}>
             Retry
           </Button>
