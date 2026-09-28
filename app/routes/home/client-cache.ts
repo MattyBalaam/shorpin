@@ -1,7 +1,8 @@
 import React, { useEffectEvent } from "react";
 import { href, isRouteErrorResponse, redirect, useRevalidator } from "react-router";
 
-import { isLaunchUrl, readDefaultListId } from "~/lib/default-list";
+import { isLaunchUrl, LAUNCH_PARAM, readDefaultListId } from "~/lib/default-list";
+import { consumeStandaloneLaunch } from "~/lib/standalone-launch.client";
 
 import {
   getHomeSnapshot,
@@ -35,6 +36,19 @@ async function snapshotToLoaderData(request: Request, snapshot: HomeSnapshot<Lis
 
 // clientLoader - returns cached instantly, fetches fresh in background
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
+  // Installed-app launch that didn't arrive via start_url (iOS): hand over
+  // to the `/?launch` path below/in home.server.ts, which resolves the
+  // starred list online or offline. Checked before any await so it's
+  // consumed by this document's first home load.
+  const url = new URL(request.url);
+  if (
+    !isLaunchUrl(url) &&
+    consumeStandaloneLaunch(url) &&
+    (await readDefaultListId(document.cookie))
+  ) {
+    throw redirect(`${href("/")}?${LAUNCH_PARAM}`);
+  }
+
   const cached = await getHomeSnapshot<ListItem>();
 
   if (!navigator.onLine && cached) {
