@@ -1,7 +1,8 @@
 import React, { useEffectEvent } from "react";
-import { href, isRouteErrorResponse, redirect, useRevalidator } from "react-router";
+import { href, redirect, useRevalidator } from "react-router";
 
 import { isLaunchUrl, LAUNCH_PARAM, readDefaultListId } from "~/lib/default-list";
+import { isNetworkOrServerError } from "~/lib/network-error";
 import { consumeStandaloneLaunch } from "~/lib/standalone-launch.client";
 
 import {
@@ -93,11 +94,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   } catch (error) {
     console.error("Error in home clientLoader", error);
 
-    const isNetworkOrServerError =
-      (error instanceof TypeError && error.message.includes("fetch")) ||
-      (isRouteErrorResponse(error) && error.status >= 500);
-
-    if (isNetworkOrServerError && cached) {
+    if (isNetworkOrServerError(error) && cached) {
       return snapshotToLoaderData(request, cached);
     }
     throw error;

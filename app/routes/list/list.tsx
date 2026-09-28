@@ -18,6 +18,7 @@ import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
 import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import { formDataToPairs } from "~/lib/form-data-codec";
+import { isNetworkOrServerError } from "~/lib/network-error";
 import { rebaseListItems, type ListItemRef } from "~/lib/offline-merge";
 import {
   dequeueMutations,
@@ -87,11 +88,7 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
   } catch (error) {
     console.error("Error in clientLoader", error);
 
-    const isNetworkOrServerError =
-      (error instanceof TypeError && error.message.includes("fetch")) ||
-      (isRouteErrorResponse(error) && error.status >= 500);
-
-    if (isNetworkOrServerError) {
+    if (isNetworkOrServerError(error)) {
       const cached = await getListSnapshot<ListLoaderData>(slug);
       if (cached) return cached.serverData;
     }

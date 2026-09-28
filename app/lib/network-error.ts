@@ -1,5 +1,11 @@
 import { isRouteErrorResponse } from "react-router";
 
+// There's no standard way to tell a network failure apart from any other
+// TypeError, so match each engine's wording: Chromium "Failed to fetch",
+// WebKit "Load failed", Firefox "NetworkError when attempting to fetch
+// resource."
+const NETWORK_ERROR_MESSAGE = /fetch|load failed|networkerror/i;
+
 /**
  * A `fetch()` that never got a response (browser TypeError) or a 5xx bubbled
  * up as a route error response — as opposed to the server genuinely
@@ -8,7 +14,7 @@ import { isRouteErrorResponse } from "react-router";
  */
 export function isNetworkOrServerError(error: unknown): boolean {
   return (
-    (error instanceof TypeError && error.message.includes("fetch")) ||
+    (error instanceof TypeError && NETWORK_ERROR_MESSAGE.test(error.message)) ||
     (isRouteErrorResponse(error) && error.status >= 500)
   );
 }

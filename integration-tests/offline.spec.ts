@@ -95,3 +95,43 @@ test("an offline edit still queues successfully even when Background Sync is una
 
   await expect(page.getByText("Sync Tag Test (pending", { exact: false })).toBeVisible();
 });
+
+test("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+
+  await page.getByRole("link", { name: "Shopping" }).first().click();
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  await page.getByRole("link", { name: "Back to index" }).click();
+  await expect(page.getByLabel("New list")).toBeVisible();
+
+  // Kill the network without flipping navigator.onLine — what a real device
+  // does in the gap before it notices the connection has gone. Every loader
+  // (root's included) attempts, and fails, a real fetch.
+  await page.route(/\.data|__manifest/, (route) => route.abort("internetdisconnected"));
+
+  await page.getByRole("link", { name: "Shopping" }).first().click();
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+});
+
+test("cancelling the network error modal goes back to the previous page", async ({
+  page,
+  context,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await expect(page.getByLabel("New list")).toBeVisible();
+
+  // /sign-ups has no offline cache, so an SPA navigation to it while
+  // offline lands on the network error modal.
+  await context.setOffline(true);
+  await page.getByRole("link", { name: /pending/ }).click();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByLabel("New list")).toBeVisible();
+});
