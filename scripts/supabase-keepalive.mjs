@@ -1,30 +1,43 @@
 #!/usr/bin/env node
-// Runs a real query against the e2e Supabase project's Postgres database so
-// the free-tier project doesn't auto-pause after a week of inactivity.
-// Supabase's auto-pause check only counts actual database activity — a
-// health-check ping (e.g. /auth/v1/health) returns 200 without touching
-// Postgres and does NOT count, which is why this project got paused despite
-// a daily "successful" ping. Querying `lists` with the anon key still counts
-// as a database hit even though RLS returns zero rows (no auth.uid()) — no
-// service-role access, no actual table access needed.
+// Writes to the e2e Supabase project so the free tier doesn't auto-pause.
+// Neither a health-check ping nor a daily PostgREST read counted as activity
+// (both ran "successfully" while pause warnings kept arriving), so this
+// inserts a marker row and immediately deletes it. Deleting by email also
+// cleans up a marker left behind by a run that died between the two calls.
 
 const url = process.env.VITE_SUPABASE_URL;
-const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!url || !anonKey) {
-  console.error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY");
+if (!url || !serviceKey) {
+  console.error("Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   process.exit(1);
 }
 
-const response = await fetch(new URL("/rest/v1/lists?select=id&limit=1", url), {
-  headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+const MARKER_EMAIL = "keepalive@shorpin.invalid";
+const projectRef = new URL(url).hostname.split(".")[0];
+const headers = {
+  apikey: serviceKey,
+  Authorization: `Bearer ${serviceKey}`,
+  "Content-Type": "application/json",
+  Prefer: "return=minimal",
+};
+
+async function request(path, init) {
+  const response = await fetch(new URL(path, url), { ...init, headers });
+  if (!response.ok) {
+    console.error(
+      `Supabase keep-alive ${init.method} failed: ${response.status} ${await response.text()}`,
+    );
+    process.exit(1);
+  }
+}
+
+await request("/rest/v1/waitlist", {
+  method: "POST",
+  body: JSON.stringify({ email: MARKER_EMAIL, first_name: "Keep", last_name: "Alive" }),
+});
+await request(`/rest/v1/waitlist?email=eq.${encodeURIComponent(MARKER_EMAIL)}`, {
+  method: "DELETE",
 });
 
-if (!response.ok) {
-  console.error(`Supabase keep-alive ping failed: ${response.status} ${response.statusText}`);
-  process.exit(1);
-}
-
-console.log(
-  `Supabase keep-alive ping succeeded (${response.status}) at ${new Date().toISOString()}`,
-);
+console.log(`Supabase keep-alive write succeeded on ${projectRef} at ${new Date().toISOString()}`);
