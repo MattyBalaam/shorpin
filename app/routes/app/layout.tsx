@@ -1,7 +1,8 @@
 import { LazyMotion } from "motion/react";
 import { useEffect } from "react";
 import { Form, href, Outlet, useLocation, useRouteLoaderData } from "react-router";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "~/components/toaster/toaster";
+import { toast } from "~/lib/toast";
 import { Breadcrumbs } from "~/components/breadcrumbs/breadcrumbs";
 import { Button } from "~/components/button/button";
 import {

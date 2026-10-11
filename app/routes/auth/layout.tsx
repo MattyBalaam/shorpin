@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Outlet, useRouteLoaderData } from "react-router";
 import * as styles from "./layout.css";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "~/components/toaster/toaster";
+import { toast } from "~/lib/toast";
 import type { loader as rootLoader } from "~/root";
 
 export default function AuthLayout() {

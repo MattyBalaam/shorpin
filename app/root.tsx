@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react-router";
 import { Suspense, useEffect, useRef } from "react";
 import {
   href,
@@ -15,7 +14,8 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
+import { reportError } from "~/lib/monitoring.client";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { supabaseMiddleware } from "~/lib/supabase.middleware";
@@ -252,6 +252,17 @@ export default function App() {
 export function ErrorBoundary() {
   const error = useRouteError();
 
+  // Server-rendered errors are already captured by `handleError` in
+  // entry.server.tsx; this reports the ones thrown client-side.
+  useEffect(
+    function reportUnexpectedError() {
+      if (error instanceof Error && !isNetworkOrServerError(error)) {
+        reportError(error);
+      }
+    },
+    [error],
+  );
+
   // A dead server or no connection reaches every route the same way — a
   // fetch() that never got a response, or a 5xx bubbled up as a route error
   // response. Routes without their own boundary (auth, /sign-ups, etc.) fall
@@ -275,10 +286,6 @@ export function ErrorBoundary() {
         <Link to={href("/")}>Back to home</Link>
       </main>
     );
-  }
-
-  if (error && error instanceof Error) {
-    Sentry.captureException(error);
   }
 
   return (

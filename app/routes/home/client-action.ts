@@ -1,5 +1,5 @@
 import { parseSubmission, report } from "@conform-to/react/future";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 import * as v from "valibot";
 
 import { serializeDefaultListCookie } from "~/lib/default-list";
