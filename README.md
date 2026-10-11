@@ -265,16 +265,21 @@ whatever version is actually installed.
 
 ### CI secrets on Dependabot PRs
 
-GitHub withholds repository secrets from any workflow run triggered by
-`dependabot[bot]`, so `e2e-supabase` fails on Dependabot PRs with "Missing
-VITE_SUPABASE_URL". Rather than working around that boundary, `e2e-supabase`
-is gated behind a `ci-secrets` GitHub Environment
-(`.github/workflows/ci.yml`) with a required reviewer. On a Dependabot PR the
-job shows as "Waiting" with a "Review deployments" prompt inline in the PR's
-checks; approving it after reviewing the diff releases the secrets to that
-run — no empty commit or "Update branch" click needed. The `secret-preflight`
-job posts a PR comment explaining this when it detects a Dependabot-triggered
-run with no secrets available.
+Workflow runs triggered by `dependabot[bot]` only receive secrets from the
+Dependabot secrets store — never repository Actions secrets or environment
+secrets, even after an environment approval. So the three `E2E_SUPABASE_*`
+secrets used by `e2e-supabase` are mirrored into the Dependabot store, and
+Dependabot PRs run the full E2E suite with no manual step. Rotating those keys
+means updating both copies.
+
+Only the E2E project's secrets are mirrored. Prod secrets
+(`SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`) are only needed by
+`migrate-prod` on `main` and stay out of the Dependabot store. The trade-off
+of no approval gate is that a compromised dependency could read the E2E
+project's service-role key, so that project must never hold real data.
+
+The `secret-preflight` job checks the `E2E_SUPABASE_*` secrets on every PR
+and posts a PR comment naming any that are missing.
 
 ### Performance Instrumentation
 
