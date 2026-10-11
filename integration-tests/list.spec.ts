@@ -114,6 +114,71 @@ test("'Recreate last deleted' re-adds the deleted value as a fresh item", async 
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
+/**
+ * Drags a row horizontally from its drag handle, the gesture that both
+ * reorders (vertical) and swipe-deletes (horizontal) list items.
+ */
+async function swipeHandle(
+  page: Page,
+  label: string,
+  {
+    distance,
+    steps,
+    holdBeforeRelease = 0,
+  }: { distance: number; steps: number; holdBeforeRelease?: number },
+) {
+  const box = await page.getByLabel(label).boundingBox();
+  if (!box) throw new Error(`Unable to determine position of "${label}"`);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + distance, y, { steps });
+  if (holdBeforeRelease) await page.waitForTimeout(holdBeforeRelease);
+  await page.mouse.up();
+}
+
+test("swiping an item far enough deletes it and persists", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  // Slow swipe well past the distance threshold so velocity plays no part.
+  await swipeHandle(page, "Reorder Milk", { distance: -200, steps: 20, holdBeforeRelease: 200 });
+
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
+  await expect(page.getByLabel("Edit Bread")).toBeVisible();
+  await expect(page.getByLabel("Edit Eggs")).toBeVisible();
+});
+
+test("a quick short fling deletes an item", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  // Under the distance threshold, but fast enough to count as a fling.
+  await swipeHandle(page, "Reorder Bread", { distance: 90, steps: 3 });
+
+  await expect(page.getByLabel("Edit Bread")).not.toBeVisible();
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+});
+
+test("a slow short swipe springs the item back instead of deleting", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await swipeHandle(page, "Reorder Eggs", { distance: -80, steps: 10, holdBeforeRelease: 200 });
+
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Eggs") });
+  await expect(row).toBeVisible();
+  // Settles back to rest with no leftover offset or lift.
+  await expect(row).toHaveCSS("transform", "none");
+  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
+});
+
 test("edited icon does not appear on unedited items while another item is being deleted", async ({
   page,
   ctx,

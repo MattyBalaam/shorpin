@@ -68,7 +68,6 @@ The app uses React Router 7's file-based routing with explicit route definitions
 - Single `<main>` container with centered max-width
 - Breadcrumbs navigation component
 - Sonner toast notifications
-- Motion/React for stagger animations
 
 **Component Structure:**
 
@@ -112,7 +111,7 @@ Per-list `primary`/`secondary` colours come from [app/lib/palette.ts](app/lib/pa
 
 - [Link](app/components/link/link.tsx) - Wrapper around React Router Link with variant support
 - [Button](app/components/button/button.tsx) - Styled button using clickable styles
-- [Items](app/components/items.tsx) - Drag-to-reorder list with Motion/React
+- [Items](app/components/items.tsx) - Drag-to-reorder list with swipe-to-delete (see [Drag, reorder & swipe](#drag-reorder--swipe))
 - [Item](app/components/item.tsx) - Individual list item with swipe-to-delete
 - [Breadcrumbs](app/components/breadcrumbs/breadcrumbs.tsx) - Navigation breadcrumbs using route handles
 
@@ -135,8 +134,21 @@ Instead:
 
 **Delete sequencing matters:** shrinking Conform's tracked items array renumbers every later item's field name (e.g. `items[2]` becomes `items[1]`). If that happens while the outgoing row's `<input>`s are still mid-exit-animation, two inputs can briefly share one name and corrupt the submission — which the diff-based delete would read as "delete everything missing," not just a cosmetic glitch. `items.tsx`'s `ReorderableItem` closes this two ways:
 
-- It never calls `intent.remove()` until the row's own exit fade has actually finished (`handleDeleteClick`/`handleDragEnd`'s fling both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already faded out.
-- `Reorder.Item`'s `exit` transition is set to `duration: 0`. Without that, `AnimatePresence` plays a _second_, independent exit animation once the item is removed from the array — keeping the same stale, soon-to-be-renumbered node mounted for another full animation cycle and reopening the exact race the first fix was meant to close. There's nothing left to animate at that point (the manual fade already handled the visible part), so this exit is instant.
+- It never calls `intent.remove()` until the row's own exit animation has actually finished (the delete button's collapse and a swipe's fly-out both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already invisible.
+- There is no separate exit animation after removal: once the array shrinks, React unmounts the row in the same commit, so a stale, soon-to-be-renumbered node is never kept mounted alongside its renumbered sibling.
+
+### Drag, reorder & swipe
+
+Reorderable lists (list items and home lists) use a small in-house gesture hook, [use-drag-list.ts](app/components/reorderable/use-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
+
+- **Direction lock** — a gesture commits to an axis after 10px. Vertical drags reorder; horizontal drags swipe-to-delete (only where the row opts in via `swipe`, otherwise every drag reorders).
+- **Reorder** — a row swaps with its neighbour once its leading edge crosses the neighbour's centre. Layout is measured with `offsetTop`, which ignores transforms, so in-flight animations and the lifted scale never skew the thresholds. Pointer travel is measured relative to the list, so scrolling mid-drag keeps the row under the pointer.
+- **Sibling animation (FLIP)** — before each reorder or removal the hook snapshots every row's position; after React commits it animates each sibling from its old position to its new slot.
+- **Swipe-to-delete** — dismisses past 140px or above 500px/s (velocity over the last 100ms); otherwise springs back.
+- **Springs** — sampled once into CSS `linear()` easings, so WAAPI plays them with no physics runtime.
+- Gesture listeners attach to `window` rather than using pointer capture, because React reorders rows by moving DOM nodes, which can drop capture mid-drag.
+
+[`useReorderable`](app/components/reorderable/use-reorderable.ts) owns the optimistic order and wires itself to the hook; persistence stays in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts).
 
 ### Offline / Local-first (Home + List)
 
