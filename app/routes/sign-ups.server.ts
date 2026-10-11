@@ -6,17 +6,22 @@ import { redirectWithSuccess } from "remix-toast";
 export async function loader({ context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
-  const { data, error } = await supabase
-    .from("waitlist")
-    .select("id, email, first_name, last_name, created_at")
-    .order("created_at", { ascending: true });
+  // Streamed rather than awaited, so the modal opens straight away and the
+  // list fills in when the query resolves (see SignUpsList).
+  const signUps = (async () => {
+    const { data, error } = await supabase
+      .from("waitlist")
+      .select("id, email, first_name, last_name, created_at")
+      .order("created_at", { ascending: true });
 
-  if (error) {
-    console.error("Error loading sign-ups:", error);
-    throw error;
-  }
+    if (error) {
+      console.error("Error loading sign-ups:", error);
+      throw error;
+    }
+    return data ?? [];
+  })();
 
-  return { signUps: data ?? [] };
+  return { signUps };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
