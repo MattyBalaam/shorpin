@@ -328,6 +328,11 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // so an unmatched id can't cause a real row to be deleted), and separately
   // carry every offline addition's value through the `newItems` array field
   // (mutate_list migration 20260806000000), one real row minted per entry.
+  // Each addition's client-generated id goes along in the parallel
+  // `newItemIds` field and becomes the row's id (migration 20261011000000):
+  // the queue is only dropped once the response arrives, so a reload while
+  // the request is in flight replays additions the server already applied —
+  // the stable id makes that replay a no-op instead of a duplicate.
   // `new` (the single-value field the live add-input and recreateLastDeleted
   // use) is explicitly cleared here — offline additions are carried through
   // `newItems` instead, and leaving `new` untouched would resubmit whatever
@@ -386,6 +391,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       syncData.set(fields.new.name, "");
       additions.forEach((item, index) => {
         syncData.append(`newItems[${index}]`, item.value);
+        syncData.append(`newItemIds[${index}]`, item.id);
       });
 
       try {

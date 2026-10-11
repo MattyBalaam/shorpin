@@ -18,6 +18,24 @@ async function openList(page: Page, slug: string) {
   await expect(page.locator(`html[data-hydrated-path="${listPath(slug)}"]`)).toBeAttached();
 }
 
+function queuedMutationCount(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open("shorpin-offline");
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const count = open.result
+            .transaction("mutation-queue")
+            .objectStore("mutation-queue")
+            .count();
+          count.onsuccess = () => resolve(count.result);
+          count.onerror = () => reject(count.error);
+        };
+      }),
+  );
+}
+
 test("list shows all items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -231,6 +249,53 @@ test("multiple items added offline all sync to the server on reconnect", async (
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Offline flour")).toBeVisible();
   await expect(page.getByLabel("Edit Offline sugar")).toBeVisible();
+});
+
+test.describe(() => {
+  // The SW would forward the intercepted POST itself, delivering it twice
+  // before the reload and muddying what this test isolates.
+  test.use({ serviceWorkers: "block" });
+
+  test("a reload while a sync is in flight doesn't duplicate offline additions", async ({
+    page,
+    ctx,
+    context,
+  }) => {
+    await login(page, ctx.ownerEmail);
+    await openList(page, "shopping");
+    await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+    await context.setOffline(true);
+    await page.getByLabel("New item").fill("Offline butter");
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
+
+    // performRebaseSync only dequeues once the sync POST's response arrives.
+    // Let the POST reach the server but never hand its response back, then
+    // reload — as if the tab were reloaded or closed mid-request. The server
+    // has applied the addition, but the queue survives into the next mount.
+    let delivered!: () => void;
+    const syncDelivered = new Promise<void>((resolve) => {
+      delivered = resolve;
+    });
+    await page.route("**/lists/shopping.data*", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await route.fetch();
+      delivered();
+    });
+
+    await context.setOffline(false);
+    await syncDelivered;
+    await page.unroute("**/lists/shopping.data*");
+
+    // The remount retries the still-queued edit, rebased onto fresh server
+    // state that already contains the addition.
+    await openList(page, "shopping");
+    await expect.poll(() => queuedMutationCount(page)).toBe(0);
+
+    await openList(page, "shopping");
+    await expect(page.getByLabel("Edit Offline butter")).toHaveCount(1);
+  });
 });
 
 test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flushes once retried", async ({
