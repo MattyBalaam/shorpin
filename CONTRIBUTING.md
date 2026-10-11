@@ -143,6 +143,35 @@ useEffect(() => {
 }, [deps]);
 ```
 
+### use()
+
+Read context with `use(Context)` rather than `useContext`.
+
+For non-critical loader data, return the promise unawaited and read it with `use()` in a child wrapped in `<Suspense>`, so the page renders without waiting for it (see `sign-ups.tsx`, `list/config.tsx`, `home/components.tsx`):
+
+```tsx
+// loader — wrap Supabase queries in an async function: the query builder is
+// only a thenable, which React Router doesn't serialize as a promise
+const signUps = (async () => {
+  const { data, error } = await supabase.from("waitlist").select("…");
+  if (error) throw error;
+  return data ?? [];
+})();
+return { signUps };
+
+// component
+function SignUpsList({ signUpsPromise }) {
+  const signUps = use(signUpsPromise);
+  // ...
+}
+
+<Suspense fallback={null}>
+  <SignUpsList signUpsPromise={loaderData.signUps} />
+</Suspense>;
+```
+
+On offline-capable routes, IndexedDB can't store promises, so the `clientLoader` must await streamed values before caching them and serve cached data back as `Promise.resolve(...)` (see `home/client-cache.ts`). Don't use `use()` for side effects (subscriptions, service worker registration). Those belong in effects.
+
 ## Testing
 
 ### Selectors
