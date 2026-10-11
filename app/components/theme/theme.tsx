@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, use, useEffect, useRef, useState } from "react";
 import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
@@ -18,7 +18,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function useThemeContext() {
-  const context = useContext(ThemeContext);
+  const context = use(ThemeContext);
   if (!context) {
     throw new Error("Theme compound components must be used within Theme");
   }

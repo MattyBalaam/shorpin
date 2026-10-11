@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { createContext, use, useEffect, useEffectEvent, useRef, useSyncExternalStore } from "react";
 import * as styles from "./online-status.css";
 
 const OnlineContext = createContext<boolean>(true);
@@ -16,7 +9,7 @@ interface UseIsOnlineOptions {
 }
 
 export function useIsOnline({ onOnline, onOffline }: UseIsOnlineOptions = {}) {
-  const isOnline = useContext(OnlineContext);
+  const isOnline = use(OnlineContext);
   const wasOfflineRef = useRef(false);
 
   const handleOnline = useEffectEvent(() => onOnline?.());
