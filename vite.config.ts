@@ -41,7 +41,6 @@ export default defineConfig((config) => {
         output: {
           manualChunks(id) {
             if (id.includes("@supabase/")) return "vendor-supabase";
-            if (id.includes("/sonner/")) return "vendor-sonner";
           },
         },
       },

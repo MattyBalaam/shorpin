@@ -34,7 +34,7 @@ import { zList } from "./data";
 
 export { action, loader } from "./list.server";
 
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 
 type ListLoaderData = Awaited<ReturnType<typeof import("./list.server").loader>>;
 

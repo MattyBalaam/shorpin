@@ -14,7 +14,7 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 import { reportError } from "~/lib/monitoring.client";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { isNetworkOrServerError } from "~/lib/network-error";

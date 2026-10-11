@@ -8,7 +8,7 @@ import {
   useRevalidator,
   useRouteError,
 } from "react-router";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
