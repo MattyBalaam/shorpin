@@ -51,6 +51,7 @@ export const handlers = [
       p_payload: {
         new?: string;
         newItems?: string[];
+        newItemIds?: string[];
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
@@ -137,11 +138,16 @@ export const handlers = [
       hasItemMutation = true;
     }
 
-    for (const value of body.p_payload.newItems ?? []) {
+    for (const [index, value] of (body.p_payload.newItems ?? []).entries()) {
       if (!value) continue;
 
+      // Mirrors mutate_list's ON CONFLICT (id) DO NOTHING: a replayed
+      // addition the server already applied is a no-op, not a duplicate.
+      const id = body.p_payload.newItemIds?.[index] ?? crypto.randomUUID();
+      if (listItems.findFirst((q) => q.where({ id }))) continue;
+
       await listItems.create({
-        id: crypto.randomUUID(),
+        id,
         list_id: list.id,
         value,
         state: "active",

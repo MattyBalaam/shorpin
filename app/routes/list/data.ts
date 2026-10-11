@@ -25,6 +25,10 @@ export const zList = v.object({
   // 20260806000000). `new` remains the single-value field for the everyday
   // online add.
   newItems: v.optional(v.array(v.string()), []),
+  // Parallel to newItems: each addition's client-generated id, so the server
+  // can use it as the row id and ignore a replay of an addition it already
+  // applied (see mutate_list migration 20261011000000).
+  newItemIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
   items: v.optional(v.array(zItem), []),
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),
