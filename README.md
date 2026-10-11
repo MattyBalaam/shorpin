@@ -295,6 +295,18 @@ Implementation files:
 - Client metrics collection: `app/lib/performance.client.ts`
 - Metric ingestion route: `app/routes/perf.ts`
 
+### Deferred Sentry (client)
+
+The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
+
+- `app/lib/monitoring.client.ts` is the only entry point. `initMonitoring()` runs after `hydrateRoot` and dynamic-imports `app/lib/sentry.client.ts` once the browser is idle (`requestIdleCallback`, 3s timeout).
+- Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root `ErrorBoundary`) queues too; the queue is flushed into Sentry once it initialises.
+- `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/react-router")` directly — the namespace import pulls in every integration.
+- There's deliberately no `manualChunks` rule for `@sentry/`: it dragged `react` into the Sentry chunk, which made the entry import it eagerly.
+- The chunk is precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
+
+Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
+
 ## Deployment
 
 Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts

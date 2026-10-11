@@ -1,24 +1,7 @@
-import * as Sentry from "@sentry/react-router";
 import { StrictMode, startTransition } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { HydratedRouter } from "react-router/dom";
-
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-
-  integrations: [
-    Sentry.reactRouterTracingIntegration(),
-    Sentry.replayIntegration({
-      maskAllText: false,
-      blockAllMedia: false,
-    }),
-  ],
-
-  tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
-
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-});
+import { initMonitoring } from "~/lib/monitoring.client";
 
 startTransition(() => {
   hydrateRoot(
@@ -28,3 +11,5 @@ startTransition(() => {
     </StrictMode>,
   );
 });
+
+void initMonitoring();
