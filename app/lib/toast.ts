@@ -16,6 +16,7 @@
 type Sonner = typeof import("sonner");
 type ToastType = "success" | "info" | "warning" | "error";
 
+let sonnerPromise: Promise<Sonner> | undefined;
 let sonner: Sonner | undefined;
 let isToasterReady = false;
 
@@ -24,9 +25,10 @@ const toasterReady = new Promise<void>((resolve) => {
   markReady = resolve;
 });
 
-export async function loadSonner() {
-  sonner ??= await import("sonner");
-  return sonner;
+// Cached so every caller (including <Toaster>'s use()) gets the same promise.
+export function loadSonner() {
+  sonnerPromise ??= import("sonner").then((module) => (sonner = module));
+  return sonnerPromise;
 }
 
 export function markToasterReady() {
