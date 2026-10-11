@@ -5,22 +5,41 @@
 // toasts fire from layout effects on first render — before the lazy Toaster
 // has loaded. So toasts wait until <Toaster> (app/components/toaster) reports
 // that it has mounted.
+//
+// Once it has, toasts must fire synchronously, exactly as a direct sonner
+// import would. Deferring them (even by a microtask) lets Sonner's setState
+// land in the middle of React Router's transition render after an action,
+// interrupting it. Conform's useForm applies `lastResult` during render (it
+// updates a ref there), so a discarded render means the action's result is
+// never applied — e.g. an item added offline silently doesn't appear.
 
+type Sonner = typeof import("sonner");
 type ToastType = "success" | "info" | "warning" | "error";
+
+let sonner: Sonner | undefined;
+let isToasterReady = false;
 
 let markReady: () => void = () => {};
 const toasterReady = new Promise<void>((resolve) => {
   markReady = resolve;
 });
 
+export async function loadSonner() {
+  sonner ??= await import("sonner");
+  return sonner;
+}
+
 export function markToasterReady() {
+  isToasterReady = true;
   markReady();
 }
 
 function show(type: ToastType, message: string) {
-  void toasterReady
-    .then(() => import("sonner"))
-    .then(({ toast: sonnerToast }) => sonnerToast[type](message));
+  if (sonner && isToasterReady) {
+    sonner.toast[type](message);
+    return;
+  }
+  void toasterReady.then(loadSonner).then(({ toast: sonnerToast }) => sonnerToast[type](message));
 }
 
 export const toast = {

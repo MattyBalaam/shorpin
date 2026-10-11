@@ -1,7 +1,7 @@
 import { type ComponentProps, lazy, Suspense, useEffect, useState } from "react";
-import { markToasterReady } from "~/lib/toast";
+import { loadSonner, markToasterReady } from "~/lib/toast";
 
-const SonnerToaster = lazy(() => import("sonner").then((m) => ({ default: m.Toaster })));
+const SonnerToaster = lazy(() => loadSonner().then((m) => ({ default: m.Toaster })));
 
 function ToasterReady() {
   // Sibling after <SonnerToaster>, so this effect runs after Sonner's own
