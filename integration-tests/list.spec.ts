@@ -160,7 +160,26 @@ test("a quick short fling deletes an item", async ({ page, ctx }) => {
   await openList(page, "shopping");
 
   // Under the distance threshold, but fast enough to count as a fling.
-  await swipeHandle(page, "Reorder Bread", { distance: 90, steps: 3 });
+  // Dispatched in-page: page.mouse steps are separate CDP round trips, and on
+  // a loaded CI runner their spacing alone can drop velocity under threshold.
+  await page.getByLabel("Reorder Bread").evaluate(async (handle) => {
+    const { x, y, width, height } = handle.getBoundingClientRect();
+    const init = (dx: number): PointerEventInit => ({
+      pointerId: 1,
+      isPrimary: true,
+      bubbles: true,
+      button: 0,
+      clientX: x + width / 2 + dx,
+      clientY: y + height / 2,
+    });
+
+    handle.dispatchEvent(new PointerEvent("pointerdown", init(0)));
+    for (const dx of [30, 60, 90]) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      window.dispatchEvent(new PointerEvent("pointermove", init(dx)));
+    }
+    window.dispatchEvent(new PointerEvent("pointerup", init(90)));
+  });
 
   await expect(page.getByLabel("Edit Bread")).not.toBeVisible();
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
