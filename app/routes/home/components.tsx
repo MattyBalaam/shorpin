@@ -1,9 +1,9 @@
-import { Reorder, useDragControls } from "motion/react";
-import { use } from "react";
+import { type PointerEvent, use } from "react";
 import { href, useFetcher, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
-import { useReorderIds } from "~/components/use-reorder-ids";
+import { reorderViaFormData } from "~/components/reorderable/reorder-strategies";
+import { useReorderable } from "~/components/reorderable/use-reorderable";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 import * as styles from "./home.css";
@@ -58,28 +58,18 @@ export function ReorderableListItem({
   list,
   userId,
   defaultListId,
-  onDrop,
+  startDrag,
 }: {
   list: ListItem;
   userId: string;
   defaultListId: string | null;
-  onDrop: () => void;
+  startDrag: (event: PointerEvent<HTMLElement>) => void;
 }) {
-  const dragControls = useDragControls();
   const { id, name, slug, user_id, unreadCount, totalCount, pending } = list;
   const isOwner = user_id === userId;
 
   return (
-    <Reorder.Item
-      as="li"
-      value={id}
-      className={styles.itemWrapper}
-      drag
-      dragDirectionLock
-      dragListener={false}
-      dragControls={dragControls}
-      onDragEnd={onDrop}
-    >
+    <li data-reorder-id={id} className={styles.itemWrapper}>
       <div className={styles.item}>
         {pending ? (
           <span className={styles.pendingItemLink}>
@@ -96,7 +86,7 @@ export function ReorderableListItem({
         <span
           className={styles.itemDragHandle}
           aria-label={`Reorder ${name}`}
-          onPointerDown={(event) => dragControls.start(event)}
+          onPointerDown={startDrag}
         >
           <VisuallyHidden>Reorder {name}</VisuallyHidden>
           <span aria-hidden>|-|-|-|-|</span>
@@ -135,7 +125,7 @@ export function ReorderableListItem({
           </span>
         </span>
       </div>
-    </Reorder.Item>
+    </li>
   );
 }
 
@@ -153,34 +143,14 @@ export function Lists({
   const incomingIds = lists.map(({ id }) => id);
   const listRecord = Object.fromEntries(lists.map((list) => [list.id, list]));
 
-  const { itemIds, handleReorder, handleReorderComplete } = useReorderIds({
+  const { orderedIds, groupRef, startDrag } = useReorderable<HTMLUListElement>({
     incomingIds,
-    onReorderComplete(orderedIds) {
-      console.log("Reorder complete, orderedIds:", orderedIds);
-
-      if (!orderedIds) {
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        const formData = new FormData();
-        formData.set("intent", REORDER_LISTS_INTENT);
-        orderedIds.forEach((id) => formData.append("list-order", id));
-        submit(formData, { method: "post" });
-      });
-    },
+    ...reorderViaFormData({ submit, intent: REORDER_LISTS_INTENT, fieldName: "list-order" }),
   });
 
   return (
-    <Reorder.Group
-      as="ul"
-      axis="y"
-      values={itemIds}
-      onReorder={handleReorder}
-      layoutScroll
-      className={styles.list}
-    >
-      {itemIds
+    <ul ref={groupRef} className={styles.list}>
+      {orderedIds
         .filter((id) => listRecord[id])
         .map((id) => (
           <ReorderableListItem
@@ -188,9 +158,9 @@ export function Lists({
             list={listRecord[id]}
             userId={userId}
             defaultListId={defaultListId}
-            onDrop={handleReorderComplete}
+            startDrag={startDrag}
           />
         ))}
-    </Reorder.Group>
+    </ul>
   );
 }

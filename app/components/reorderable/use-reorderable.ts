@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useState } from "react";
+import { useDragList } from "./use-drag-list";
 
 function sameOrder(left: string[], right: string[] | null) {
   if (!right) return false;
@@ -10,9 +11,9 @@ function sameOrder(left: string[], right: string[] | null) {
  * home lists). Owns the optimistic order + snap-back prevention; persistence is
  * injected via `onComplete` (see `reorder-strategies.ts`).
  *
- * Spread `getGroupProps()` onto a `<Reorder.Group>`. Consumers that complete the
- * gesture from an item's `onDragEnd` instead of the group's `onPointerUp` can
- * call `complete()` directly.
+ * Attach `groupRef` to the list element, mark each row with `data-reorder-id`,
+ * and call `startDrag` from a row's drag handle (see `use-drag-list.ts`). The
+ * gesture reports order changes back here and completes on pointer release.
  *
  * NOTE: React Router's guidance is to derive optimistic UI from in-flight
  * `formData` rather than mirror server state into React state
@@ -22,7 +23,7 @@ function sameOrder(left: string[], right: string[] | null) {
  * order locally and ignore incoming server order until it confirms our move.
  * Discrete mutations (add/delete) should still follow the RR pattern instead.
  */
-export function useReorderable({
+export function useReorderable<Group extends HTMLElement>({
   incomingIds,
   onReorder,
   onComplete,
@@ -87,13 +88,10 @@ export function useReorderable({
 
   const orderedIds = optimisticOrder ?? itemIds;
 
-  function getGroupProps() {
-    return {
-      values: orderedIds,
-      onReorder: handleReorder,
-      onPointerUp: complete,
-    };
-  }
+  const { groupRef, startDrag, collapse } = useDragList<Group>({
+    onReorder: handleReorder,
+    onDragEnd: complete,
+  });
 
-  return { orderedIds, getGroupProps, handleReorder, complete };
+  return { orderedIds, groupRef, startDrag, collapse };
 }

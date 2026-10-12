@@ -1,4 +1,3 @@
-import { LazyMotion } from "motion/react";
 import { useEffect } from "react";
 import { Form, href, Outlet, useLocation, useRouteLoaderData } from "react-router";
 import { Toaster } from "~/components/toaster/toaster";
@@ -11,8 +10,6 @@ import {
 } from "~/components/online-status/online-status";
 import type { loader as rootLoader } from "~/root";
 import * as styles from "./layout.css";
-
-const loadFeatures = () => import("~/motion-features").then((m) => m.default);
 
 export default function AppLayout() {
   const rootData = useRouteLoaderData<typeof rootLoader>("root");
@@ -31,23 +28,21 @@ export default function AppLayout() {
   );
 
   return (
-    <LazyMotion features={loadFeatures} strict>
-      <OnlineStatusProvider>
-        <OnlineStatusIndicator />
-        <Breadcrumbs />
-        {showLogout ? (
-          <Form method="POST" action={href("/logout")} className={styles.logOut}>
-            <Button type="submit" aria-label="Sign out">
-              <span className={styles.logOutLabel}>Sign out</span>
-              <span aria-hidden="true" className={styles.logOutIcon}>
-                ⏻
-              </span>
-            </Button>
-          </Form>
-        ) : null}
-        <Outlet />
-        <Toaster position="top-right" />
-      </OnlineStatusProvider>
-    </LazyMotion>
+    <OnlineStatusProvider>
+      <OnlineStatusIndicator />
+      <Breadcrumbs />
+      {showLogout ? (
+        <Form method="POST" action={href("/logout")} className={styles.logOut}>
+          <Button type="submit" aria-label="Sign out">
+            <span className={styles.logOutLabel}>Sign out</span>
+            <span aria-hidden="true" className={styles.logOutIcon}>
+              ⏻
+            </span>
+          </Button>
+        </Form>
+      ) : null}
+      <Outlet />
+      <Toaster position="top-right" />
+    </OnlineStatusProvider>
   );
 }

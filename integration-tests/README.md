@@ -46,7 +46,7 @@ Tests run with `fullyParallel: true`. Each test gets its own isolated slice of t
 
 Each worker's seed contains:
 
-- **Owner** — 2 lists: `Shopping` (Milk, Bread, Eggs) and `Owner Empty`
+- **Owner** — 2 lists: `Shopping` (Milk, Bread, Eggs, Butter, Cheese, Bananas, Apples, Yogurt, Orange juice, Coffee) and `Owner Empty`
 - **Collab** — 2 lists: `Collab Shopping` (Coffee, Tea, Sugar) and `Collab Empty`
 - Collab is a member of owner's Shopping list
 - One pending waitlist entry (first name "Pending", last name "User")
@@ -64,6 +64,12 @@ If this fails it means React has not taken over the page within 300ms of navigat
 ### Debug logging
 
 The `ctx` fixture forwards all browser console messages and uncaught page errors to the test runner's stdout, prefixed with `[browser][type]`. On CI these appear in the Actions log alongside the Playwright webServer output (which is piped via `stdout: "pipe"`).
+
+### Touch project (`touch.spec.ts`)
+
+`playwright.config.ts` defines two projects: `desktop` (every spec except `touch.spec.ts`) and `touch` (only `touch.spec.ts`, on an emulated Pixel 7). Run just one with `pnpm test:integration --project=touch`.
+
+Playwright's `page.touchscreen` can only tap, so `touch.spec.ts` drives swipes and drags through Chromium's CDP `Input.dispatchTouchEvent`. That's genuine touch input: the browser converts it to pointer events (`pointerType: "touch"`), honours `touch-action`, and fires `pointercancel` if it decides to scroll — so these tests fail if a drag handle loses `touch-action: none`, which mouse-driven tests can't detect. It's still Chromium, not iOS Safari: iOS-specific gesture handling needs a real device.
 
 ### Service worker (`offline.spec.ts`)
 
@@ -86,6 +92,7 @@ The per-route offline CRUD specs (list.spec.ts's and home.spec.ts's own offline 
 | `list.spec.ts`     | List detail — display items, add/delete item, offline sync, concurrent-edit rebase           |
 | `offline.spec.ts`  | Service worker — registration/precache, offline navigation fallback, Background Sync         |
 | `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled                                  |
+| `touch.spec.ts`    | Touch gestures (`touch` project) — swipe-to-delete, fling, spring-back, touch reorder        |
 
 ## Helpers (`helpers.ts`)
 

@@ -9,7 +9,7 @@ The app is functional and fast in most areas, but a few targeted fixes would mak
 These are working well — don't change them.
 
 - **No N+1 queries** — list items fetched with nested expansion in a single Supabase call (`list_items(*)`)
-- **Motion library lazy-loaded** — `LazyMotion` with deferred `domMax` feature import in `app/routes/app/layout.tsx`
+- **No animation library** — drag/reorder/swipe use a ~2 KB gzipped pointer-events + WAAPI hook (`app/components/reorderable/use-drag-list.ts`) in place of Motion (~48 KB gzipped)
 - **Supabase Realtime dynamically imported** — only loaded when the list route mounts (`list.tsx`)
 - **System fonts only** — no web font fetch; Google Fonts import is intentionally commented out in `root.tsx`
 - **Vanilla Extract** — zero runtime CSS overhead; all styles compiled at build time

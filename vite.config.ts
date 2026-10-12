@@ -30,12 +30,6 @@ export default defineConfig((config) => {
     server: {
       host: true,
     },
-    optimizeDeps: {
-      // Pre-bundle at server startup rather than on first navigation into
-      // app/layout.tsx — discovering it mid-navigation forces Vite to reload
-      // the page, which interrupts the post-login client-side redirect.
-      include: ["motion/react"],
-    },
     build: {
       rollupOptions: {
         output: {

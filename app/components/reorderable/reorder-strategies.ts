@@ -62,9 +62,8 @@ interface RemoveIntent {
  * nothing has been renumbered yet. This preserves any unsaved edit on another
  * row (the whole array — not just the one being deleted — gets persisted by
  * this same submission; see integration-tests/list.spec.ts's "edited icon"
- * test) while sidestepping a real race: AnimatePresence unmounts the outgoing
- * row on its own schedule, independent of Conform's synchronous array-shrink,
- * so a read taken *after* intent.remove() can still find the just-vacated
+ * test) while sidestepping a real race: the outgoing row can unmount on a different
+ * schedule from Conform's synchronous array-shrink, so a read taken *after* intent.remove() can still find the just-vacated
  * field name claimed by both the stale outgoing node and the sibling
  * renumbered into it, corrupting whichever the browser serializes last
  * (observed in CI as the recreated item's slot silently losing its id and
