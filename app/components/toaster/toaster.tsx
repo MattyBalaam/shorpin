@@ -1,10 +1,16 @@
-import { type ComponentProps, Suspense, use, useEffect, useState } from "react";
+import { type ComponentProps, Suspense, use, useEffect } from "react";
+import { browser } from "react-dom";
 import type { Toaster as SonnerToaster } from "sonner";
 import { loadSonner, markToasterReady } from "~/lib/toast";
 
 type ToasterProps = ComponentProps<typeof SonnerToaster>;
 
 function LoadedToaster(props: ToasterProps) {
+  // Client-only: SSR bails out to the Suspense fallback here. Server-rendered
+  // markup would make hydration wait on the sonner chunk, putting it back on
+  // the critical path.
+  use(browser("Keeps the sonner chunk off the hydration path"));
+
   // loadSonner() returns the same cached promise every time, as use() needs.
   const { Toaster } = use(loadSonner());
 
@@ -16,13 +22,6 @@ function LoadedToaster(props: ToasterProps) {
 }
 
 export function Toaster(props: ToasterProps) {
-  // Client-only: rendering it during SSR would make hydration wait on the
-  // sonner chunk, putting it back on the critical path.
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
-
-  if (!isMounted) return null;
-
   return (
     <Suspense fallback={null}>
       <LoadedToaster {...props} />

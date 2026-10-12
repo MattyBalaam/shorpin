@@ -329,7 +329,7 @@ Trade-offs: the pageload trace starts late, and errors in the first second or so
 
 Sonner gets the same treatment. Import `toast` from `~/lib/toast` and `<Toaster>` from `~/components/toaster/toaster`, never from `"sonner"` directly:
 
-- `<Toaster>` renders client-only (after mount) and waits for sonner with `use()` on the cached import promise from `loadSonner()`, so the sonner chunk loads after hydration rather than during it.
+- `<Toaster>` renders client-only via React 19.3's `use(browser())`: SSR bails out to its `<Suspense>` fallback, so there is no server markup for hydration to wait on. On the client it waits for sonner with `use()` on the cached import promise from `loadSonner()`, so the sonner chunk loads alongside hydration without blocking it. The bailout goes to `onBrowserBailout`, not `onError`, so it doesn't turn the response into a 500.
 - Sonner drops toasts emitted before a `<Toaster>` has subscribed, and flash toasts (e.g. "You have been logged out.") fire on first render. The `toast` facade therefore queues until `<Toaster>` reports it has mounted. `auth.spec.ts` covers this.
 
 ## Deployment
