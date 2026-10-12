@@ -70,6 +70,10 @@ export default defineConfig((config) => {
           // doesn't belong in globPatterns since it's populated by the SW's
           // fetch handler, not precached from this build's output.
           globPatterns: ["**/*.{js,css,woff2}", "offline.html"],
+          // Sentry's setup-verification page/API — reachable, but never part
+          // of the app a user needs offline, so not worth every install's
+          // download.
+          globIgnores: ["**/node_modules/**", "**/*sentry-example-*"],
         },
         manifest: false, // public/manifest.webmanifest is already hand-maintained
         injectRegister: false, // registered manually in root.tsx (needs PROD-only gating)
