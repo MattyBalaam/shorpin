@@ -14,6 +14,7 @@ import {
   useRouteError,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
+import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
 import { toast } from "~/lib/toast";
 import { reportError } from "~/lib/monitoring.client";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
@@ -159,6 +160,7 @@ export default function App() {
 
   useEffect(function manageServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
+    const controller = new AbortController();
 
     // Clean up any pre-existing registration that isn't our current SW
     // (e.g. the splash-screen SW removed in 4d22c02, still registered in
@@ -197,11 +199,29 @@ export default function App() {
               toast.success("Offline support ready");
             }
           });
+
+          watchForUpdates(
+            registration,
+            () =>
+              toast.info("A new version is available", {
+                id: "app-update",
+                duration: Number.POSITIVE_INFINITY,
+                action: {
+                  label: "Reload",
+                  onClick: () => {
+                    void activateWaitingWorker(registration).then(() => window.location.reload());
+                  },
+                },
+              }),
+            controller.signal,
+          );
         })
         .catch((error) => {
           console.error("Service worker registration failed", error);
         });
     }
+
+    return () => controller.abort();
   }, []);
 
   useEffect(function handleRouteModuleErrors() {

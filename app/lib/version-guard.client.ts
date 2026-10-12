@@ -6,6 +6,8 @@
 // if they differ, forces the service worker to take over the new build
 // before a single silent retry of the failed action.
 
+import { applyUpdateNow } from "./service-worker.client";
+
 const BUILD_HASH = import.meta.env.VITE_GIT_HASH ?? "unknown";
 
 async function isAppStale(): Promise<boolean> {
@@ -25,23 +27,8 @@ async function refreshServiceWorker(): Promise<void> {
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) return;
 
-  await registration.update();
-
-  // Nothing new landed (we're not actually stale, or it's already active) —
-  // no controllerchange is coming, so don't wait for one.
-  if (!registration.waiting && !registration.installing) return;
-
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(resolve, 5000);
-    navigator.serviceWorker.addEventListener(
-      "controllerchange",
-      () => {
-        clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
-  });
+  // Skips the reload prompt: the retry below needs the new build now.
+  await applyUpdateNow(registration);
 }
 
 /**
