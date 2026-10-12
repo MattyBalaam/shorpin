@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
 const appPort = process.env.APP_SERVER_PORT ?? "5174";
@@ -14,6 +14,20 @@ export default defineConfig({
     baseURL: `http://localhost:${appPort}`,
     trace: "retain-on-failure",
   },
+  projects: [
+    {
+      name: "desktop",
+      testIgnore: ["**/supabase-*.spec.ts", "**/touch.spec.ts"],
+    },
+    {
+      // Real touch input via Chromium's CDP (see touch.spec.ts) — covers
+      // touch-action, pointercancel and pointerType "touch" paths that mouse
+      // emulation can't reach. Not a substitute for iOS Safari on a device.
+      name: "touch",
+      use: devices["Pixel 7"],
+      testMatch: "**/touch.spec.ts",
+    },
+  ],
   webServer: [
     {
       command: "node --experimental-strip-types mocks/server.ts",
