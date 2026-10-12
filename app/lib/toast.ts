@@ -14,6 +14,7 @@
 // never applied — e.g. an item added offline silently doesn't appear.
 
 type Sonner = typeof import("sonner");
+type ToastOptions = import("sonner").ExternalToast;
 type ToastType = "success" | "info" | "warning" | "error";
 
 let sonnerPromise: Promise<Sonner> | undefined;
@@ -36,17 +37,19 @@ export function markToasterReady() {
   markReady();
 }
 
-function show(type: ToastType, message: string) {
+function show(type: ToastType, message: string, options?: ToastOptions) {
   if (sonner && isToasterReady) {
-    sonner.toast[type](message);
+    sonner.toast[type](message, options);
     return;
   }
-  void toasterReady.then(loadSonner).then(({ toast: sonnerToast }) => sonnerToast[type](message));
+  void toasterReady
+    .then(loadSonner)
+    .then(({ toast: sonnerToast }) => sonnerToast[type](message, options));
 }
 
 export const toast = {
-  success: (message: string) => show("success", message),
-  info: (message: string) => show("info", message),
-  warning: (message: string) => show("warning", message),
-  error: (message: string) => show("error", message),
+  success: (message: string, options?: ToastOptions) => show("success", message, options),
+  info: (message: string, options?: ToastOptions) => show("info", message, options),
+  warning: (message: string, options?: ToastOptions) => show("warning", message, options),
+  error: (message: string, options?: ToastOptions) => show("error", message, options),
 };

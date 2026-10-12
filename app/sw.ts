@@ -21,6 +21,7 @@ import { pairsToFormData } from "~/lib/form-data-codec";
 import { LAUNCH_PARAM } from "~/lib/default-list";
 import { isSuccessfulReplay } from "~/lib/mutation-replay";
 import { isCacheablePageUrl, PAGE_CACHE_NAME } from "~/lib/page-cache";
+import { SKIP_WAITING } from "~/lib/service-worker-messages";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -79,8 +80,14 @@ registerRoute(
 // old (removed) public/sw.js did for POSTs — this SW never participates in
 // React Router's wire protocol.
 
-self.addEventListener("install", () => {
-  void self.skipWaiting();
+// No skipWaiting on install: a redeployed worker waits behind the current
+// one rather than taking over pages still running the previous build's JS.
+// The page posts SKIP_WAITING once the user accepts its reload prompt, or
+// when version-guard.client.ts needs the new build to retry a failed action
+// (see app/lib/service-worker.client.ts). A first-ever install has nothing
+// to wait behind, so it activates immediately.
+self.addEventListener("message", (event) => {
+  if (event.data?.type === SKIP_WAITING) void self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

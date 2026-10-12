@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { expect, test } from "./fixtures";
 import { login } from "./helpers";
 
@@ -134,4 +137,59 @@ test("cancelling the network error modal goes back to the previous page", async 
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByLabel("New list")).toBeVisible();
+});
+
+// Playwright can't intercept the browser's own fetch of a worker script
+// (page/context routes and CDP Fetch all miss it), so a redeploy is simulated
+// for real: append a comment to the built sw.js for the duration of the test.
+// The result is still a valid worker, so tests running in parallel just
+// install it as a first install in their fresh contexts.
+const builtWorkerPath = path.resolve("build/client/sw.js");
+
+test("a redeployed service worker waits and offers a reload instead of taking over", async ({
+  page,
+  ctx,
+}) => {
+  test.skip(!existsSync(builtWorkerPath), "Needs the built app (not --dev)");
+
+  await login(page, ctx.ownerEmail);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  // The first-ever install activates straight away — that's not an update.
+  await expect(page.getByText("A new version is available")).toHaveCount(0);
+
+  const original = await readFile(builtWorkerPath, "utf8");
+  try {
+    await writeFile(builtWorkerPath, `${original}\n// next build ${ctx.ownerEmail}\n`);
+    await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      await registration?.update();
+    });
+
+    await expect(page.getByText("A new version is available")).toBeVisible();
+  } finally {
+    await writeFile(builtWorkerPath, original);
+  }
+
+  // Installed, but not in control of the page until the user accepts.
+  expect(
+    await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      return registration?.waiting !== null;
+    }),
+  ).toBe(true);
+
+  await page.evaluate(() => {
+    (window as Window & { beforeReload?: boolean }).beforeReload = true;
+  });
+  const reloaded = page.waitForEvent("load");
+  await page.getByRole("button", { name: "Reload" }).click();
+  await reloaded;
+
+  expect(
+    await page.evaluate(() => (window as Window & { beforeReload?: boolean }).beforeReload),
+  ).toBeUndefined();
+  await page.waitForFunction(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    return registration?.waiting === null && navigator.serviceWorker.controller !== null;
+  });
 });
