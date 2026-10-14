@@ -75,7 +75,7 @@ The layout is a fixed-height app shell, so it has to shrink above the on-screen 
 
 - The viewport meta sets `interactive-widget=resizes-content`, and `<main>` falls back to `height: 100%`, which follows the resized viewport. This is the CSS-only path and works in Chrome and Firefox on Android.
 - iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll.
-- **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. Check the Safari release notes and [caniuse](https://caniuse.com/mdn-html_elements_meta_name_viewport_interactive-widget) on each Safari release. Once iOS Safari supports it, delete the effect, drop the `var()` in `root.css.ts` and confirm on a device.
+- **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. A monthly workflow ([safari-interactive-widget.yml](.github/workflows/safari-interactive-widget.yml), running [scripts/check-interactive-widget.mjs](scripts/check-interactive-widget.mjs)) checks MDN's browser-compat-data and opens an issue once iOS Safari ships it. It can also be run by hand from the Actions tab. Then delete the effect, drop the `var()` in `root.css.ts` and confirm on a device.
 
 **Component Structure:**
 
