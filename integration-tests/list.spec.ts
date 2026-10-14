@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { holdLoader, login } from "./helpers";
+import { login } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -198,45 +198,54 @@ test("a slow short swipe springs the item back instead of deleting", async ({ pa
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
-test("edited icon does not appear on unedited items while another item is being deleted", async ({
-  page,
-  ctx,
-}) => {
+test("editing an item in the modal saves the new value", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  // Edit Milk without submitting, giving it edited=true
-  await page.getByLabel("Edit Milk").fill("Oat Milk");
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  await expect(dialog.getByLabel("Item")).toHaveValue("Milk");
 
-  // Hold the revalidation loader so the navigation stays in "loading" state
-  // long enough to assert — this is when navigation.formData becomes null and
-  // isSavingEdit incorrectly flips true for all edited items.
-  const { intercepted, release } = await holdLoader(page, /\/lists\/shopping\.data/);
+  await dialog.getByLabel("Item").fill("Oat Milk");
+  await dialog.getByRole("button", { name: "Save" }).click();
 
-  // Delete a different item
-  await page.getByRole("button", { name: "Delete Bread" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
+  // Values are plain text now, not editable fields.
+  await expect(page.locator("li textarea")).toHaveCount(0);
 
-  // Wait until the GET revalidation is actually intercepted before asserting
-  await intercepted;
+  await openList(page, "shopping");
+  await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit Milk" })).toHaveCount(0);
+});
 
-  // While in "loading" state no saving indicator should appear — we are not
-  // persisting any edit, we are only deleting Bread
-  await expect(
-    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
-  ).not.toContainText("saving");
+test("pressing Enter in the edit modal saves", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
 
-  release();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit Bread" }).click();
+  const textarea = page.getByRole("dialog", { name: "Edit item" }).getByLabel("Item");
+  await textarea.fill("Sourdough");
+  await textarea.press("Enter");
 
-  // The delete form submission also saves all current item values (including
-  // "Oat Milk"), so at idle there is no pending unsaved edit — the edited
-  // indicator should not appear for any item.
-  await expect(
-    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
-  ).not.toContainText(" edited");
-  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Eggs") })).not.toContainText(
-    " edited",
-  );
+  await expect(page.getByRole("button", { name: "Edit Sourdough" })).toBeVisible();
+});
+
+test("cancelling the edit modal leaves the item unchanged", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  for (const dismiss of ["cancel button", "escape"] as const) {
+    await page.getByRole("button", { name: "Edit Eggs" }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit item" });
+    await dialog.getByLabel("Item").fill("Duck eggs");
+    if (dismiss === "escape") await page.keyboard.press("Escape");
+    else await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit Eggs" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit Duck eggs" })).toHaveCount(0);
+  }
 });
 
 test("when offline, the offline indicator appears and cached list data remains visible", async ({
@@ -659,13 +668,13 @@ test("reordering items does not create unread or new markers for self", async ({
 
   const getEditOrder = async () =>
     page
-      .locator('textarea[aria-label^="Edit "]')
+      .locator('button[aria-label^="Edit "]')
       .evaluateAll((elements) =>
         elements.map((element) => element.getAttribute("aria-label") ?? "").filter(Boolean),
       );
 
-  // Guard against the selector silently matching nothing again: the value
-  // fields are <textarea>. Poll so the clientLoader HydrateFallback (skeleton)
+  // Guard against the selector silently matching nothing again: each row has
+  // an "Edit <value>" button. Poll so the clientLoader HydrateFallback (skeleton)
   // resolves before we assert the initial order.
   await expect
     .poll(getEditOrder)
