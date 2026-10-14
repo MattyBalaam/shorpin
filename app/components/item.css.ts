@@ -75,10 +75,13 @@ export const dragHandle = style({
   ":active": {
     color: "cyan",
   },
+  // Larger hit area, but only halfway into the column gap on each side so it
+  // never covers the neighbouring edit and delete buttons.
   "::before": {
     content: '""',
     position: "absolute",
-    inset: "-1em",
+    insetBlock: "-1em",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
   },
 });
 
@@ -125,7 +128,8 @@ export const editButton = style({
   "::before": {
     content: '""',
     position: "absolute",
-    inset: "-8px",
+    insetBlock: "-8px",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
   },
   selectors: {
     "&:hover": {

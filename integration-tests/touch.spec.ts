@@ -211,3 +211,16 @@ test("a swipe that drifts a full row vertically reorders instead of deleting", a
   await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Milk", "Eggs"]);
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
+
+test("tapping the edge of the edit button opens the editor, not a drag", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  // The drag handle's enlarged hit area sits beside the edit button; it must
+  // stop short of the button itself.
+  const box = await page.getByRole("button", { name: "Edit Milk" }).boundingBox();
+  if (!box) throw new Error('Unable to determine position of "Edit Milk"');
+  await page.touchscreen.tap(box.x + box.width - 2, box.y + box.height / 2);
+
+  await expect(page.getByRole("dialog", { name: "Edit item" })).toBeVisible();
+});
