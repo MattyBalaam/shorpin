@@ -3,6 +3,7 @@ import { href, useFetcher, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
 import { reorderViaFormData } from "~/components/reorderable/reorder-strategies";
+import type { StartDragOptions } from "~/components/reorderable/use-drag-list";
 import { useReorderable } from "~/components/reorderable/use-reorderable";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
@@ -63,7 +64,7 @@ export function ReorderableListItem({
   list: ListItem;
   userId: string;
   defaultListId: string | null;
-  startDrag: (event: PointerEvent<HTMLElement>) => void;
+  startDrag: (event: PointerEvent<HTMLElement>, options?: StartDragOptions) => void;
 }) {
   const { id, name, slug, user_id, unreadCount, totalCount, pending } = list;
   const isOwner = user_id === userId;
@@ -86,7 +87,7 @@ export function ReorderableListItem({
         <span
           className={styles.itemDragHandle}
           aria-label={`Reorder ${name}`}
-          onPointerDown={startDrag}
+          onPointerDown={(event) => startDrag(event, { liftScale: 1.03 })}
         >
           <VisuallyHidden>Reorder {name}</VisuallyHidden>
           <span aria-hidden>|-|-|-|-|</span>

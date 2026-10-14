@@ -115,7 +115,10 @@ export const itemStarButton = style({
 export const itemDragHandle = style({
   gridColumn: "drag",
   userSelect: "none",
-  touchAction: "none",
+  // Vertical pans scroll the list; reordering on touch needs a long-press
+  // first (see use-drag-list.ts). Horizontal moves still reach the swipe.
+  touchAction: "pan-y",
+  WebkitTouchCallout: "none",
   cursor: "grab",
   color: vars.palette.textOnChrome,
   display: "flex",

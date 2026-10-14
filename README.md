@@ -154,7 +154,10 @@ Instead:
 
 Reorderable lists (list items and home lists) use a small in-house gesture hook, [use-drag-list.ts](app/components/reorderable/use-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
 
-- **Direction lock** — a gesture commits to an axis after 10px. Vertical drags reorder; horizontal drags swipe-to-delete (only where the row opts in via `swipe`, otherwise every drag reorders).
+- **Gesture intent:**
+  - **Swipe:** a gesture becomes a swipe-to-delete once it moves 10px, mostly horizontally. This only applies where the row opts in via `swipe`.
+  - **Reorder:** reordering only starts after a full row's vertical travel. Small drift never shuffles the list, and crossing that line cancels any swipe in progress, so the row can't be deleted.
+  - **Touch scrolling:** on touch, the handle uses `touch-action: pan-y`, so a vertical thumb movement over it scrolls the list. To reorder on touch, long-press the handle (300ms) first. The row lifts and the hook cancels `touchmove` so the browser doesn't scroll.
 - **Reorder** — a row swaps with its neighbour once its leading edge crosses the neighbour's centre. Layout is measured with `offsetTop`, which ignores transforms, so in-flight animations and the lifted scale never skew the thresholds. Pointer travel is measured relative to the list, so scrolling mid-drag keeps the row under the pointer.
 - **Sibling animation (FLIP)** — before each reorder or removal the hook snapshots every row's position; after React commits it animates each sibling from its old position to its new slot.
 - **Swipe-to-delete** — dismisses past 140px or above 500px/s (velocity over the last 100ms); otherwise springs back.
