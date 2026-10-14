@@ -76,21 +76,23 @@ async function reconcileListSnapshot(slug: string, freshData: ListLoaderData) {
 export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
   const slug = params.list;
 
+  // Cached fallbacks are flagged so reconnect sync never mistakes them for
+  // fresh server state (see performRebaseSync).
   if (!navigator.onLine) {
     const cached = await getListSnapshot<ListLoaderData>(slug);
-    if (cached) return cached.serverData;
+    if (cached) return { ...cached.serverData, fromCache: true };
   }
 
   try {
     const data = await serverLoader();
     await reconcileListSnapshot(slug, data);
-    return data;
+    return { ...data, fromCache: false };
   } catch (error) {
     console.error("Error in clientLoader", error);
 
     if (isNetworkOrServerError(error)) {
       const cached = await getListSnapshot<ListLoaderData>(slug);
-      if (cached) return cached.serverData;
+      if (cached) return { ...cached.serverData, fromCache: true };
     }
     throw error;
   }
@@ -315,10 +317,10 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // Once the independent fresh-data fetch above resolves, rebase our queued
   // offline edits onto it and resubmit as a single, collapsed submission —
   // see rebaseListItems for why we can't just replay the stale snapshot(s).
-  // Resilient to flapping connectivity: if we're still offline (or the fetch
-  // fails) when this fires, clientLoader falls back to cached data and
-  // clientAction re-queues the resubmission, so this just retries cleanly on
-  // the next reconnect.
+  // Resilient to flapping connectivity: if the fetch fails, clientLoader
+  // falls back to cached data, which is never rebased onto (see below) — the
+  // sync retries until it gets genuinely fresh data. If the resubmission
+  // itself goes out offline, clientAction re-queues it for the next reconnect.
   //
   // Additions need special handling: mutate_list never creates a row from an
   // items[] entry with an unrecognized id (an offline add's client-generated
@@ -345,80 +347,103 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // syncInFlightRef ignores that re-entrant call rather than racing a second
   // rebase against the queue before the first one has dequeued it.
   const syncInFlightRef = useRef(false);
+  const syncRetryRef = useRef({ attempt: 0, timer: 0 });
 
-  const performRebaseSync = useEffectEvent(async (freshData: ListLoaderData) => {
-    if (syncInFlightRef.current) return;
-    syncInFlightRef.current = true;
+  useEffect(() => () => window.clearTimeout(syncRetryRef.current.timer), []);
 
-    try {
-      const routeKey = listRouteKey(slug);
-      const queued = await listQueuedMutations(routeKey);
-      if (queued.length === 0) return;
+  const performRebaseSync = useEffectEvent(
+    async (freshData: ListLoaderData & { fromCache: boolean }) => {
+      if (syncInFlightRef.current) return;
 
-      const cached = await getListSnapshot<ListLoaderData>(slug);
-      const baseline = cached?.baseline ?? [];
-      const desired = cached?.desired ?? baseline;
-      const freshItems = toItemRefs(freshData.defaultValue.items);
-
-      const baselineIds = new Set(baseline.map((item) => item.id));
-      const additions = desired.filter((item) => !baselineIds.has(item.id));
-      const rebased = rebaseListItems({ baseline, desired, fresh: freshItems });
-
-      // Update Conform's local state for immediate visual feedback, but
-      // don't rely on it having flushed to the DOM by the time we build the
-      // submission below — unlike reorderViaConform/removeViaConform (fired
-      // synchronously from a DOM event, reliably flushed within one
-      // requestAnimationFrame), this runs from an effect, and a single rAF
-      // isn't a reliable enough signal here (observed working in dev but not
-      // in a production build). Instead, build the submitted FormData
-      // directly from `rebased`, replacing just the items[] entries on a
-      // snapshot of the form's current fields — this can never race the
-      // render and stays correct regardless of when/whether React commits.
-      intent.update({ name: fields.items.name, value: rebased });
-
-      if (!formRef.current) return;
-
-      const syncData = new FormData(formRef.current);
-      for (const key of Array.from(syncData.keys())) {
-        if (/^items\[\d+\]\.(id|value)$/.test(key)) {
-          syncData.delete(key);
-        }
+      // The fetch can fail just after reconnecting (the connection is still
+      // settling) while the submit a moment later succeeds. clientLoader then
+      // hands back the cached list, and rebasing onto that would submit a
+      // snapshot missing everything other devices added meanwhile — which
+      // mutate_list's diff-based delete would wipe. Retry with backoff instead.
+      if (freshData.fromCache) {
+        const retry = syncRetryRef.current;
+        window.clearTimeout(retry.timer);
+        const delay = Math.min(1000 * 2 ** retry.attempt, 30_000);
+        retry.attempt += 1;
+        retry.timer = window.setTimeout(() => {
+          if (navigator.onLine) void syncIfPending();
+        }, delay);
+        return;
       }
-      rebased.forEach((item, index) => {
-        syncData.append(`items[${index}].id`, item.id);
-        syncData.append(`items[${index}].value`, item.value);
-      });
-      syncData.set(fields.new.name, "");
-      additions.forEach((item, index) => {
-        syncData.append(`newItems[${index}]`, item.value);
-        syncData.append(`newItemIds[${index}]`, item.id);
-      });
+      syncRetryRef.current.attempt = 0;
+
+      syncInFlightRef.current = true;
 
       try {
-        await submit(syncData, { method: "POST" });
+        const routeKey = listRouteKey(slug);
+        const queued = await listQueuedMutations(routeKey);
+        if (queued.length === 0) return;
 
-        // submit() doesn't throw on a redirected response — React Router's
-        // data router just follows it as a normal completed navigation
-        // (e.g. a stale session bouncing this POST to /login). Checking we
-        // actually stayed on this list is what tells a genuine delivery
-        // apart from a redirect masquerading as one; see
-        // app/lib/mutation-replay.ts for the equivalent check on the raw
-        // fetch()-based replay paths (home.tsx, app/sw.ts).
-        if (window.location.pathname !== href("/lists/:list", { list: slug })) {
-          return;
+        const cached = await getListSnapshot<ListLoaderData>(slug);
+        const baseline = cached?.baseline ?? [];
+        const desired = cached?.desired ?? baseline;
+        const freshItems = toItemRefs(freshData.defaultValue.items);
+
+        const baselineIds = new Set(baseline.map((item) => item.id));
+        const additions = desired.filter((item) => !baselineIds.has(item.id));
+        const rebased = rebaseListItems({ baseline, desired, fresh: freshItems });
+
+        // Update Conform's local state for immediate visual feedback, but
+        // don't rely on it having flushed to the DOM by the time we build the
+        // submission below — unlike reorderViaConform/removeViaConform (fired
+        // synchronously from a DOM event, reliably flushed within one
+        // requestAnimationFrame), this runs from an effect, and a single rAF
+        // isn't a reliable enough signal here (observed working in dev but not
+        // in a production build). Instead, build the submitted FormData
+        // directly from `rebased`, replacing just the items[] entries on a
+        // snapshot of the form's current fields — this can never race the
+        // render and stays correct regardless of when/whether React commits.
+        intent.update({ name: fields.items.name, value: rebased });
+
+        if (!formRef.current) return;
+
+        const syncData = new FormData(formRef.current);
+        for (const key of Array.from(syncData.keys())) {
+          if (/^items\[\d+\]\.(id|value)$/.test(key)) {
+            syncData.delete(key);
+          }
         }
+        rebased.forEach((item, index) => {
+          syncData.append(`items[${index}].id`, item.id);
+          syncData.append(`items[${index}].value`, item.value);
+        });
+        syncData.set(fields.new.name, "");
+        additions.forEach((item, index) => {
+          syncData.append(`newItems[${index}]`, item.value);
+          syncData.append(`newItemIds[${index}]`, item.id);
+        });
 
-        // Only drop the queue once the resubmission has actually completed —
-        // if we're still offline (or go offline again mid-request), leave it
-        // intact so the next reconnect retries automatically.
-        await dequeueMutations(queued.map((entry) => entry.seq));
-      } catch (error) {
-        console.error("Error syncing offline edits", error);
+        try {
+          await submit(syncData, { method: "POST" });
+
+          // submit() doesn't throw on a redirected response — React Router's
+          // data router just follows it as a normal completed navigation
+          // (e.g. a stale session bouncing this POST to /login). Checking we
+          // actually stayed on this list is what tells a genuine delivery
+          // apart from a redirect masquerading as one; see
+          // app/lib/mutation-replay.ts for the equivalent check on the raw
+          // fetch()-based replay paths (home.tsx, app/sw.ts).
+          if (window.location.pathname !== href("/lists/:list", { list: slug })) {
+            return;
+          }
+
+          // Only drop the queue once the resubmission has actually completed —
+          // if we're still offline (or go offline again mid-request), leave it
+          // intact so the next reconnect retries automatically.
+          await dequeueMutations(queued.map((entry) => entry.seq));
+        } catch (error) {
+          console.error("Error syncing offline edits", error);
+        }
+      } finally {
+        syncInFlightRef.current = false;
       }
-    } finally {
-      syncInFlightRef.current = false;
-    }
-  });
+    },
+  );
 
   useEffect(
     function replayRebasedOfflineEdits() {
