@@ -349,3 +349,53 @@ _external_ scheme and host, not the proxy's internal `http://…`.
 safety net. The durable fix is a custom server that trusts the proxy headers so
 `request.url` is correct for every host (including preview deployments) without
 an allow-list entry — see the follow-up PR that replaces `react-router-serve`.
+
+### PR preview deployments
+
+Coolify's Preview Deployments build every pull request from the same
+`Dockerfile` and serve it at `https://<pr>.shorpin.matthewbalaam.co.uk`
+(wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews use
+the mock backend rather than a Supabase project, so they can't touch real data
+and need no per-PR database or Auth redirect setup.
+
+#### One-time setup
+
+1. **GitHub App source.** Previews need Coolify's GitHub App integration (a
+   deploy key or public repo URL won't receive PR webhooks). In Coolify go to
+   **Sources → + Add → GitHub App**, follow the flow to create and install the
+   app on this repo, then point the shorpin application at that source. GitHub
+   must be able to reach the Coolify instance's webhook URL from the internet.
+2. **Enable previews.** In the application's **Advanced** settings, turn on
+   **Preview Deployments**.
+3. **Preview URL.** Under **Preview Deployments**, keep the URL template as
+   `{{pr_id}}.{{domain}}` so previews land on
+   `https://<pr>.shorpin.matthewbalaam.co.uk`. That pattern is what
+   `allowedActionOrigins` in `react-router.config.ts` permits; change both
+   together.
+4. **Wildcard DNS.** Add an `A` record for `*.shorpin.matthewbalaam.co.uk`
+   pointing at the same public IP as the production domain. Traefik requests a
+   Let's Encrypt certificate per preview host over HTTP-01, so no wildcard
+   certificate is needed.
+5. **Preview environment variables.** In the application's **Environment
+   Variables → Preview Deployments** section, add `BUILD_SCRIPT=build:preview`
+   and mark it as a build variable. The Dockerfile runs
+   `pnpm run "$BUILD_SCRIPT"` (default `build`), so production is unaffected.
+6. **Leave Supabase and Sentry unset for previews.** Don't add
+   `VITE_SUPABASE_*` or `VITE_SENTRY_DSN` to the preview variables. Vite gives
+   process env precedence over `.env.preview`, so a copied production value
+   would point previews at the real database; an unset DSN keeps preview errors
+   out of Sentry.
+
+Open a PR to test: Coolify builds it, comments the preview link on the PR, and
+removes the deployment when the PR is closed or merged.
+
+#### Preview behaviour
+
+- `build:preview` bundles MSW into the server build (`entry.server.tsx`), which
+  seeds the same in-memory data as `pnpm dev`. Sign in on `/login` with the
+  quick-login shortcuts (any password works).
+- Data resets whenever the container restarts.
+- Realtime is not mocked in previews, so collaborative live updates don't work
+  there. See [docs/mocking.md](docs/mocking.md).
+- Each preview is a full Docker build on the Coolify host, so close stale PRs
+  to free memory.
