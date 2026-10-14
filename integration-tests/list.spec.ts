@@ -512,6 +512,66 @@ test("a concurrent addition from another device survives reconnect sync", async 
   }
 });
 
+test("a failed fresh-data fetch on reconnect never syncs against stale cached data", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await openList(ownerPage, "shopping");
+
+    await ownerContext.setOffline(true);
+    await expect(ownerPage.getByText("Offline", { exact: true })).toBeVisible();
+    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible({ timeout: 10000 });
+
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
+
+    // Data fetches keep failing for a moment after reconnecting, as they can
+    // while the connection settles, so the loader falls back to the cached
+    // list that predates Margarine. Syncing against that would delete it.
+    let failedFetches = 0;
+    let failUntil = Number.POSITIVE_INFINITY;
+    await ownerPage.route("**/lists/shopping.data*", async (route) => {
+      if (route.request().method() === "GET" && Date.now() < failUntil) {
+        failedFetches += 1;
+        await route.abort("internetdisconnected");
+        return;
+      }
+      await route.continue();
+    });
+
+    const syncSubmitted = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+    );
+    failUntil = Date.now() + 1500;
+    await ownerContext.setOffline(false);
+    await syncSubmitted;
+    expect(failedFetches).toBeGreaterThan(0);
+    await ownerPage.unroute("**/lists/shopping.data*");
+
+    await openList(ownerPage, "shopping");
+    await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
 test("own changes do not trigger the updated-by-another-user notification", async ({
   browser,
   ctx,

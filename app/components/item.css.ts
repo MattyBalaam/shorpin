@@ -61,7 +61,10 @@ export const newIndicator = style({
 export const dragHandle = style({
   gridColumn: "drag",
   userSelect: "none",
-  touchAction: "none",
+  // Vertical pans scroll the list; reordering on touch needs a long-press
+  // first (see use-drag-list.ts). Horizontal moves still reach the swipe.
+  touchAction: "pan-y",
+  WebkitTouchCallout: "none",
   cursor: "grab",
   color: vars.palette.chrome,
   display: "flex",
@@ -72,10 +75,13 @@ export const dragHandle = style({
   ":active": {
     color: "cyan",
   },
+  // Larger hit area, but only halfway into the column gap on each side so it
+  // never covers the neighbouring edit and delete buttons.
   "::before": {
     content: '""',
     position: "absolute",
-    inset: "-1em",
+    insetBlock: "-1em",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
   },
 });
 
@@ -122,7 +128,8 @@ export const editButton = style({
   "::before": {
     content: '""',
     position: "absolute",
-    inset: "-8px",
+    insetBlock: "-8px",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
   },
   selectors: {
     "&:hover": {

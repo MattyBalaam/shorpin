@@ -3,6 +3,10 @@ import { type PointerEvent as ReactPointerEvent, useLayoutEffect, useRef } from 
 // Movement before a gesture commits to an axis — matches Motion's
 // dragDirectionLock threshold, so a slightly diagonal start doesn't misfire.
 const DIRECTION_LOCK_PX = 10;
+// Touch reorders need a deliberate press-and-hold on the handle first, so a
+// vertical thumb movement over it scrolls the list instead (see the handle's
+// `touch-action: pan-y`).
+const LONG_PRESS_MS = 300;
 const SWIPE_DISMISS_DISTANCE_PX = 140;
 const SWIPE_DISMISS_VELOCITY_PX_S = 500;
 const VELOCITY_WINDOW_MS = 100;
@@ -64,6 +68,9 @@ interface Gesture {
   startY: number;
   groupTopAtStart: number;
   axis: "x" | "y" | null;
+  // A touch long-press lifted the row: vertical moves reorder straight away.
+  lifted: boolean;
+  liftTimer: number | undefined;
   offsetX: number;
   // Pointer travel along y in group coordinates, so scrolling the list (or
   // page) mid-drag keeps the row under the pointer.
@@ -211,6 +218,7 @@ export function useDragList<Group extends HTMLElement>({
       return;
     }
     gestureRef.current = null;
+    window.clearTimeout(gesture.liftTimer);
 
     const { element, options, axis } = gesture;
     if (!axis) return;
@@ -274,6 +282,8 @@ export function useDragList<Group extends HTMLElement>({
       startY: event.clientY,
       groupTopAtStart: group.getBoundingClientRect().top,
       axis: null,
+      lifted: false,
+      liftTimer: undefined,
       offsetX: 0,
       groupOffsetY: 0,
       layoutTopAtStart: element.offsetTop,
@@ -292,22 +302,51 @@ export function useDragList<Group extends HTMLElement>({
     const controller = new AbortController();
     const { signal } = controller;
 
+    function lockToReorder() {
+      gesture.axis = "y";
+      // Once a gesture reorders it can no longer swipe-to-delete.
+      gesture.offsetX = 0;
+      gesture.element.style.zIndex = "1";
+    }
+
+    if (event.pointerType === "touch") {
+      gesture.liftTimer = window.setTimeout(() => {
+        if (gestureRef.current !== gesture || gesture.axis) return;
+        gesture.lifted = true;
+        lockToReorder();
+        applyTransform(gesture);
+      }, LONG_PRESS_MS);
+    }
+
     function onMove(moveEvent: PointerEvent) {
       if (moveEvent.pointerId !== pointerId || !groupRef.current) return;
       const dx = moveEvent.clientX - gesture.startX;
+      const dy = moveEvent.clientY - gesture.startY;
       const groupTop = groupRef.current.getBoundingClientRect().top;
       const groupOffsetY =
         moveEvent.clientY - groupTop - (gesture.startY - gesture.groupTopAtStart);
+      const self = gesture.layoutTops.get(gesture.id);
+      const rowHeight = self ? self.bottom - self.top : 0;
 
       if (!gesture.axis) {
-        const dy = moveEvent.clientY - gesture.startY;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) < DIRECTION_LOCK_PX) return;
-        gesture.axis = Math.abs(dx) > Math.abs(dy) && options.swipe ? "x" : "y";
-        gesture.element.style.zIndex = "1";
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= DIRECTION_LOCK_PX) {
+          window.clearTimeout(gesture.liftTimer);
+        }
+        if (options.swipe && Math.abs(dx) >= DIRECTION_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+          gesture.axis = "x";
+          gesture.element.style.zIndex = "1";
+        }
+      }
+
+      // Reordering only starts a full row's travel away, so small vertical
+      // drift (including during a swipe) never shuffles the list. Crossing
+      // that line abandons any swipe in progress.
+      if (gesture.axis !== "y" && Math.abs(dy) >= rowHeight) {
+        lockToReorder();
       }
 
       const direction = Math.sign(groupOffsetY - gesture.groupOffsetY);
-      gesture.offsetX = dx;
+      if (gesture.axis === "x") gesture.offsetX = dx;
       gesture.groupOffsetY = groupOffsetY;
       gesture.samples.push({ time: moveEvent.timeStamp, x: dx });
       gesture.samples = gesture.samples.filter(
@@ -316,6 +355,12 @@ export function useDragList<Group extends HTMLElement>({
 
       applyTransform(gesture);
       if (gesture.axis === "y") maybeReorder(gesture, direction);
+    }
+
+    // The handle allows vertical panning so the list can scroll; once the
+    // gesture is reordering or swiping, stop the browser taking it over.
+    function onTouchMove(touchEvent: TouchEvent) {
+      if (gesture.axis && touchEvent.cancelable) touchEvent.preventDefault();
     }
 
     function onEnd(endEvent: PointerEvent) {
@@ -327,6 +372,7 @@ export function useDragList<Group extends HTMLElement>({
     window.addEventListener("pointermove", onMove, { signal });
     window.addEventListener("pointerup", onEnd, { signal });
     window.addEventListener("pointercancel", onEnd, { signal });
+    window.addEventListener("touchmove", onTouchMove, { signal, passive: false });
   }
 
   /** Animates a row's height and opacity to zero, resolving once it's gone. */
