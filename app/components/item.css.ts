@@ -8,9 +8,6 @@ export const itemContainer = style({
   width: "100%",
   background: vars.palette.secondary,
   selectors: {
-    "&:has(textarea:focus)": {
-      background: vars.palette.primary,
-    },
     "&[data-dismissing=true]": {
       background: vars.palette.error,
     },
@@ -20,50 +17,22 @@ export const itemContainer = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[input] minmax(0, 1fr) [state] auto [link] auto [drag] auto [done] auto",
+  gridTemplateColumns:
+    "[input] minmax(0, 1fr) [state] auto [link] auto [edit] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
   paddingBlockStart: vars.spacing.sm,
   alignItems: "center",
-  selectors: {
-    "&:has(textarea:focus)": {
-      alignItems: "start",
-    },
-  },
 });
 
-export const input = style({
-  border: "1px solid transparent",
+export const value = style({
   gridRow: 1,
   gridColumn: "input / span 2",
-  padding: `${vars.spacing.sm} ${vars.spacing.md}`,
-  marginLeft: `calc(0px - ${vars.spacing.md})`,
-  borderRadius: "3px",
-  background: "transparent",
-  color: "currentColor",
-  // height: `calc(1lh + (2 * ${vars.spacing.sm}) + 2px)`,
-  boxSizing: "border-box",
+  paddingBlock: vars.spacing.sm,
   lineHeight: 1.35,
-  // resize: "none",
-  // overflow: "hidden",
   whiteSpace: "pre-wrap",
-  // overflowWrap: "anywhere",
-  transition: "height 140ms ease, background-color 140ms ease, color 140ms ease",
-  ":focus": {
-    outline: "0 none",
-    background: "white",
-    color: "black",
-    overflowY: "auto",
-  },
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      ":focus": {
-        background: "black",
-        color: "white",
-      },
-    },
-  },
+  overflowWrap: "anywhere",
 });
 
 export const state = style({
@@ -135,6 +104,56 @@ export const linkButton = style({
   },
 });
 
+export const editButton = style({
+  gridColumn: "edit",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "28px",
+  height: "28px",
+  padding: 0,
+  border: "none",
+  borderRadius: "50%",
+  background: "transparent",
+  color: vars.palette.chrome,
+  cursor: "pointer",
+  // Generous invisible hit area without widening the grid column.
+  position: "relative",
+  "::before": {
+    content: '""',
+    position: "absolute",
+    inset: "-8px",
+  },
+  selectors: {
+    "&:hover": {
+      color: "black",
+      background: "rgb(0 0 0 / 0.1)",
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.palette.textOnPalette}`,
+      outlineOffset: "2px",
+    },
+  },
+});
+
+export const editIcon = style({
+  width: "18px",
+  height: "18px",
+});
+
+export const editTextarea = style({
+  width: "100%",
+  minHeight: "5lh",
+  // Grows with its content where supported; otherwise scrolls.
+  fieldSizing: "content",
+  maxHeight: "50dvh",
+  padding: vars.spacing.md,
+  border: `1px solid ${vars.palette.chrome}`,
+  borderRadius: vars.spacing.controlRadius,
+  lineHeight: 1.35,
+  resize: "vertical",
+});
+
 export const linkIcon = style({
   width: "22px",
   height: "22px",
@@ -174,11 +193,6 @@ export const itemContainerReorderable = style({
   // against the light pastel theme colours.
   background: vars.palette.secondary,
   color: vars.palette.textOnPalette,
-  selectors: {
-    "&:has(textarea:focus)": {
-      background: vars.palette.primary,
-    },
-  },
 });
 
 export const deleteReorderable = style({

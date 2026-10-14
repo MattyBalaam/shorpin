@@ -57,9 +57,9 @@ async function centreDistance(page: Page, fromLabel: string, toLabel: string) {
 // The seeded Shopping list has more items; these tests only move the first three.
 const itemOrder = (page: Page) =>
   page
-    .locator("li textarea")
+    .locator('li input[type="hidden"][name$=".value"]')
     .evaluateAll((elements) =>
-      elements.slice(0, 3).map((element) => (element as HTMLTextAreaElement).value),
+      elements.slice(0, 3).map((element) => (element as HTMLInputElement).value),
     );
 
 // Reorders persist on release; wait for that POST before reloading, otherwise
