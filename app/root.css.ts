@@ -4,7 +4,10 @@ import { vars } from "./styles/theme.css";
 export const main = style({
   margin: "0 auto",
   display: "grid",
-  height: "100svh",
+  // `100%` follows the viewport, which `interactive-widget=resizes-content`
+  // shrinks above the keyboard. The variable is a temporary iOS Safari
+  // workaround set in root.tsx — see README "On-screen keyboard sizing".
+  height: "var(--visual-viewport-height, 100%)",
   overflow: "hidden",
   paddingBlockStart: vars.spacing.md,
   gridTemplateRows: "[breadcrumbs] auto [content] minmax(0, 1fr) [actions] auto",

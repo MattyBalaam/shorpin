@@ -69,6 +69,14 @@ The app uses React Router 7's file-based routing with explicit route definitions
 - Breadcrumbs navigation component
 - Sonner toast notifications
 
+**On-screen keyboard sizing:**
+
+The layout is a fixed-height app shell, so it has to shrink above the on-screen keyboard to keep the add-item bar in view.
+
+- The viewport meta sets `interactive-widget=resizes-content`, and `<main>` falls back to `height: 100%`, which follows the resized viewport. This is the CSS-only path and works in Chrome and Firefox on Android.
+- iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll.
+- **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. Check the Safari release notes and [caniuse](https://caniuse.com/mdn-html_elements_meta_name_viewport_interactive-widget) on each Safari release. Once iOS Safari supports it, delete the effect, drop the `var()` in `root.css.ts` and confirm on a device.
+
 **Component Structure:**
 
 - Semantic HTML preferred (nav, ol, li elements)
