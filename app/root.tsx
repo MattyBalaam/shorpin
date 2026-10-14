@@ -86,7 +86,10 @@ export function Layout({ children }: LayoutRouteProps) {
     <html lang="en" className={themeClass}>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+        />
         <meta name="theme-color" content="#A9CBB7" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -157,6 +160,34 @@ export default function App() {
     },
     [pathname],
   );
+
+  useEffect(function trackKeyboardViewport() {
+    // TEMPORARY: iOS Safari doesn't support `interactive-widget=resizes-content`
+    // yet, so the keyboard doesn't resize the layout — Safari pans the page
+    // instead, exposing blank space below it. Size the layout to the visual
+    // viewport and undo the pan so the actions bar sits above the keyboard.
+    // Delete this once Safari ships `interactive-widget` (see README
+    // "On-screen keyboard sizing").
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const root = document.documentElement;
+
+    function sync() {
+      if (!viewport) return;
+      root.style.setProperty("--visual-viewport-height", `${viewport.height}px`);
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    }
+
+    const controller = new AbortController();
+    viewport.addEventListener("resize", sync, { signal: controller.signal });
+    viewport.addEventListener("scroll", sync, { signal: controller.signal });
+    sync();
+
+    return () => {
+      controller.abort();
+      root.style.removeProperty("--visual-viewport-height");
+    };
+  }, []);
 
   useEffect(function manageServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
