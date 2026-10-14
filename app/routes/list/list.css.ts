@@ -35,7 +35,8 @@ export const addInput = style({
   fontFamily: "inherit",
   border: "none",
   outline: "none",
-  background: "transparent",
+  background: "white",
+  color: "black",
 });
 
 // Pill "Add" button. Layered over Button's primary variant (which loads first),
