@@ -41,8 +41,6 @@ export default function Delete({ loaderData }: Route.ComponentProps) {
           I do not
         </Link>
       </div>
-
-      {loaderData.returnTo}
     </Form>
   );
 }
