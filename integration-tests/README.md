@@ -30,7 +30,7 @@ The server handles SIGTERM and SIGINT gracefully, closing the HTTP listener befo
 
 Tests run with `fullyParallel: true`. Each test gets its own isolated slice of the shared in-memory DB through three mechanisms:
 
-1. **UUID-namespaced users** — `createTestContext()` generates unique emails per test:
+1. **UUID-namespaced users** — `createTestContext(testInfo)` generates unique emails per test. The uuid is derived from the test id (so it's stable between runs, which keeps emails on screen the same for visual snapshots):
 
    | Field           | Example                    |
    | --------------- | -------------------------- |
@@ -40,7 +40,9 @@ Tests run with `fullyParallel: true`. Each test gets its own isolated slice of t
 
 2. **Per-test DB reset** — the `ctx` fixture calls `POST /test/reset` before each test, which deletes and re-seeds only that worker's users and their data.
 
-3. **User-scoped slug conflicts** — the slug prefix query (used when creating a list to avoid duplicate slugs) is scoped to the requesting user's `user_id`, so one worker creating a "Groceries" list cannot inflate the slug counter of another worker's "Groceries" list.
+3. **Scoped user and waitlist queries** — the mock's profiles and waitlist endpoints only return rows whose email has the requester's uuid ([`mocks/scope.ts`](../mocks/scope.ts)), so the config and sign-ups modals and the pending count only show this test's data.
+
+4. **User-scoped slug conflicts** — the slug prefix query (used when creating a list to avoid duplicate slugs) is scoped to the requesting user's `user_id`, so one worker creating a "Groceries" list cannot inflate the slug counter of another worker's "Groceries" list.
 
 ### Seed data
 
@@ -71,6 +73,23 @@ The `ctx` fixture forwards all browser console messages and uncaught page errors
 
 Playwright's `page.touchscreen` can only tap, so `touch.spec.ts` drives swipes and drags through Chromium's CDP `Input.dispatchTouchEvent`. That's genuine touch input: the browser converts it to pointer events (`pointerType: "touch"`), honours `touch-action`, and fires `pointercancel` if it decides to scroll — so these tests fail if a drag handle loses `touch-action: none`, which mouse-driven tests can't detect. It's still Chromium, not iOS Safari: iOS-specific gesture handling needs a real device.
 
+### Visual snapshots
+
+Route specs end with a `@visual` test that calls `expectPageSnapshot(page, name)`. It waits for hydration and web fonts, then screenshots the full page with `toHaveScreenshot`. Baselines live next to the spec in `<spec>.spec.ts-snapshots/`.
+
+| Project          | Device                          | Browser  |
+| ---------------- | ------------------------------- | -------- |
+| `iphone-pro-max` | iPhone 17 Pro Max (440×763 @3x) | WebKit   |
+| `laptop`         | 1440×900 @1x                    | Chromium |
+
+These projects run only `@visual` tests, and `desktop`/`touch` skip them. `pnpm test:integration` runs everything, `pnpm test:visual` runs just the snapshots, and `pnpm test:visual:update` rewrites the baselines after an intended UI change. Look over the changed PNGs before committing them. A failed comparison writes `-actual` and `-diff` images to `test-results/`, which `pnpm exec playwright show-report` shows side by side. The iPhone project needs WebKit: `pnpm exec playwright install webkit`.
+
+- **Local only.** Baselines are macOS renders (`-darwin` suffix), so the visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image.
+- **Service workers are blocked** in these projects, because the "Offline support ready" toast appears at a timing-dependent point.
+- **Masks** paint over content that changes between runs. Currently that's only the sign-up dates.
+- **`--repeat-each`** gives every repeat its own uuid, so screenshots showing emails won't match on repeats. Check stability with separate runs instead.
+- Left out: `/logout` (action only), `/auth/confirm` (always redirects), `/sentry-example-page` (depends on reaching Sentry), and resource routes.
+
 ### Service worker (`offline.spec.ts`)
 
 The current SW (`app/sw.ts`) precaches the app shell and falls back to `public/offline.html` for navigations made with no network — see README.md's "Offline / Local-first" section for the full design. It only registers in production-ish builds (`import.meta.env.PROD`); since the integration tests use `--mode mock` (which Vite treats as a production build), it's active during tests, but only for the default (non-`--dev`) build variant — SW-dependent tests don't run under `pnpm test:integration --dev`.
@@ -96,11 +115,12 @@ The per-route offline CRUD specs (list.spec.ts's and home.spec.ts's own offline 
 
 ## Helpers (`helpers.ts`)
 
-| Export                | Purpose                                                             |
-| --------------------- | ------------------------------------------------------------------- |
-| `createTestContext()` | Generate unique `{ownerEmail, collabEmail, waitlistEmail}` per test |
-| `login(page, email)`  | Navigate to `/login`, sign in, and wait for hydration at `/`        |
-| `resetDb(page, ctx)`  | POST to `/test/reset` to wipe and re-seed this worker's data        |
+| Export                           | Purpose                                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `createTestContext(testInfo)`    | Generate unique `{ownerEmail, collabEmail, waitlistEmail}` per test |
+| `login(page, email)`             | Navigate to `/login`, sign in, and wait for hydration at `/`        |
+| `resetDb(page, ctx)`             | POST to `/test/reset` to wipe and re-seed this worker's data        |
+| `expectPageSnapshot(page, name)` | Wait for hydration and fonts, then compare a full-page screenshot   |
 
 ## CI
 

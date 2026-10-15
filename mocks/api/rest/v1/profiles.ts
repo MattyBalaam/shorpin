@@ -1,5 +1,6 @@
 import { delay, HttpResponse, http } from "msw";
 import { users } from "../../../db.ts";
+import { inSameScope } from "../../../scope.ts";
 
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
@@ -14,7 +15,9 @@ export const handlers = [
     const user = email ? users.findFirst((q) => q.where({ email })) : null;
     if (!user) return HttpResponse.json([], { status: 401 });
 
-    const allUsers = users.findMany((q) => q.where({ id: (id) => id !== user.id }));
+    const allUsers = users.findMany((q) =>
+      q.where({ id: (id) => id !== user.id, email: (e) => inSameScope(e, user.email) }),
+    );
     return HttpResponse.json(allUsers.map((u) => ({ id: u.id, email: u.email })));
   }),
 ];

@@ -1,18 +1,29 @@
 import { delay, HttpResponse, http } from "msw";
 import { waitlist } from "../../../db.ts";
+import { inSameScope } from "../../../scope.ts";
+
+function emailFromRequest(request: Request): string {
+  const auth = request.headers.get("Authorization") ?? "";
+  return auth.replace("Bearer ", "");
+}
+
+function entriesFor(request: Request) {
+  const requester = emailFromRequest(request);
+  return waitlist.findMany((q) => q.where({ email: (e) => inSameScope(e, requester) }));
+}
 
 export const handlers = [
-  http.head("*/rest/v1/waitlist", async () => {
+  http.head("*/rest/v1/waitlist", async ({ request }) => {
     await delay();
-    const count = waitlist.count();
+    const count = entriesFor(request).length;
     return new HttpResponse(null, {
       headers: { "Content-Range": `0-0/${count}` },
     });
   }),
 
-  http.get("*/rest/v1/waitlist", async () => {
+  http.get("*/rest/v1/waitlist", async ({ request }) => {
     await delay();
-    const entries = waitlist.findMany();
+    const entries = entriesFor(request);
     return HttpResponse.json(
       entries.map((e) => ({
         id: e.id,

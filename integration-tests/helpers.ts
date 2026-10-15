@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { expect, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { Route } from "@playwright/test";
 
 export interface TestContext {
@@ -9,12 +9,23 @@ export interface TestContext {
 }
 
 /**
- * Create a unique set of user emails for a test file.
+ * Create a unique set of user emails for a test.
  * Using {username}-{uuid}@test.com ensures parallel workers each get their
- * own isolated users and data in the shared mock DB.
+ * own isolated users and data in the shared mock DB. The uuid is derived from
+ * the test (and project), not random, so emails shown on screen stay the same
+ * between runs for visual snapshots.
  */
-export function createTestContext(): TestContext {
-  const uuid = randomUUID();
+export function createTestContext(testInfo: TestInfo): TestContext {
+  const hex = createHash("sha256")
+    .update(`${testInfo.testId}:${testInfo.repeatEachIndex}`)
+    .digest("hex");
+  const uuid = [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
   return {
     ownerEmail: `owner-${uuid}@test.com`,
     collabEmail: `collab-${uuid}@test.com`,
@@ -85,4 +96,21 @@ export async function resetDb(page: Page, ctx: TestContext) {
   await page.request.post(`http://localhost:${mockPort}/test/reset`, {
     data: ctx,
   });
+}
+
+/**
+ * Visual snapshot of the current page, for `@visual` tests (run by the
+ * iphone-pro-max and laptop projects only — see playwright.config.ts).
+ * Waits for hydration and web fonts so the screenshot is stable. `mask`
+ * paints over content that changes between runs, like dates.
+ */
+export async function expectPageSnapshot(
+  page: Page,
+  name: string,
+  { mask }: { mask?: Locator[] } = {},
+) {
+  const { pathname } = new URL(page.url());
+  await expect(page.locator(`html[data-hydrated-path="${pathname}"]`)).toBeAttached();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask });
 }

@@ -46,7 +46,6 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically be
 | `integration-tests/offline*`                                                                      | `integration-tests/offline.spec.ts`                                                                        |
 | `integration-tests/auth/**`                                                                       | `integration-tests/auth.spec.ts`                                                                           |
 | `integration-tests/sign-ups*`                                                                     | `integration-tests/sign-ups.spec.ts`                                                                       |
-| `visual-tests/**`, `playwright.visual.config.ts`                                                  | `pnpm test:visual` (local-only snapshots)                                                                  |
 | `integration-tests/*.spec.ts` changed                                                             | That spec                                                                                                  |
 | Anything else unmatched                                                                           | Full suite (safe fallback)                                                                                 |
 

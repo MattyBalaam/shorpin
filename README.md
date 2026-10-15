@@ -291,10 +291,10 @@ which project was hit.
 
 ### Visual snapshot tests
 
-[visual-tests/](visual-tests/) screenshots every page route at two viewports, an iPhone 17 Pro Max (WebKit) and a 1440×900 laptop (Chromium), using Playwright's `toHaveScreenshot`. They run with their own config, [playwright.visual.config.ts](playwright.visual.config.ts), so the integration suite and CI don't pick them up.
+Each route's integration spec has a `@visual` test that screenshots the page with Playwright's `toHaveScreenshot`, next to that route's other tests. Two extra Playwright projects run only the `@visual` tests: `iphone-pro-max` (iPhone 17 Pro Max in WebKit) and `laptop` (1440×900 in Chromium). The `desktop` and `touch` projects skip them. See [integration-tests/README.md](integration-tests/README.md#visual-snapshots).
 
-- **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. Running them in CI needs a pinned Docker image to generate and compare baselines in. See [visual-tests/README.md](visual-tests/README.md).
-- **Serial, with fixed seed users.** The config and sign-ups modals list every user in the mock DB, so the tests share the mock server's default users and run one at a time instead of using per-test random users.
+- **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. The visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image to generate and compare baselines in.
+- **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
 
 ### CI Playwright container version
 
