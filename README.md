@@ -289,6 +289,13 @@ into `waitlist` but not delete), scoped to the test project only, alongside
 `E2E_SUPABASE_URL`. The run log prints the project ref so you can confirm
 which project was hit.
 
+### Visual snapshot tests
+
+[visual-tests/](visual-tests/) screenshots every page route at two viewports, an iPhone 17 Pro Max (WebKit) and a 1440×900 laptop (Chromium), using Playwright's `toHaveScreenshot`. They run with their own config, [playwright.visual.config.ts](playwright.visual.config.ts), so the integration suite and CI don't pick them up.
+
+- **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. Running them in CI needs a pinned Docker image to generate and compare baselines in. See [visual-tests/README.md](visual-tests/README.md).
+- **Serial, with fixed seed users.** The config and sign-ups modals list every user in the mock DB, so the tests share the mock server's default users and run one at a time instead of using per-test random users.
+
 ### CI Playwright container version
 
 The `integration` and `e2e-supabase` jobs run inside the

@@ -80,7 +80,19 @@ if [ -n "$NON_TRIVIAL" ]; then
     CHANGED_SPECS=$(echo "$STAGED" | grep -E '^integration-tests/.*\.spec\.ts$' | grep -v 'supabase-')
     [ -n "$CHANGED_SPECS" ] && SPECS="$SPECS $CHANGED_SPECS"
 
-    if [ -z "$SPECS" ]; then
+    # Visual snapshot tests (local only — see visual-tests/README.md)
+    VISUAL=$(echo "$STAGED" | grep -mE1 '^(visual-tests/|playwright\.visual\.config\.ts$)')
+    if [ -n "$VISUAL" ]; then
+      echo "Running visual snapshot tests..." >&2
+      if ! pnpm test:visual >&2; then
+        deny "Visual snapshot tests failed — see output above. Fix before committing."
+      fi
+    fi
+    OTHER=$(echo "$NON_TRIVIAL" | grep -vE '^(visual-tests/|playwright\.visual\.config\.ts$)')
+
+    if [ -z "$OTHER" ]; then
+      : # Only visual test files changed — covered above
+    elif [ -z "$SPECS" ]; then
       # Non-trivial changes but no route match — run everything to be safe
       echo "Running full integration suite (unrecognised file pattern)..." >&2
       if ! pnpm test:integration >&2; then
