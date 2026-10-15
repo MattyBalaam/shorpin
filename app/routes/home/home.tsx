@@ -4,7 +4,6 @@ import {
   type MetaFunction,
   Outlet,
   Form as RouterForm,
-  useNavigation,
   useRevalidator,
   useRouteError,
 } from "react-router";
@@ -12,6 +11,7 @@ import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
+import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
@@ -58,7 +58,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
     shouldRevalidate: "onInput",
   });
 
-  const { state } = useNavigation();
+  const isAddingList = useIsSubmitting("add-list");
   const { revalidate } = useRevalidator();
 
   // Neither create-list nor reorder-lists needs list.tsx's rebase treatment
@@ -143,7 +143,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
             </VisuallyHidden>
             <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
 
-            <Button type="submit" isSubmitting={state === "submitting"}>
+            <Button type="submit" name={SUBMIT_ACTION} value="add-list" isSubmitting={isAddingList}>
               Add
             </Button>
           </div>

@@ -169,6 +169,7 @@ export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFuncti
 
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
+import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
 import * as errorStateStyles from "~/components/error-state/error-state.css";
 import * as itemsStyles from "~/components/items.css";
@@ -213,6 +214,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   const slug = params.list;
 
   const { state, formData } = useNavigation();
+  const isAdding = useIsSubmitting("add");
+  const isRecreating = useIsSubmitting("recreate");
 
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
@@ -557,7 +560,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
-    recreateData.set("submitAction", "add");
+    recreateData.set(SUBMIT_ACTION, "recreate");
     submit(recreateData, { method: "POST" });
     setLastDeletedValue(null);
   }
@@ -575,10 +578,10 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         {/* hidden submit button captures Enter key presses to add a new item.
             submitAction is a plain (non-reserved) field used only to tell
             client-side "was this particular submission an add" for the
-            pendingItem skeleton below — the server infers add purely from
-            fields.new having a value. */}
+            pendingItem skeleton and Add spinner below — the server infers add
+            purely from fields.new having a value. */}
         <VisuallyHidden>
-          <button type="submit" name="submitAction" value="add">
+          <button type="submit" name={SUBMIT_ACTION} value="add">
             Update
           </button>
         </VisuallyHidden>
@@ -603,9 +606,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             edited={edited}
             newItems={loaderData.newItemIds}
             pendingItem={
-              state === "submitting" && formData?.get("submitAction") === "add"
-                ? (formData.get(fields.new.name) as string)
-                : null
+              isAdding || isRecreating ? (formData?.get(fields.new.name) as string) : null
             }
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
@@ -630,8 +631,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             <Button
               type="submit"
               value="add"
-              name="submitAction"
-              isSubmitting={state === "submitting"}
+              name={SUBMIT_ACTION}
+              isSubmitting={isAdding}
               className={styles.addButton}
             >
               Add
