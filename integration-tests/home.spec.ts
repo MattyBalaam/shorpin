@@ -1,6 +1,6 @@
 import type { Response } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 test("owner can create a new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
@@ -466,4 +466,9 @@ test("installed app opens the starred list on launch even without start_url (iOS
   await page.reload();
   await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible();
   await expect(page).toHaveURL("/");
+});
+
+test("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await expectPageSnapshot(page, "home");
 });

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -797,4 +797,10 @@ test("reordering items does not create unread or new markers for self", async ({
   await expect(
     page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Milk") }),
   ).toHaveCount(0);
+});
+
+test("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto(listPath("shopping"));
+  await expectPageSnapshot(page, "list");
 });

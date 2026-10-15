@@ -1,9 +1,20 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type Project } from "@playwright/test";
 
 const mockPort = process.env.MOCK_SERVER_PORT ?? "9001";
 const appPort = process.env.APP_SERVER_PORT ?? "5174";
 
 const useDevServer = process.argv.includes("--dev");
+
+function visualProject(name: string, use: Project["use"]): Project {
+  return {
+    name,
+    grep: /@visual/,
+    testIgnore: ["**/supabase-*.spec.ts"],
+    // The service worker's "Offline support ready" toast appears at a
+    // timing-dependent point, so keep it out of the snapshots.
+    use: { ...use, serviceWorkers: "block" },
+  };
+}
 
 export default defineConfig({
   testDir: "./integration-tests",
@@ -18,6 +29,7 @@ export default defineConfig({
     {
       name: "desktop",
       testIgnore: ["**/supabase-*.spec.ts", "**/touch.spec.ts"],
+      grepInvert: /@visual/,
     },
     {
       // Real touch input via Chromium's CDP (see touch.spec.ts) — covers
@@ -26,7 +38,20 @@ export default defineConfig({
       name: "touch",
       use: devices["Pixel 7"],
       testMatch: "**/touch.spec.ts",
+      grepInvert: /@visual/,
     },
+    // Visual snapshots — each route spec's `@visual` tests, at two sizes.
+    // Local only for now: baselines are macOS renders (`-darwin` suffix) and
+    // won't match CI's Linux container until they're generated in Docker.
+    ...(process.env.CI
+      ? []
+      : [
+          visualProject("iphone-pro-max", devices["iPhone 17 Pro Max"]),
+          visualProject("laptop", {
+            ...devices["Desktop Chrome"],
+            viewport: { width: 1440, height: 900 },
+          }),
+        ]),
   ],
   webServer: [
     {

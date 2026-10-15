@@ -203,6 +203,11 @@ export const actions = style({
   gridColumn: "content",
 });
 
+// Below this width the left gutter is too narrow for "N pending", which then
+// overlaps the breadcrumbs, so the link moves beside the sign-out button.
+// Roughly the 60ch column plus a 10ch-wide gutter either side.
+const narrowGutter = "screen and (max-width: 48rem)";
+
 export const pendingSignUps = style({
   gridRow: "breadcrumbs",
   gridColumn: "left",
@@ -211,12 +216,28 @@ export const pendingSignUps = style({
   justifyContent: "flex-start",
   alignItems: "center",
   paddingInlineStart: vars.spacing.md,
+  "@media": {
+    [narrowGutter]: {
+      gridColumn: "content",
+      justifySelf: "end",
+      // Shrink-wrapped here, so it can't be a size container.
+      containerType: "normal",
+      paddingInlineStart: 0,
+      // Clears the sign-out button, which shares this cell (see layout.css.ts).
+      marginInlineEnd: `calc(${vars.spacing.controlHeight} * 1.5 + ${vars.spacing.md})`,
+    },
+  },
 });
 
 export const signUpsLabel = style({
   display: "none",
   "@container": {
     "(min-width: 10ch)": {
+      display: "inline",
+    },
+  },
+  "@media": {
+    [narrowGutter]: {
       display: "inline",
     },
   },

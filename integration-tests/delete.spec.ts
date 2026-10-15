@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 test("owner can delete a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
@@ -27,4 +27,10 @@ test("owner can delete a list", async ({ page, ctx }) => {
 
   // Owner Empty should no longer be in the list
   await expect(page.getByRole("link", { name: "Owner Empty" })).not.toBeVisible();
+});
+
+test("confirm delete page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto("/lists/shopping/confirm-delete");
+  await expectPageSnapshot(page, "confirm-delete");
 });

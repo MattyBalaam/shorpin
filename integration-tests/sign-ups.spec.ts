@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 test("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
@@ -31,13 +31,9 @@ test("admin can handle sign-ups", async ({ page, ctx }) => {
 
   await page.waitForURL("/");
 
-  // Other parallel workers may still have pending entries so the count badge
-  // may stay visible — just verify this worker's specific entry is gone.
-  const pendingLink = page.getByRole("link", { name: /pending/ });
-  if (await pendingLink.isVisible()) {
-    await pendingLink.click();
-    await expect(page.getByText(ctx.waitlistEmail)).not.toBeVisible();
-  }
+  // The mock scopes the waitlist to this test's users, so with its only
+  // entry handled the count badge goes away.
+  await expect(page.getByRole("link", { name: /pending/ })).toBeHidden();
 });
 
 test("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
@@ -81,4 +77,11 @@ test("client-side navigation to a route with no offline handling of its own show
 
   await expect(page.getByText("You're offline.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+});
+
+test("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto("/sign-ups");
+  // Sign-up dates are the day the mock DB was reset.
+  await expectPageSnapshot(page, "sign-ups", { mask: [page.locator("time")] });
 });

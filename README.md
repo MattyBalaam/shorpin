@@ -289,6 +289,13 @@ into `waitlist` but not delete), scoped to the test project only, alongside
 `E2E_SUPABASE_URL`. The run log prints the project ref so you can confirm
 which project was hit.
 
+### Visual snapshot tests
+
+Each route's integration spec has a `@visual` test that screenshots the page with Playwright's `toHaveScreenshot`, next to that route's other tests. Two extra Playwright projects run only the `@visual` tests: `iphone-pro-max` (iPhone 17 Pro Max in WebKit) and `laptop` (1440×900 in Chromium). The `desktop` and `touch` projects skip them. See [integration-tests/README.md](integration-tests/README.md#visual-snapshots).
+
+- **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. The visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image to generate and compare baselines in.
+- **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
+
 ### CI Playwright container version
 
 The `integration` and `e2e-supabase` jobs run inside the
