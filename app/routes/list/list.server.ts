@@ -20,6 +20,25 @@ const zMutateListRpcResult = v.union([
   }),
 ]);
 
+/**
+ * Sends an add that carries a client-generated id (see `newId` in data.ts) as
+ * a `newItems`/`newItemIds` entry rather than `new`, so mutate_list uses that
+ * id for the row and a replay of the same add is a no-op (migration
+ * 20261011000000) instead of a duplicate. No migration needed: `new` stays
+ * the fallback for any client that doesn't send an id.
+ */
+function toIdempotentAdd({ newId, ...payload }: v.InferOutput<typeof zList>) {
+  if (!payload.new || !newId || payload.newItems.length !== payload.newItemIds.length) {
+    return payload;
+  }
+  return {
+    ...payload,
+    new: "",
+    newItems: [...payload.newItems, payload.new],
+    newItemIds: [...payload.newItemIds, newId],
+  };
+}
+
 export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
   const user = await requireUser(supabase);
@@ -146,7 +165,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
-    p_payload: result.output,
+    p_payload: toIdempotentAdd(result.output),
     p_mutated_at: updatedAt,
   });
 

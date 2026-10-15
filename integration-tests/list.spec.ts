@@ -304,6 +304,61 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
 });
 
+test("an add that fails before the browser reports offline is queued, not an error", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  // A dead connection that navigator.onLine hasn't noticed yet — what a
+  // phone does for a few seconds after losing signal.
+  await page.route("**/lists/shopping.data*", (route) => route.abort("internetdisconnected"));
+
+  await page.getByLabel("New item").fill("Lie-fi butter");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await expect(page.getByLabel("Edit Lie-fi butter")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
+
+  // No offline→online transition happens, so the sync's own backoff retry
+  // has to deliver it once the server is reachable.
+  await page.unroute("**/lists/shopping.data*");
+  await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Lie-fi butter")).toHaveCount(1);
+});
+
+test("an add whose response is lost isn't duplicated when the queued copy syncs", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  // The POST reaches the server and is applied, but the response never
+  // makes it back, so the client queues the same add offline.
+  await page.route("**/lists/shopping.data*", async (route) => {
+    if (route.request().method() === "POST") await route.fetch();
+    await route.abort("internetdisconnected");
+  });
+
+  await page.getByLabel("New item").fill("Lost-response jam");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Lost-response jam")).toBeVisible();
+  await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
+
+  await page.unroute("**/lists/shopping.data*");
+  await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Lost-response jam")).toHaveCount(1);
+});
+
 test("multiple items added offline all sync to the server on reconnect", async ({
   page,
   ctx,

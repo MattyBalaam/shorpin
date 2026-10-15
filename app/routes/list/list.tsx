@@ -100,62 +100,81 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
 
 clientLoader.hydrate = true as const;
 
-export async function clientAction({ params, request, serverAction }: Route.ClientActionArgs) {
-  const slug = params.list;
+async function queueOfflineEdit(slug: string, request: Request) {
+  const formData = await request.formData();
+  const submission = parseSubmission(formData);
 
-  if (!navigator.onLine) {
-    const formData = await request.formData();
-    const submission = parseSubmission(formData);
+  const result = v.safeParse(zList, submission.payload);
 
-    const result = v.safeParse(zList, submission.payload);
-
-    if (!result.success) {
-      return {
-        lastResult: report(submission, { error: { issues: result.issues } }),
-      };
-    }
-
-    const cached = await getListSnapshot<ListLoaderData>(slug);
-    if (!cached) {
-      // No cached snapshot to offline-edit against — surface the original
-      // connectivity failure rather than fabricate state we don't have.
-      throw new Response("Service unavailable", { status: 503 });
-    }
-
-    const currentItems = result.output.items;
-    const toAdd = Boolean(result.output.new);
-
-    if (toAdd && result.output.new) {
-      currentItems.push({
-        id: crypto.randomUUID(),
-        value: result.output.new,
-      });
-    }
-
-    await updateListDesired(slug, currentItems);
-    await enqueueMutation({
-      route: request.url,
-      routeKey: listRouteKey(slug),
-      kind: "list-mutate",
-      fields: formDataToPairs(formData),
-      clientId: String(formData.get("clientId") ?? ""),
-    });
-
-    toast.info("You're offline - changes saved locally");
-
+  if (!result.success) {
     return {
-      lastResult: report(submission, {
-        reset: toAdd && Boolean(result.output.new),
-        targetValue: {
-          ...submission.payload,
-          new: toAdd ? "" : (result.output.new ?? ""),
-          items: currentItems,
-        },
-      }),
+      lastResult: report(submission, { error: { issues: result.issues } }),
     };
   }
 
-  return withStaleVersionRetry(serverAction);
+  const cached = await getListSnapshot<ListLoaderData>(slug);
+  if (!cached) {
+    // No cached snapshot to offline-edit against — surface the original
+    // connectivity failure rather than fabricate state we don't have.
+    throw new Response("Service unavailable", { status: 503 });
+  }
+
+  const currentItems = result.output.items;
+  const toAdd = Boolean(result.output.new);
+
+  if (toAdd && result.output.new) {
+    currentItems.push({
+      // Reuse the add's own id: if this is the fallback for a request whose
+      // response was lost, the server may already hold a row with it, and
+      // the reconnect sync's replay then becomes a no-op.
+      id: result.output.newId ?? crypto.randomUUID(),
+      value: result.output.new,
+    });
+  }
+
+  await updateListDesired(slug, currentItems);
+  await enqueueMutation({
+    route: request.url,
+    routeKey: listRouteKey(slug),
+    kind: "list-mutate",
+    fields: formDataToPairs(formData),
+    clientId: String(formData.get("clientId") ?? ""),
+  });
+
+  toast.info("You're offline - changes saved locally");
+
+  return {
+    queuedOffline: true,
+    lastResult: report(submission, {
+      reset: toAdd && Boolean(result.output.new),
+      targetValue: {
+        ...submission.payload,
+        new: toAdd ? "" : (result.output.new ?? ""),
+        items: currentItems,
+      },
+    }),
+  };
+}
+
+export async function clientAction({ params, request, serverAction }: Route.ClientActionArgs) {
+  const slug = params.list;
+
+  if (!navigator.onLine) return queueOfflineEdit(slug, request);
+
+  // navigator.onLine lags a dropped connection by seconds on mobile, so a
+  // request can still fail with the browser reporting online. Fall back to
+  // queueing instead of hitting the error boundary. A clone, because
+  // serverAction consumes the original body. Safe even if the server did
+  // apply the request and only the response was lost: the reconnect sync
+  // rebases rather than replays, and adds carry a stable id.
+  const fallbackRequest = request.clone();
+
+  try {
+    return await withStaleVersionRetry(serverAction);
+  } catch (error) {
+    if (!isNetworkOrServerError(error)) throw error;
+    return queueOfflineEdit(slug, fallbackRequest);
+  }
 }
 
 // Prevent revalidation when offline, but allow initial navigation to this route
@@ -252,7 +271,9 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     const queued = await listQueuedMutations(listRouteKey(slug));
     if (queued.length === 0) return;
 
-    toast.success("Back online - syncing changes");
+    // Backoff retries (see performRebaseSync) come back through here too —
+    // only announce the first attempt.
+    if (syncRetryRef.current.attempt === 0) toast.success("Back online - syncing changes");
     syncFetcher.load(window.location.pathname);
   });
 
@@ -315,6 +336,19 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     defaultValue,
     lastResult,
     shouldValidate: "onBlur",
+    // Give every add a client-generated id (see toIdempotentAdd in
+    // list.server.ts) so a retried or offline-queued add can't duplicate.
+    // Set here rather than as a hidden input, since reorder/delete submit
+    // the whole form and would carry a stale id along.
+    onSubmit(event) {
+      const { submitter } = event.nativeEvent as SubmitEvent;
+      const addData = new FormData(event.currentTarget, submitter);
+      if (addData.get(SUBMIT_ACTION) !== "add") return;
+
+      event.preventDefault();
+      addData.set(fields.newId.name, crypto.randomUUID());
+      void submit(addData, { method: "POST" });
+    },
   });
 
   // Once the independent fresh-data fetch above resolves, rebase our queued
@@ -496,6 +530,19 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     [itemsKey],
   );
 
+  // An edit queued because its request failed while navigator.onLine still
+  // said online (see clientAction) gets no offline→online transition to
+  // trigger the sync, so start it here; performRebaseSync backs off until
+  // the server is reachable again.
+  useEffect(
+    function syncFallbackQueuedEdit() {
+      if (actionData && "queuedOffline" in actionData && navigator.onLine) {
+        void syncIfPending();
+      }
+    },
+    [actionData],
+  );
+
   // Bookkeeping runs after the sync effect in the same commit, so the
   // comparison above sees the previous actionData.
   useEffect(
@@ -560,6 +607,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
+    recreateData.set(fields.newId.name, crypto.randomUUID());
     recreateData.set(SUBMIT_ACTION, "recreate");
     submit(recreateData, { method: "POST" });
     setLastDeletedValue(null);
