@@ -2,6 +2,7 @@ import { useNavigate, useNavigation } from "react-router";
 import { type ReactNode } from "react";
 import * as styles from "./modal.css";
 import { Button } from "../button/button";
+import { SUBMIT_ACTION, useIsSubmitting } from "../button/use-is-submitting";
 
 // Must be used as a sibling to React Router's <Form>, never nested inside it.
 // The native <form method="dialog"> is not intercepted by React Router.
@@ -23,10 +24,16 @@ function ModalClose({ children }: { children: ReactNode }) {
 }
 
 function ModalSubmit({ children, formId }: { children: ReactNode; formId: string }) {
-  const { state } = useNavigation();
+  const isSubmitting = useIsSubmitting(formId);
 
   return (
-    <Button type="submit" form={formId} isSubmitting={state === "submitting"}>
+    <Button
+      type="submit"
+      form={formId}
+      name={SUBMIT_ACTION}
+      value={formId}
+      isSubmitting={isSubmitting}
+    >
       {children}
     </Button>
   );

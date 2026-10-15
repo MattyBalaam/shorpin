@@ -29,6 +29,10 @@ export const zList = v.object({
   // can use it as the row id and ignore a replay of an addition it already
   // applied (see mutate_list migration 20261011000000).
   newItemIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
+  // Client-generated id for the everyday `new` add, so an add whose response
+  // was lost (and so got queued offline too) can't be applied twice — see
+  // list.server.ts's toIdempotentAdd.
+  newId: v.optional(v.pipe(v.string(), v.uuid())),
   items: v.optional(v.array(zItem), []),
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),
