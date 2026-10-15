@@ -1,37 +1,36 @@
 #!/bin/bash
 #
 # PostToolUse hook — runs after Write, Edit, NotebookEdit.
-# Gives Claude immediate feedback on type errors, lint issues, and formatting.
+# Gives Claude immediate feedback on type errors and lint issues, and formats
+# the edited file.
 #
+# Scoped to the file that was edited: formatting the whole repo rewrites files
+# Claude has open, which then fail its next edit as "modified since read".
 
-# Non-interactive bash doesn't source ~/.zshrc, where fnm's shell integration
-# lives, so pnpm/node are invisible here even though they resolve in a normal
-# terminal. Fall back to fnm's stable "default" alias dir if not already on PATH.
-if ! command -v pnpm >/dev/null 2>&1 && [ -d "$HOME/.local/share/fnm/aliases/default/bin" ]; then
-  export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
+source "$(dirname "$0")/lib.sh"
+
+FILE=$(echo "$HOOK_INPUT" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
+
+# Edits outside the project (scratchpad, other repos) aren't ours to check.
+case "$FILE" in
+  "$PWD"/*) ;;
+  *) exit 0 ;;
+esac
+[ -f "$FILE" ] || exit 0
+
+if [[ "$FILE" =~ \.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$ ]]; then
+  # Typecheck is project-wide: an edit can break another file's types.
+  if ! OUTPUT=$(pnpm --silent typecheck 2>&1); then
+    post_tool_block "Type errors after edit — fix before continuing:
+$(tail_output "$OUTPUT")"
+  fi
+
+  if ! OUTPUT=$(pnpm --silent lint "$FILE" 2>&1); then
+    post_tool_block "Lint errors in $FILE — fix before continuing:
+$(tail_output "$OUTPUT")"
+  fi
 fi
 
-block() {
-  printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","decision":"block","reason":"%s"}}' "$1"
-  exit 0
-}
-
-# PostToolUse hooks run in a bare subprocess that may not have node/pnpm on
-# PATH (e.g. version managers like fnm/nvm that only activate in a login
-# shell). Bootstrap fnm if it's present; no-op otherwise.
-command -v fnm >/dev/null 2>&1 && eval "$(fnm env)"
-
-# 1. Typecheck (fast — uses tsgo / @typescript/native-preview)
-if ! pnpm typecheck >&2; then
-  block "Type errors after edit — fix before continuing."
-fi
-
-# 2. Lint
-if ! pnpm lint >&2; then
-  block "Lint errors after edit — fix before continuing."
-fi
-
-# 3. Format in place — pre-commit will catch any remaining staged diff
-pnpm fmt >&2
+pnpm exec oxfmt --no-error-on-unmatched-pattern "$FILE" >/dev/null 2>&1
 
 exit 0
