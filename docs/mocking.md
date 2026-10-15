@@ -1,6 +1,6 @@
 # Mocking strategy
 
-The app has no test database. All environments that don't use the real Supabase project — local development, integration tests, and Netlify deploy previews — share the same in-memory mock stack.
+The app has no test database. All environments that don't use the real Supabase project — local development, integration tests, and Coolify PR previews — share the same in-memory mock stack.
 
 ## Stack overview
 
@@ -37,9 +37,9 @@ Test isolation is handled through:
 
 The mock server handles `SIGTERM` and `SIGINT` gracefully, closing its HTTP listener before exiting. This ensures Playwright's webServer teardown (and Ctrl+C in local dev) does not leave orphaned processes holding the port.
 
-### Netlify deploy previews (`pnpm build:preview`)
+### PR previews (`pnpm build:preview`)
 
-MSW runs server-side inside the Netlify Function via `entry.server.tsx`:
+Coolify builds PR previews with `BUILD_SCRIPT=build:preview` (see the README's Deployment section). MSW runs server-side inside the app server via `entry.server.tsx`:
 
 ```ts
 if (import.meta.env.MODE === "preview") {
@@ -51,7 +51,7 @@ if (import.meta.env.MODE === "preview") {
 }
 ```
 
-The function intercepts all Supabase calls before they hit the network, so no real Supabase project is needed for a deploy preview. State lives in memory for the lifetime of the warm function instance.
+The server intercepts all Supabase calls before they hit the network, so no real Supabase project is needed for a preview. State lives in memory until the container restarts.
 
 ## Key files
 
