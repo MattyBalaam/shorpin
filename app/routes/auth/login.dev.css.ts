@@ -25,7 +25,7 @@ export const devButton = style({
   padding: `${vars.spacing.sm} ${vars.spacing.md}`,
   background: vars.palette.chromeLight,
   border: "none",
-  borderRadius: vars.spacing.controlRadius,
+  borderRadius: vars.style.controlRadius,
   cursor: "pointer",
   width: "100%",
   textAlign: "left",

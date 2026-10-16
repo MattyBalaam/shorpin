@@ -50,9 +50,11 @@ export default function Config({
     <Modal urlOnClose={href("/")}>
       <h2>{listName} — Admin</h2>
 
-      <Suspense fallback={null}>
-        <UsersList usersPromise={users} />
-      </Suspense>
+      <Modal.Body>
+        <Suspense fallback={null}>
+          <UsersList usersPromise={users} />
+        </Suspense>
+      </Modal.Body>
 
       <Modal.Actions>
         <Link

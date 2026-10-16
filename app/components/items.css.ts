@@ -1,4 +1,4 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const wrapper = style({
@@ -9,11 +9,11 @@ export const wrapper = style({
   minWidth: 0,
   cursor: "grab",
   marginBlockEnd: 0,
-  color: vars.palette.textOnChrome,
+  color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
 
   "@media": {
     "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
+      color: fallbackVar(vars.style.itemInk, vars.palette.textOnChromeDarkMode),
     },
   },
   ":active": {
@@ -40,7 +40,7 @@ export const skeletonItem = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
-  background: vars.palette.secondary,
+  background: fallbackVar(vars.style.itemBackground, vars.palette.secondary),
 });
 
 export const skeletonContent = style({

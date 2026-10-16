@@ -55,6 +55,7 @@ export const handlers = [
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
+        themeStyle?: string;
       };
       p_mutated_at: number;
     };
@@ -162,6 +163,16 @@ export const handlers = [
         data(draft) {
           draft.theme_primary = body.p_payload.themePrimary;
           draft.theme_secondary = body.p_payload.themeSecondary;
+        },
+      });
+    }
+
+    // Mirrors mutate_list: only applied when sent; 'default' clears it.
+    const { themeStyle } = body.p_payload;
+    if (themeStyle !== undefined) {
+      await lists.update((q) => q.where({ id: list.id }), {
+        data(draft) {
+          draft.theme_style = themeStyle === "default" ? null : themeStyle;
         },
       });
     }

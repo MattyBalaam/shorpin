@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { appStyles, type AppStyle } from "~/lib/app-style";
 
 const zItem = v.object({
   id: v.pipe(v.string(), v.uuid()),
@@ -15,6 +16,8 @@ const zData = v.object({
 export const zItems = v.array(zData);
 
 export type Items = v.InferOutput<typeof zItems>;
+
+export const LIST_STYLE_DEFAULT = "default";
 
 export const zList = v.object({
   name: v.string(),
@@ -36,6 +39,11 @@ export const zList = v.object({
   items: v.optional(v.array(zItem), []),
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),
+  // Only present when someone saves a list style (see useListAppStyle), so a
+  // stale tab adding an item never resets it. "default" clears the override.
+  themeStyle: v.optional(
+    v.picklist([...(Object.keys(appStyles) as AppStyle[]), LIST_STYLE_DEFAULT]),
+  ),
 });
 
 export const sortData = (items: Items) => items.sort((a, b) => a.sortOrder - b.sortOrder);

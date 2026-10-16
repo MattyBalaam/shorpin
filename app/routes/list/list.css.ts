@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { fallbackVar, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const form = style({
@@ -33,8 +33,7 @@ export const addInput = style({
   paddingInline: vars.spacing.md,
   fontSize: vars.fontSize.md,
   fontFamily: "inherit",
-  border: "none",
-  outline: "none",
+  border: fallbackVar(vars.style.inputBorder, "none"),
   background: "white",
   color: "black",
 });
@@ -44,7 +43,7 @@ export const addInput = style({
 export const addButton = style({
   background: vars.palette.text,
   color: "white",
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   paddingInline: vars.spacing.lg,
   fontSize: vars.fontSize.md,
   fontWeight: vars.fontWeight.semibold,

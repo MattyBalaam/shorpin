@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef } from "react";
 import {
+  data,
   href,
   isRouteErrorResponse,
   LayoutRouteProps,
@@ -19,13 +20,22 @@ import { toast } from "~/lib/toast";
 import { reportError } from "~/lib/monitoring.client";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { isNetworkOrServerError } from "~/lib/network-error";
-import { supabaseMiddleware } from "~/lib/supabase.middleware";
+import { supabaseContext, supabaseMiddleware } from "~/lib/supabase.middleware";
+import {
+  APP_STYLE_ATTRIBUTE,
+  DEFAULT_APP_STYLE,
+  parseAppStyle,
+  readAppStyleCookie,
+  serializeAppStyleCookie,
+} from "~/lib/app-style";
+import { readAccountAppStyle } from "~/lib/app-style.server";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
-import "./app.css";
 import "~/styles/typography.css";
+import "~/styles/app-styles.css";
 
+import { useEffectiveAppStyle } from "./components/app-style/use-app-style";
 import { ErrorState } from "./components/error-state/error-state";
 import { Link } from "./components/link/link";
 import { Spinner } from "./components/spinner/spinner";
@@ -47,9 +57,22 @@ export const middleware = [toastMiddleware(), supabaseMiddleware];
 //   },
 // ];
 
-export const loader = async ({ context }: Route.LoaderArgs) => {
+export const loader = async ({ context, request }: Route.LoaderArgs) => {
   const toast = getToast(context);
-  return { toast };
+
+  // The cookie caches the account's style (see app/lib/app-style.ts). Only
+  // when it's missing — signed out, or the first request after signing in on
+  // this device — is the profile consulted, and the cookie then set from it.
+  const cached = readAppStyleCookie(request.headers.get("Cookie"));
+  if (cached) return { toast, appStyle: cached };
+
+  const accountStyle = await readAccountAppStyle(context.get(supabaseContext));
+  if (!accountStyle) return { toast, appStyle: DEFAULT_APP_STYLE };
+
+  return data(
+    { toast, appStyle: accountStyle },
+    { headers: { "Set-Cookie": serializeAppStyleCookie(accountStyle) } },
+  );
 };
 
 // The root loader revalidates on client navigations too, so when the network
@@ -61,7 +84,9 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   try {
     return await serverLoader();
   } catch (error) {
-    if (isNetworkOrServerError(error)) return { toast: undefined };
+    if (isNetworkOrServerError(error)) {
+      return { toast: undefined, appStyle: parseAppStyle(document.cookie) };
+    }
     throw error;
   }
 }
@@ -82,15 +107,17 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export function Layout({ children }: LayoutRouteProps) {
+  const appStyle = useEffectiveAppStyle();
+
   return (
-    <html lang="en" className={themeClass}>
+    <html lang="en" className={themeClass} {...{ [APP_STYLE_ATTRIBUTE]: appStyle }}>
       <head>
         <meta charSet="utf-8" />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
         />
-        <meta name="theme-color" content="#A9CBB7" />
+        <meta name="theme-color" content="#0fc1e5" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Shorpin" />

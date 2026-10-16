@@ -1,4 +1,4 @@
-import { globalStyle, style } from "@vanilla-extract/css";
+import { style } from "@vanilla-extract/css";
 import { vars } from "./styles/theme.css";
 
 export const main = style({
@@ -22,13 +22,4 @@ export const loading = style({
   alignItems: "center",
   justifyContent: "center",
   height: "100%",
-});
-
-globalStyle("body, h1", {
-  margin: 0,
-});
-
-globalStyle("html, body", {
-  height: "100%",
-  overflow: "hidden",
 });

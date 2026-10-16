@@ -77,6 +77,10 @@ The layout is a fixed-height app shell, so it has to shrink above the on-screen 
 - iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll. Modal dialogs use it too, so they centre above the keyboard rather than behind it.
 - **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. A monthly workflow ([safari-interactive-widget.yml](.github/workflows/safari-interactive-widget.yml), running [scripts/check-interactive-widget.mjs](scripts/check-interactive-widget.mjs)) checks MDN's browser-compat-data and opens an issue once iOS Safari ships it. It can also be run by hand from the Actions tab. Then delete the effect, drop the `var()`s in `root.css.ts` and `modal.css.ts` and confirm on a device.
 
+**Modal dialogs:**
+
+Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
+
 **Component Structure:**
 
 - Semantic HTML preferred (nav, ol, li elements)
@@ -87,9 +91,11 @@ The layout is a fixed-height app shell, so it has to shrink above the on-screen 
 
 **Vanilla Extract** (`@vanilla-extract/css`):
 
-- All styles in `.css.ts` files (zero-runtime CSS-in-JS)
-- Theme system with CSS variables via [app/theme.css.ts](app/theme.css.ts)
-- CSS Layers for cascade control (reset, framework, app)
+- All styles in `.css.ts` files (zero-runtime CSS-in-JS), with no plain `.css` files. Global rules use `globalStyle`.
+- Theme system with CSS variables via [app/styles/theme.css.ts](app/styles/theme.css.ts); app styles are applied with `createGlobalTheme` (see "App styles" below)
+- CSS layers for cascade control ([layers.css.ts](app/styles/layers.css.ts)): `reset`, then `app` (typography). Every global element rule sits in one of them, so any component class overrides it without extra specificity. Component styles stay unlayered.
+- Per-variant values are `createVar`s that a shared base reads, composed with `style([...])`/`styleVariants`, rather than functions spread into each variant. See [clickable-element.css.ts](app/components/shared/clickable-element.css.ts).
+- Container queries name their container with `createContainer`, so they can't match an unrelated ancestor container.
 
 **Design Patterns:**
 
@@ -98,6 +104,10 @@ The layout is a fixed-height app shell, so it has to shrink above the on-screen 
 - Flexbox for simpler layouts
 - Logical properties (paddingInline, insetInline) for internationalization
 - Shared `clickable` class for interactive elements
+
+**CSS build target:** `build.cssTarget` in [vite.config.ts](vite.config.ts) names the latest major browsers. Vite's default "widely available" baseline predates `light-dark()`, so LightningCSS rewrote it into `--lightningcss-light`/`--lightningcss-dark` fallbacks. Those variables are only defined where it also rewrites a `color-scheme` declaration, and this app sets `color-scheme: dark` only inside a dark-mode media query. So in light mode every `light-dark()` colour computed as invalid. That's why `textOnPalette` used to fall back to white text on pale list rows. Keep the target at versions that support `light-dark()` and `@scope`, or both will be transpiled again.
+
+**Default palette:** home, and any list without its own palette, use an "ocean sunset" pair from the palette generator: cyan `primary` and pink `secondary`, adapted for dark mode with `toAdaptiveCss` like list palettes. Home's list rows use `palette.surface`, a deep shade of the primary hue with white ink (`textOnSurface`) in both schemes. `chrome` stays a neutral grey for icons and secondary ink. Primary's hex (`#0fc1e5`) is repeated in the `theme-color` meta tag, the manifest and `offline.html`. The PWA icons and the manifest's `background_color` still use the original sage (`#A9CBB7`, see [pwa-assets.config.ts](pwa-assets.config.ts)), because the icon's near-white glyph needs a darker backdrop than the new cyan.
 
 **Theme Variables:**
 
@@ -112,6 +122,20 @@ vars.palette.secondary; // Secondary color
 Per-list `primary`/`secondary` colours come from [app/lib/palette.ts](app/lib/palette.ts), a port of the OKLCH strategies in [delphitools' Palette Generator](https://delphi.tools/tools/palette-genny/) (0BSD). Clicking 🎨 picks a random strategy (colour-theory harmonies, moods, eras, nature, art/culture) and opens a preview dialog ([theme.tsx](app/components/theme/theme.tsx), [palette-preview.tsx](app/components/theme/palette-preview.tsx)) with a wireframe mockup of the light and dark result before it's applied — Shuffle re-rolls, "Use these colours" commits and submits. Only the light colours are stored, as `oklch()` strings in `lists.theme_primary`/`theme_secondary`; lightness is remapped into OKLCH 0.65–0.85 (`BACKGROUND_L`) and chroma reduced to fit sRGB so black text stays legible on them. That band is deliberately not pushed lighter: max in-gamut chroma for warm/cool hues falls off sharply above ~L 0.75 (a colour can be light _or_ vivid, rarely both above that point), so 0.65–0.85 is chosen to stay closer to "vivid but readable" than "pastel" — even its darkest end keeps a worst-case ~5.5:1 contrast against black text, comfortably past WCAG AA's 4.5:1.
 
 **Dark mode for palette colours:** rather than generating and storing a second dark pair, `toDarkModeCss` derives one from the stored light `oklch()` string: same hue, lightness remapped from `BACKGROUND_L` into a dark band (`DARK_BACKGROUND_L`, 0.35–0.48, chosen the same way — its lightest end keeps ≥5.8:1 contrast against white text), then chroma independently gamut-fit against a generous ceiling — _not_ scaled down from the light colour's own chroma, which is what keeps the dark variant vivid rather than washed toward grey. Older stored values that predate the OKLCH generator (plain `hsl()`) don't carry parseable L/c/h, so they fall back to `color-mix(in oklch, <light> 30%, black)`, a cruder but format-agnostic darkening. `Theme` injects both into a single custom property via `light-dark(<light>, <dark>)` (`toAdaptiveCss`), so it needs no `@media` query. `vars.palette.textOnPalette` (`light-dark(black, white)`) is the adaptive ink colour for anything painted directly on `primary`/`secondary`; it's deliberately a separate token from `vars.palette.text`, which stays a fixed `black` because it also backs fixed elements (e.g. the solid "Add" pill) that must not flip. `light-dark()` tracks the OS preference correctly here only because `color-scheme: dark` is set exclusively inside the existing `@media (prefers-color-scheme: dark)` block in [app.css](app/app.css) — never `light dark` unconditionally — so nothing else on the page (native form controls, the settings dialog, etc.) changes rendering as a side effect of this.
+
+**App styles:**
+
+Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GOV.UK, Y2K and MySpace, defined in [app/lib/app-style.ts](app/lib/app-style.ts). A style is separate from a list's palette. It changes type, shape, borders, shadows, focus treatment and surfaces. The "Style" button on home ([style-picker.tsx](app/components/app-style/style-picker.tsx)) sets the device's style, and the one on a list page sets that list's override. Picking an option only moves the selection, and each option previews itself in miniature. Nothing applies until Save, and Cancel, Escape or a backdrop click discard the choice.
+
+- **Tokens, not overrides.** Everything a style can change is a `vars.style.*` custom property in [theme.css.ts](app/styles/theme.css.ts), with Classic as the default ([classic-style.ts](app/styles/classic-style.ts)). Components read those tokens. [app-styles.css.ts](app/styles/app-styles.css.ts) reassigns the whole group for each `[data-app-style="…"]`, using `assignVars` so TypeScript rejects a style that leaves a token out. Custom properties inherit, so the nearest attribute wins. That lets each picker option set its own attribute and preview real components in its style while the page uses another one.
+- **`initial` means "keep the component's own value".** A custom property set to `initial` is guaranteed-invalid, so `fallbackVar` falls back to a value each component chooses. Classic uses this with a `revert` fallback, which substitutes as the CSS keyword, so buttons keep the browser's own font and border while button-styled links keep none. The surface tokens (`controlBackground`, `barBackground`, `rowBackground`, `itemBackground` and their inks) use it to fall back to the palette.
+- **Palette-filled or accent.** Classic, Brutalist, Y2K and MySpace paint bars, rows and buttons with the palette. Minimal, User agent and GOV.UK keep surfaces to the page's own colours (`Canvas`/`CanvasText`, so dark mode follows). They use the palette only as accents: a rule over the action bar in `primary`, list items divided in the list's `secondary`, badges and focus rings.
+- **User agent can't be expressed in tokens.** A custom property can't hold "use the browser default". This style reverts the author styles on text and controls with `revert !important`, inside `@scope ([data-app-style="user-agent"]) to ([data-app-style]:not(…))`. The `!important` beats component classes and their `:hover`/`:focus` states. The scope limit stops it at a nested preview of another style.
+- **Account style: `profiles.app_style`, cached in a cookie (`shorpin-style`).** NULL on the profile means Classic. The cookie lets the root loader render `<html>` in the right style with no lookup on most requests. When the cookie is missing (signed out, or the first request after signing in on a device), the root loader reads the profile via [app-style.server.ts](app/lib/app-style.server.ts) and sets the cookie. Sign-out expires the cookie alongside the offline data it already clears, so signed-out pages, and the next person on a shared device, get the default.
+  - **Saving** on home writes the cookie straight away (via `setAppStyle`, so it applies instantly, even offline) and submits the `set-app-style` intent to home's action, which updates the profile. Offline, that intent queues like reorders, collapsed to the latest choice, and replays on reconnect or through the service worker's Background Sync.
+  - **Other devices:** home's loader also returns the account's style. `AccountStyleSync` adopts it when it differs from this device's cookie, so a change made elsewhere shows up on the next visit home. It skips this while the device's own save is in flight or queued, so it can't undo a save the server hasn't seen yet.
+  - **Reading it:** [use-app-style.ts](app/components/app-style/use-app-style.ts) reads the cookie through `useSyncExternalStore`, with the root loader's value as the server snapshot. It uses `document.cookie` rather than `cookieStore`, because the snapshot must be read synchronously and `cookieStore` only exists in secure contexts (not LAN dev over http).
+- **List override: `lists.theme_style`** (NULL means the list follows each viewer's own style). It's saved through `mutate_list`, like the palette, so an offline save queues and syncs. The list loader returns it as `appStyleOverride`, and root uses the deepest match carrying that key, which covers server rendering. While a list is mounted, `useListAppStyle` also publishes its local choice to a small store, so a save applies at once, even offline. Unlike the palette fields, the `themeStyle` field is only in the form while a save hasn't synced yet. So a stale tab adding an item can't reset another member's choice, but an offline save still survives the reconnect rebase, which rebuilds its submission from the form. `"default"` clears the override. Values are validated in the app (`zList`), not by a CHECK constraint, so adding a style needs no migration.
 
 ### Component Architecture
 
@@ -315,9 +339,22 @@ whatever version is actually installed.
 Workflow runs triggered by `dependabot[bot]` only receive secrets from the
 Dependabot secrets store — never repository Actions secrets or environment
 secrets, even after an environment approval. So the three `E2E_SUPABASE_*`
-secrets used by `e2e-supabase` are mirrored into the Dependabot store, and
+API secrets used by `e2e-supabase` are mirrored into the Dependabot store, and
 Dependabot PRs run the full E2E suite with no manual step. Rotating those keys
-means updating both copies.
+means updating both copies. `E2E_SUPABASE_DB_PASSWORD` is the exception (see
+below): it's only in the Actions store.
+
+`e2e-supabase` pushes the PR's pending migrations to the e2e project before it
+runs the tests (`E2E_SUPABASE_DB_PASSWORD`; the project ref comes from the
+subdomain of `E2E_SUPABASE_URL`), so the
+tests always run against the schema the PR's code expects. Dependabot PRs skip
+that step, and the preflight doesn't require the password for them: they only
+bump dependencies, so they test against the schema maintainers' PRs have
+already pushed, and the database password stays out of the Dependabot store. It connects the
+same way `migrate-prod` does. If the e2e project is in a different region,
+set the `E2E_SUPABASE_POOLER_HOST` repository variable. A migration from a PR
+that's closed unmerged stays applied to the e2e project, which is acceptable
+only because that project never holds real data.
 
 Only the E2E project's secrets are mirrored. Prod secrets
 (`SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`) are only needed by
@@ -326,7 +363,8 @@ of no approval gate is that a compromised dependency could read the E2E
 project's service-role key, so that project must never hold real data.
 
 The `secret-preflight` job checks the `E2E_SUPABASE_*` secrets on every PR
-and posts a PR comment naming any that are missing.
+(including the migration password) and posts a PR comment naming any that are
+missing.
 
 ### Performance Instrumentation
 

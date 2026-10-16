@@ -1,5 +1,8 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { createContainer, fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
+
+const rowBackground = fallbackVar(vars.style.rowBackground, vars.palette.surface);
+const rowInk = fallbackVar(vars.style.rowInk, vars.palette.textOnSurface);
 
 export const listWrapper = style({
   // Safari has intermittent shrink-to-content bugs with display: contents
@@ -30,16 +33,12 @@ export const itemWrapper = style({
   width: "100%",
   minWidth: 0,
   paddingBlock: vars.spacing.md,
-  background: vars.palette.chrome,
+  background: rowBackground,
+  backgroundImage: vars.style.sheen,
   margin: 0,
-  borderBottom: `1px solid ${vars.palette.chromeLight}`,
-  color: vars.palette.textOnChrome,
+  borderBottom: vars.style.divider,
+  color: rowInk,
   position: "relative",
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
-    },
-  },
 });
 
 export const item = style({
@@ -120,7 +119,7 @@ export const itemDragHandle = style({
   touchAction: "pan-y",
   WebkitTouchCallout: "none",
   cursor: "grab",
-  color: vars.palette.textOnChrome,
+  color: rowInk,
   display: "flex",
   zIndex: 1,
   position: "relative",
@@ -138,11 +137,6 @@ export const itemDragHandle = style({
     content: '""',
     position: "absolute",
     inset: "-0.75rem",
-  },
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
-    },
   },
 });
 
@@ -164,7 +158,7 @@ export const unreadBadge = style({
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
   color: vars.palette.textOnPalette,
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   paddingInline: vars.spacing.sm,
   minWidth: "1.5em",
 });
@@ -179,8 +173,8 @@ export const skeletonRow = style({
   gridColumn: "1 / -1",
   gridTemplateColumns: "1fr",
   paddingBlock: vars.spacing.md,
-  background: vars.palette.chrome,
-  borderBottom: `1px solid ${vars.palette.chromeLight}`,
+  background: rowBackground,
+  borderBottom: vars.style.divider,
 });
 
 export const skeletonBar = style({
@@ -201,6 +195,14 @@ export const skeletonBar = style({
 
 export const actions = style({
   gridColumn: "content",
+  display: "flex",
+  alignItems: "end",
+  justifyContent: "space-between",
+  gap: vars.spacing.md,
+});
+
+export const addListForm = style({
+  minWidth: 0,
 });
 
 // Below this width the left gutter is too narrow for "N pending", which then
@@ -208,9 +210,12 @@ export const actions = style({
 // Roughly the 60ch column plus a 10ch-wide gutter either side.
 const narrowGutter = "screen and (max-width: 48rem)";
 
+const pendingSignUpsContainer = createContainer();
+
 export const pendingSignUps = style({
   gridRow: "breadcrumbs",
   gridColumn: "left",
+  containerName: pendingSignUpsContainer,
   containerType: "inline-size",
   display: "flex",
   justifyContent: "flex-start",
@@ -232,7 +237,7 @@ export const pendingSignUps = style({
 export const signUpsLabel = style({
   display: "none",
   "@container": {
-    "(min-width: 10ch)": {
+    [`${pendingSignUpsContainer} (min-width: 10ch)`]: {
       display: "inline",
     },
   },
