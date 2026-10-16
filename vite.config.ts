@@ -31,6 +31,14 @@ export default defineConfig((config) => {
       host: true,
     },
     build: {
+      // Latest major browsers only (see CLAUDE.md). Vite's default
+      // "widely available" baseline predates light-dark(), so LightningCSS
+      // rewrites it into --lightningcss-light/dark fallbacks that are only
+      // defined where it also rewrites a `color-scheme` declaration — in light
+      // mode every light-dark() colour then computes as invalid. These
+      // versions support light-dark() (Chrome 123, Safari 17.5) and @scope
+      // (Firefox 146), so both pass through untouched.
+      cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
       rollupOptions: {
         output: {
           manualChunks(id) {
