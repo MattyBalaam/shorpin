@@ -2,6 +2,7 @@ import { parseSubmission, report } from "@conform-to/react/future";
 
 import { dataWithError } from "remix-toast";
 import * as v from "valibot";
+import { isAppStyle } from "~/lib/app-style";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
@@ -45,7 +46,7 @@ export async function loader({ request, params: { list }, context }: Route.Loade
 
   const { data, error } = await supabase
     .from("lists")
-    .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
+    .select("id, name, slug, theme_primary, theme_secondary, theme_style, list_items(*)")
     .eq("slug", list)
     .eq("state", "active")
     .order("sort_order", { referencedTable: "list_items", ascending: true })
@@ -134,6 +135,8 @@ export async function loader({ request, params: { list }, context }: Route.Loade
       themeSecondary: data.theme_secondary ?? undefined,
     },
     listId: data.id,
+    // Read by root to style the whole page (see useAppStyleOverride).
+    appStyleOverride: isAppStyle(data.theme_style) ? data.theme_style : null,
     newItemIds: items
       .filter(({ state, updatedAt }) => state === "active" && updatedAt > lastViewedAt)
       .map(({ id }) => id),

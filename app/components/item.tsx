@@ -236,20 +236,22 @@ function EditDialog({
       }}
     >
       <div className={modalStyles.content}>
-        <textarea
-          ref={textareaRef}
-          className={styles.editTextarea}
-          aria-label="Item"
-          defaultValue={defaultValue}
-          autoComplete="off"
-          rows={3}
-          onKeyDown={function saveOnEnter(e) {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              save();
-            }
-          }}
-        />
+        <div className={modalStyles.body}>
+          <textarea
+            ref={textareaRef}
+            className={styles.editTextarea}
+            aria-label="Item"
+            defaultValue={defaultValue}
+            autoComplete="off"
+            rows={3}
+            onKeyDown={function saveOnEnter(e) {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                save();
+              }
+            }}
+          />
+        </div>
         <div className={modalStyles.actions}>
           <Button variant="outline" type="button" onClick={onCancel}>
             Cancel

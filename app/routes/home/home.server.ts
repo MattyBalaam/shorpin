@@ -4,6 +4,8 @@ import { data, href, redirect } from "react-router";
 import { redirectWithSuccess } from "remix-toast";
 import * as v from "valibot";
 
+import { DEFAULT_APP_STYLE, serializeAppStyleCookie } from "~/lib/app-style";
+import { readProfileAppStyle } from "~/lib/app-style.server";
 import { isLaunchUrl, readDefaultListId, serializeDefaultListCookie } from "~/lib/default-list";
 import { resolveSlug, slugify } from "~/lib/slugify";
 import { type SupaBaseContext, supabaseContext } from "~/lib/supabase.middleware";
@@ -13,9 +15,11 @@ import type { Route } from "./+types/home";
 import {
   ListItem,
   REORDER_LISTS_INTENT,
+  SET_APP_STYLE_INTENT,
   SET_DEFAULT_LIST_INTENT,
   zCreate,
   zReorderLists,
+  zSetAppStyle,
   zSetDefaultList,
 } from "./home.schema";
 
@@ -103,6 +107,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     }),
     waitlistCount: (async () =>
       (await supabase.from("waitlist").select("*", { count: "exact", head: true })).count ?? 0)(),
+    // The account's style, so a change saved on another device reaches this
+    // one's cookie cache on the next visit home (see home.tsx).
+    accountStyle: readProfileAppStyle(supabase, userId),
     // this is mostly here to satisfy the types in component
     revalidatePromise: Promise.resolve("stale" as const),
   };
@@ -110,6 +117,24 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
+
+  if (formData.get("intent") === SET_APP_STYLE_INTENT) {
+    const result = v.safeParse(zSetAppStyle, Object.fromEntries(formData));
+    if (!result.success) return null;
+
+    const supabase = context.get(supabaseContext);
+    const user = await requireUser(supabase);
+    const appStyle = result.output["app-style"];
+    const { error } = await supabase
+      .from("profiles")
+      .update({ app_style: appStyle === DEFAULT_APP_STYLE ? null : appStyle })
+      .eq("id", user.id);
+    if (error) console.error("Error saving app style:", error);
+
+    // The client already wrote the cookie; re-issuing it server-side keeps
+    // it fresh (and covers a replay from the offline queue).
+    return data(null, { headers: { "Set-Cookie": serializeAppStyleCookie(appStyle) } });
+  }
 
   if (formData.get("intent") === SET_DEFAULT_LIST_INTENT) {
     const result = v.safeParse(zSetDefaultList, Object.fromEntries(formData));

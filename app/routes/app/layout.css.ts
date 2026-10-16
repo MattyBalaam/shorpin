@@ -1,10 +1,13 @@
-import { style } from "@vanilla-extract/css";
+import { createContainer, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
+
+const logOutContainer = createContainer();
 
 export const logOut = style({
   gridRow: "breadcrumbs",
   gridColumn: "content",
   justifySelf: "end",
+  containerName: logOutContainer,
   containerType: "inline-size",
   display: "flex",
   justifyContent: "flex-end",
@@ -16,7 +19,7 @@ export const logOut = style({
 export const logOutLabel = style({
   display: "none",
   "@container": {
-    "(min-width: 100px)": {
+    [`${logOutContainer} (min-width: 100px)`]: {
       display: "inline",
     },
   },
@@ -24,7 +27,7 @@ export const logOutLabel = style({
 
 export const logOutIcon = style({
   "@container": {
-    "(min-width: 100px)": {
+    [`${logOutContainer} (min-width: 100px)`]: {
       display: "none",
     },
   },

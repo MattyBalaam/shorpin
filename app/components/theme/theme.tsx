@@ -160,7 +160,9 @@ function ThemeButton({ formId }: ThemeButtonProps) {
           }}
         >
           <div className={modalStyles.content}>
-            <PalettePreview primary={candidate.primary} secondary={candidate.secondary} />
+            <div className={modalStyles.body}>
+              <PalettePreview primary={candidate.primary} secondary={candidate.secondary} />
+            </div>
             <div className={modalStyles.actions}>
               <Button variant="outline" type="button" onClick={dismissCandidate}>
                 Cancel

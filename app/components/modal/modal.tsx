@@ -15,6 +15,12 @@ function ModalActions({ children }: { children: ReactNode }) {
   );
 }
 
+// Scrolls when the content outgrows the dialog; the heading before it and
+// Modal.Actions after it stay in view.
+function ModalBody({ children }: { children: ReactNode }) {
+  return <div className={styles.body}>{children}</div>;
+}
+
 function ModalClose({ children }: { children: ReactNode }) {
   return (
     <Button variant="outline" type="submit">
@@ -67,6 +73,7 @@ export function Modal({ children, urlOnClose }: { children: ReactNode; urlOnClos
   );
 }
 
+Modal.Body = ModalBody;
 Modal.Actions = ModalActions;
 Modal.Close = ModalClose;
 Modal.Submit = ModalSubmit;

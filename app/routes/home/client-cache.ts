@@ -31,6 +31,8 @@ async function snapshotToLoaderData(request: Request, snapshot: HomeSnapshot<Lis
     lists: Promise.resolve(snapshot.lists),
     updatedKey: Promise.resolve(snapshot.updatedKey),
     waitlistCount: Promise.resolve(snapshot.waitlistCount),
+    // Offline: nothing fresher than this device's own cookie to go on.
+    accountStyle: Promise.resolve(null),
     revalidatePromise: Promise.resolve("up-to-date" as const),
   } as const;
 }

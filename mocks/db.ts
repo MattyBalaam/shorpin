@@ -8,6 +8,7 @@ import type { Tables } from "~/lib/database.types";
 const usersSchema = v.object({
   id: v.string(),
   email: v.string(),
+  app_style: v.optional(v.nullable(v.string())),
 });
 
 const listsSchema = v.object({
@@ -18,6 +19,7 @@ const listsSchema = v.object({
   state: v.picklist(["active", "deleted"]),
   theme_primary: v.optional(v.nullable(v.string())),
   theme_secondary: v.optional(v.nullable(v.string())),
+  theme_style: v.optional(v.nullable(v.string())),
   user_id: v.string(),
   created_at: v.string(),
   updated_at: v.number(),

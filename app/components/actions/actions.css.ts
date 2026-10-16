@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { fallbackVar, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const actionsWrapper = style({
@@ -8,5 +8,7 @@ export const actionsWrapper = style({
   gridTemplateColumns: "subgrid",
   paddingBlockStart: vars.spacing.md,
   paddingBlockEnd: `max(env(safe-area-inset-bottom), ${vars.spacing.md})`,
-  background: vars.palette.primary,
+  background: fallbackVar(vars.style.barBackground, vars.palette.primary),
+  backgroundImage: vars.style.sheen,
+  borderBlockStart: vars.style.barBorder,
 });

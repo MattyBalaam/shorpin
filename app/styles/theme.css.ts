@@ -1,4 +1,8 @@
 import { createTheme } from "@vanilla-extract/css";
+import { toAdaptiveCss } from "~/lib/palette";
+import { classicStyle } from "./classic-style";
+
+const DEFAULT_HUE = 218.1;
 
 export const [themeClass, vars] = createTheme({
   spacing: {
@@ -14,11 +18,19 @@ export const [themeClass, vars] = createTheme({
     xxxl: "3rem", // 48px
     // Shared height for all interactive controls (buttons, inputs)
     controlHeight: "1.8rem",
-    controlRadius: "0.33rem",
   },
   palette: {
-    primary: "#A9CBB7",
-    secondary: "#EDEBA0",
+    // Defaults for home and any list without its own palette: an "ocean
+    // sunset" pair from the palette generator (app/lib/palette.ts), adapted
+    // for dark mode the same way list palettes are. Primary's hex (#0fc1e5)
+    // is in root.tsx's theme-color, the manifest and offline.html.
+    primary: toAdaptiveCss(`oklch(0.749 0.133 ${DEFAULT_HUE})`),
+    secondary: toAdaptiveCss("oklch(0.771 0.147 359.0)"),
+    // Home's list rows: a deep shade of primary's hue, with white ink in
+    // both schemes.
+    surface: `light-dark(oklch(0.42 0.07 ${DEFAULT_HUE}), oklch(0.3 0.05 ${DEFAULT_HUE}))`,
+    textOnSurface: "white",
+    // Neutral grey for secondary ink and icons.
     chrome: "grey",
     chromeLight: "lightGrey",
     text: "black",
@@ -59,10 +71,8 @@ export const [themeClass, vars] = createTheme({
     semibold: "600",
     bold: "700",
   },
-  radius: {
-    // 9999px clamps to half the element's shortest side, giving a true pill
-    // shape regardless of content width. 50% would produce an ellipse on
-    // non-square elements, so a large fixed value is the correct approach.
-    pill: "9999px",
-  },
+  // Everything an app style (see app/lib/app-style.ts) can change. Defaults
+  // are Classic; app-styles.css.ts reassigns the whole group per style.
+  // Colours stay in `palette` so per-list themes still apply.
+  style: classicStyle,
 });

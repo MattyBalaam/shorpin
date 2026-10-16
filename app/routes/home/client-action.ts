@@ -17,6 +17,7 @@ import type { Route } from "./+types/home";
 import {
   type ListItem,
   REORDER_LISTS_INTENT,
+  SET_APP_STYLE_INTENT,
   SET_DEFAULT_LIST_INTENT,
   zCreate,
   zSetDefaultList,
@@ -34,6 +35,26 @@ export async function clientAction({ request, serverAction }: Route.ClientAction
     if (result.success) {
       document.cookie = await serializeDefaultListCookie(result.output["list-id"] || null);
     }
+    return null;
+  }
+
+  if (formData.get("intent") === SET_APP_STYLE_INTENT) {
+    // The cookie already holds the new style (setAppStyle wrote it), so only
+    // the profile write waits. Only the latest choice matters: collapse the
+    // queue to it, like reorders below.
+    const queued = await listQueuedMutations("home");
+    const priorStyles = queued.filter((entry) => entry.kind === "set-app-style");
+    if (priorStyles.length > 0) {
+      await dequeueMutations(priorStyles.map((entry) => entry.seq));
+    }
+
+    await enqueueMutation({
+      route: request.url,
+      routeKey: "home",
+      kind: "set-app-style",
+      fields: formDataToPairs(formData),
+      clientId: "",
+    });
     return null;
   }
 

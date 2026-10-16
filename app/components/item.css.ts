@@ -1,12 +1,16 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
+
+const itemBackground = fallbackVar(vars.style.itemBackground, vars.palette.secondary);
 
 export const itemContainer = style({
   display: "grid",
   gridTemplateColumns: "1fr",
   gridColumn: "1 / -1",
   width: "100%",
-  background: vars.palette.secondary,
+  background: itemBackground,
+  backgroundImage: vars.style.sheen,
+  borderBottom: vars.style.itemDivider,
   selectors: {
     "&[data-dismissing=true]": {
       background: vars.palette.error,
@@ -47,7 +51,7 @@ export const newIndicator = style({
   justifyContent: "center",
   minHeight: "1.1rem",
   paddingInline: vars.spacing.sm,
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   background: vars.palette.primary,
   color: vars.palette.textOnPalette,
   border: `1px solid ${vars.palette.textOnPalette}`,
@@ -95,7 +99,7 @@ export const linkButton = style({
   textDecoration: "none",
   minWidth: "44px",
   minHeight: "44px",
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   outline: "1px solid white",
   selectors: {
     "&:hover": {
@@ -156,7 +160,7 @@ export const editTextarea = style({
   maxHeight: "50dvh",
   padding: vars.spacing.md,
   border: `1px solid ${vars.palette.chrome}`,
-  borderRadius: vars.spacing.controlRadius,
+  borderRadius: vars.style.controlRadius,
   lineHeight: 1.35,
   resize: "vertical",
 });
@@ -198,8 +202,9 @@ export const itemContainerReorderable = style({
   // Use the list's theme palette (primary/secondary are overridden per-list by
   // the Theme component) rather than a flat grey, with dark text for contrast
   // against the light pastel theme colours.
-  background: vars.palette.secondary,
-  color: vars.palette.textOnPalette,
+  // backgroundColor, not the shorthand, so itemContainer's sheen survives.
+  backgroundColor: itemBackground,
+  color: fallbackVar(vars.style.itemInk, vars.palette.textOnPalette),
 });
 
 export const deleteReorderable = style({
