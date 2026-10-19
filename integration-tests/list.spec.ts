@@ -64,6 +64,19 @@ test("owner can add an item on list", async ({ page, ctx }) => {
   await expect(page.getByLabel("Edit Butter")).toBeVisible();
 });
 
+test("an item added to a long list is scrolled into view", async ({ page, ctx }) => {
+  // A short viewport so a handful of rows overflows the list's scroll area.
+  await page.setViewportSize({ width: 375, height: 420 });
+  await login(page, ctx.ownerEmail);
+  await openList(page, "owner-empty");
+
+  for (const value of ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]) {
+    await page.getByLabel("New item").fill(value);
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByLabel(`Edit ${value}`)).toBeInViewport();
+  }
+});
+
 test("item with a URL shows a single open-link control", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "owner-empty");

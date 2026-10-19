@@ -1,5 +1,5 @@
 import type { FieldMetadata } from "@conform-to/react/future";
-import { type PointerEvent, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
 import type { StartDragOptions } from "./reorderable/use-drag-list";
@@ -112,31 +112,56 @@ export function Items({
     items.map((item, index) => [item.getFieldset().id.defaultValue, { item, index }]),
   );
   const newItemSet = new Set(newItems);
+  const visibleIds = orderedIds.filter((itemId) => itemRecord[itemId]);
+
+  // Adds land at the end of the list, which on a long list is below the fold
+  // of the scroll area. Bring the "saving..." placeholder into view as soon as
+  // it appears, then whichever row arrives (server response, offline add or
+  // another member's add on revalidation). Skipped on first render so opening
+  // a list doesn't jump.
+  const pendingRef = useRef<HTMLLIElement>(null);
+  const seenIds = useRef<Set<string>>(null);
+  const visibleIdsKey = visibleIds.join();
+
+  useEffect(() => {
+    if (pendingValue) pendingRef.current?.scrollIntoView({ block: "nearest" });
+  }, [pendingValue]);
+
+  useEffect(() => {
+    const ids = visibleIdsKey ? visibleIdsKey.split(",") : [];
+    const previous = seenIds.current;
+    seenIds.current = new Set(ids);
+    if (!previous) return;
+
+    const added = ids.filter((itemId) => !previous.has(itemId)).at(-1);
+    if (!added) return;
+    groupRef.current
+      ?.querySelector(`[data-reorder-id="${CSS.escape(added)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [visibleIdsKey, groupRef]);
 
   return (
     <ul ref={groupRef} className={styles.items}>
-      {orderedIds
-        .filter((itemId) => itemRecord[itemId])
-        .map((itemId) => (
-          <ReorderableItem
-            key={itemId}
-            itemId={itemId}
-            item={itemRecord[itemId].item}
-            index={itemRecord[itemId].index}
-            edited={edited.includes(itemId)}
-            isNew={newItemSet.has(itemId)}
-            onDelete={onDelete}
-            onRemove={onRemove}
-            reorderable={reorderable}
-            startDrag={startDrag}
-            collapse={collapse}
-          />
-        ))}
-      {orderedIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
+      {visibleIds.map((itemId) => (
+        <ReorderableItem
+          key={itemId}
+          itemId={itemId}
+          item={itemRecord[itemId].item}
+          index={itemRecord[itemId].index}
+          edited={edited.includes(itemId)}
+          isNew={newItemSet.has(itemId)}
+          onDelete={onDelete}
+          onRemove={onRemove}
+          reorderable={reorderable}
+          startDrag={startDrag}
+          collapse={collapse}
+        />
+      ))}
+      {visibleIds.length === 0 && !pendingValue && (
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (
-        <li className={styles.skeletonItem}>
+        <li ref={pendingRef} className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>
             <span className={styles.pendingValue}>{pendingValue}</span>
             <span className={styles.pendingState}>saving...</span>

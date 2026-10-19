@@ -8,6 +8,8 @@ export const wrapper = style({
   width: "100%",
   minWidth: 0,
   marginBlockEnd: 0,
+  // Clears ScrollArea's faded edges when a new row is scrolled into view.
+  scrollMarginBlock: "1.5rem",
   color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
 
   "@media": {
@@ -36,6 +38,7 @@ export const skeletonItem = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
+  scrollMarginBlock: "1.5rem",
   background: fallbackVar(vars.style.itemBackground, vars.palette.secondary),
 });
 
