@@ -76,13 +76,6 @@ function ReorderableItem({
   );
 }
 
-// Adds land at the end of the list, which on a long list is below the fold of
-// the scroll area. Module-level so the ref is stable and only runs on mount;
-// the saved row then takes the placeholder's place, already in view.
-function scrollIntoView(node: HTMLElement | null) {
-  node?.scrollIntoView({ block: "nearest" });
-}
-
 interface ItemsProps {
   fieldMetadata: FieldMetadata<Array<{ id: string; value: string }>>;
   edited: Array<string>;
@@ -142,7 +135,13 @@ export function Items({
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (
-        <li ref={scrollIntoView} className={styles.skeletonItem}>
+        // Adds land at the end of the list, below the fold on a long list. React
+        // Compiler hoists this ref so it only runs on mount; the saved row then
+        // takes the placeholder's place, already in view.
+        <li
+          ref={(node) => node?.scrollIntoView({ block: "nearest" })}
+          className={styles.skeletonItem}
+        >
           <div className={styles.skeletonContent}>
             <span className={styles.pendingValue}>{pendingValue}</span>
             <span className={styles.pendingState}>saving...</span>
