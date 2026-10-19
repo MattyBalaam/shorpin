@@ -2,6 +2,7 @@ import { type PointerEvent, use } from "react";
 import { href, useFetcher, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
+import { DragGrip } from "~/components/reorderable/drag-grip";
 import { reorderViaFormData } from "~/components/reorderable/reorder-strategies";
 import type { StartDragOptions } from "~/components/reorderable/use-drag-list";
 import { useReorderable } from "~/components/reorderable/use-reorderable";
@@ -82,17 +83,6 @@ export function ReorderableListItem({
           </Link>
         )}
 
-        {!pending && <StarButton id={id} name={name} defaultListId={defaultListId} />}
-
-        <span
-          className={styles.itemDragHandle}
-          aria-label={`Reorder ${name}`}
-          onPointerDown={(event) => startDrag(event, { liftScale: 1.03 })}
-        >
-          <VisuallyHidden>Reorder {name}</VisuallyHidden>
-          <span aria-hidden>|-|-|-|-|</span>
-        </span>
-
         {isOwner && !pending && (
           <Link
             className={styles.itemConfig}
@@ -112,6 +102,17 @@ export function ReorderableListItem({
             </svg>
           </Link>
         )}
+
+        {!pending && <StarButton id={id} name={name} defaultListId={defaultListId} />}
+
+        <span
+          className={styles.itemDragHandle}
+          aria-label={`Reorder ${name}`}
+          onPointerDown={(event) => startDrag(event, { liftScale: 1.03 })}
+        >
+          <VisuallyHidden>Reorder {name}</VisuallyHidden>
+          <DragGrip />
+        </span>
 
         <span className={styles.itemStatus}>
           {unreadCount > 0 && (

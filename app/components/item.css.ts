@@ -3,6 +3,11 @@ import { vars } from "~/styles/theme.css";
 
 const itemBackground = fallbackVar(vars.style.itemBackground, vars.palette.secondary);
 
+// Row icons are a muted shade of the row's ink rather than a fixed grey, so
+// they keep their contrast on every app style's row colour. In `color`,
+// currentColor is the inherited ink.
+const iconInk = "color-mix(in oklab, currentColor 70%, transparent)";
+
 export const itemContainer = style({
   display: "grid",
   gridTemplateColumns: "1fr",
@@ -70,14 +75,18 @@ export const dragHandle = style({
   touchAction: "pan-y",
   WebkitTouchCallout: "none",
   cursor: "grab",
-  color: vars.palette.chrome,
+  color: iconInk,
   display: "flex",
+  justifyContent: "center",
+  // With the hit area's half-gap either side, this makes it 44px wide.
+  minInlineSize: `calc(44px - ${vars.spacing.md})`,
   position: "relative",
   ":hover": {
-    color: "black",
+    color: "inherit",
   },
   ":active": {
     color: "cyan",
+    cursor: "grabbing",
   },
   // Larger hit area, but only halfway into the column gap on each side so it
   // never covers the neighbouring edit and delete buttons.
@@ -95,7 +104,7 @@ export const linkButton = style({
   alignItems: "center",
   justifyContent: "center",
   alignSelf: "center",
-  color: vars.palette.chrome,
+  color: iconInk,
   textDecoration: "none",
   minWidth: "44px",
   minHeight: "44px",
@@ -103,7 +112,7 @@ export const linkButton = style({
   outline: "1px solid white",
   selectors: {
     "&:hover": {
-      color: "black",
+      color: "inherit",
       background: "rgb(255 255 255 / 0.4)",
     },
     "&:focus-visible": {
@@ -125,7 +134,7 @@ export const editButton = style({
   border: "none",
   borderRadius: "50%",
   background: "transparent",
-  color: vars.palette.chrome,
+  color: iconInk,
   cursor: "pointer",
   // Generous invisible hit area without widening the grid column.
   position: "relative",
@@ -137,7 +146,7 @@ export const editButton = style({
   },
   selectors: {
     "&:hover": {
-      color: "black",
+      color: "inherit",
       background: "rgb(0 0 0 / 0.1)",
     },
     "&:focus-visible": {
@@ -207,31 +216,19 @@ export const itemContainerReorderable = style({
   color: fallbackVar(vars.style.itemInk, vars.palette.textOnPalette),
 });
 
+// Background, ink, border, shadow and focus come from the Button's primary
+// variant, so the close button is a solid control in every app style.
 export const deleteReorderable = style({
-  appearance: "none",
-  border: "none",
-  background: "transparent",
   cursor: "pointer",
   width: "28px",
   height: "28px",
   padding: 0,
   margin: 0,
   borderRadius: "50%",
-  color: vars.palette.chrome,
   fontSize: vars.fontSize.sm,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  selectors: {
-    "&:hover": {
-      color: "black",
-      background: "rgb(0 0 0 / 0.1)",
-    },
-    "&:focus-visible": {
-      outline: `2px solid ${vars.palette.textOnPalette}`,
-      outlineOffset: "2px",
-    },
-  },
 });
 
 const spin = keyframes({

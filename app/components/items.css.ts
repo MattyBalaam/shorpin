@@ -7,7 +7,6 @@ export const wrapper = style({
   gridColumn: "1 / -1",
   width: "100%",
   minWidth: 0,
-  cursor: "grab",
   marginBlockEnd: 0,
   color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
 
@@ -15,9 +14,6 @@ export const wrapper = style({
     "(prefers-color-scheme: dark)": {
       color: fallbackVar(vars.style.itemInk, vars.palette.textOnChromeDarkMode),
     },
-  },
-  ":active": {
-    cursor: "grabbing",
   },
 });
 

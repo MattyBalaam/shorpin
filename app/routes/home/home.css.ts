@@ -41,10 +41,14 @@ export const itemWrapper = style({
   position: "relative",
 });
 
+const configWidth = `calc(${vars.spacing.controlHeight} * 1.5)`;
+
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[name] 1fr [star] auto [drag] auto [config] auto [status] 3ch",
+  // Rows are independent grids, so the config track is fixed rather than auto:
+  // rows without the cog (lists you don't own) keep their actions aligned.
+  gridTemplateColumns: `[name] 1fr [config] ${configWidth} [star] auto [drag] auto [status] 3ch`,
   alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
@@ -76,6 +80,7 @@ export const pendingItemLink = style({
 export const itemConfig = style({
   gridColumn: "config",
   zIndex: 1,
+  justifySelf: "center",
 });
 
 export const itemStar = style({
@@ -130,6 +135,7 @@ export const itemDragHandle = style({
   },
   ":active": {
     color: "cyan",
+    cursor: "grabbing",
     opacity: 1,
     transform: "translateY(0)",
   },
