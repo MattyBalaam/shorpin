@@ -112,31 +112,36 @@ export function Items({
     items.map((item, index) => [item.getFieldset().id.defaultValue, { item, index }]),
   );
   const newItemSet = new Set(newItems);
+  const visibleIds = orderedIds.filter((itemId) => itemRecord[itemId]);
 
   return (
     <ul ref={groupRef} className={styles.items}>
-      {orderedIds
-        .filter((itemId) => itemRecord[itemId])
-        .map((itemId) => (
-          <ReorderableItem
-            key={itemId}
-            itemId={itemId}
-            item={itemRecord[itemId].item}
-            index={itemRecord[itemId].index}
-            edited={edited.includes(itemId)}
-            isNew={newItemSet.has(itemId)}
-            onDelete={onDelete}
-            onRemove={onRemove}
-            reorderable={reorderable}
-            startDrag={startDrag}
-            collapse={collapse}
-          />
-        ))}
-      {orderedIds.filter((itemId) => itemRecord[itemId]).length === 0 && !pendingValue && (
+      {visibleIds.map((itemId) => (
+        <ReorderableItem
+          key={itemId}
+          itemId={itemId}
+          item={itemRecord[itemId].item}
+          index={itemRecord[itemId].index}
+          edited={edited.includes(itemId)}
+          isNew={newItemSet.has(itemId)}
+          onDelete={onDelete}
+          onRemove={onRemove}
+          reorderable={reorderable}
+          startDrag={startDrag}
+          collapse={collapse}
+        />
+      ))}
+      {visibleIds.length === 0 && !pendingValue && (
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (
-        <li className={styles.skeletonItem}>
+        // Adds land at the end of the list, below the fold on a long list. React
+        // Compiler hoists this ref so it only runs on mount; the saved row then
+        // takes the placeholder's place, already in view.
+        <li
+          ref={(node) => node?.scrollIntoView({ block: "nearest" })}
+          className={styles.skeletonItem}
+        >
           <div className={styles.skeletonContent}>
             <span className={styles.pendingValue}>{pendingValue}</span>
             <span className={styles.pendingState}>saving...</span>

@@ -20,4 +20,10 @@ export const inner = style({
   display: "grid",
   gridTemplateColumns: "subgrid",
   overflow: "auto",
+
+  "@media": {
+    "(prefers-reduced-motion: no-preference)": {
+      scrollBehavior: "smooth",
+    },
+  },
 });

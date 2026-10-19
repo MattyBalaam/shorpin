@@ -36,6 +36,8 @@ export const skeletonItem = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
+  // Clears ScrollArea's faded edges when scrolled into view.
+  scrollMarginBlock: "1.5rem",
   background: fallbackVar(vars.style.itemBackground, vars.palette.secondary),
 });
 
