@@ -1,6 +1,7 @@
 import { type FieldMetadata, useFormData } from "@conform-to/react/future";
 import { type PointerEventHandler, useEffect, useRef, useState } from "react";
 import { useNavigation } from "react-router";
+import { DragGrip } from "~/components/reorderable/drag-grip";
 import { getFirstLink } from "~/lib/extract-link";
 import { Button } from "./button/button";
 import * as styles from "./item.css";
@@ -163,7 +164,7 @@ export function Item({
           onPointerDown={onDragHandlePointerDown}
         >
           <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
-          <span aria-hidden>|-|-|-|-|</span>
+          <DragGrip />
         </span>
 
         <span className={styles.deleteButton}>
