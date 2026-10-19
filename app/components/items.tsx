@@ -1,5 +1,5 @@
 import type { FieldMetadata } from "@conform-to/react/future";
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { type PointerEvent, useRef, useState } from "react";
 import { Item } from "./item";
 import * as styles from "./items.css";
 import type { StartDragOptions } from "./reorderable/use-drag-list";
@@ -76,6 +76,13 @@ function ReorderableItem({
   );
 }
 
+// Adds land at the end of the list, which on a long list is below the fold of
+// the scroll area. Module-level so the ref is stable and only runs on mount;
+// the saved row then takes the placeholder's place, already in view.
+function scrollIntoView(node: HTMLElement | null) {
+  node?.scrollIntoView({ block: "nearest" });
+}
+
 interface ItemsProps {
   fieldMetadata: FieldMetadata<Array<{ id: string; value: string }>>;
   edited: Array<string>;
@@ -114,32 +121,6 @@ export function Items({
   const newItemSet = new Set(newItems);
   const visibleIds = orderedIds.filter((itemId) => itemRecord[itemId]);
 
-  // Adds land at the end of the list, which on a long list is below the fold
-  // of the scroll area. Bring the "saving..." placeholder into view as soon as
-  // it appears, then whichever row arrives (server response, offline add or
-  // another member's add on revalidation). Skipped on first render so opening
-  // a list doesn't jump.
-  const pendingRef = useRef<HTMLLIElement>(null);
-  const seenIds = useRef<Set<string>>(null);
-  const visibleIdsKey = visibleIds.join();
-
-  useEffect(() => {
-    if (pendingValue) pendingRef.current?.scrollIntoView({ block: "nearest" });
-  }, [pendingValue]);
-
-  useEffect(() => {
-    const ids = visibleIdsKey ? visibleIdsKey.split(",") : [];
-    const previous = seenIds.current;
-    seenIds.current = new Set(ids);
-    if (!previous) return;
-
-    const added = ids.filter((itemId) => !previous.has(itemId)).at(-1);
-    if (!added) return;
-    groupRef.current
-      ?.querySelector(`[data-reorder-id="${CSS.escape(added)}"]`)
-      ?.scrollIntoView({ block: "nearest" });
-  }, [visibleIdsKey, groupRef]);
-
   return (
     <ul ref={groupRef} className={styles.items}>
       {visibleIds.map((itemId) => (
@@ -161,7 +142,7 @@ export function Items({
         <li className={styles.emptyState}>No items yet — add one below</li>
       )}
       {pendingValue && (
-        <li ref={pendingRef} className={styles.skeletonItem}>
+        <li ref={scrollIntoView} className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>
             <span className={styles.pendingValue}>{pendingValue}</span>
             <span className={styles.pendingState}>saving...</span>
