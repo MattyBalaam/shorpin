@@ -127,6 +127,7 @@ export function Layout({ children }: LayoutRouteProps) {
         <Links />
       </head>
       <body>
+        <div aria-hidden className={styles.statusBarBackdrop} />
         {children}
         <ScrollRestoration />
         <Scripts />

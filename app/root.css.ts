@@ -25,3 +25,31 @@ export const loading = style({
   justifyContent: "center",
   height: "100%",
 });
+
+// iOS 26+ blurs the top edge of home-screen apps over whatever the page
+// paints there, header included. WebKit skips the blur when a fixed box with
+// a background spans the top edge, and tints the status bar from it instead.
+// Over 10px tall so WebKit reads the colour from style rather than sampling
+// pixels. Must be a real element: pseudo-elements aren't sampled. See README
+// "Top edge on iOS".
+export const statusBarBackdrop = style({
+  display: "none",
+
+  "@media": {
+    "(display-mode: standalone)": {
+      "@supports": {
+        "(-webkit-touch-callout: none)": {
+          display: "block",
+          position: "fixed",
+          insetBlockStart: 0,
+          insetInline: 0,
+          zIndex: 1,
+          blockSize: "max(env(safe-area-inset-top), 11px)",
+          // Matches the page, which has no background of its own.
+          background: "Canvas",
+          pointerEvents: "none",
+        },
+      },
+    },
+  },
+});
