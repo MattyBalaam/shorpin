@@ -196,7 +196,7 @@ import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { Theme } from "~/components/theme/theme";
 import { StylePicker } from "~/components/app-style/style-picker";
-import { useDeviceAppStyle, useListAppStyle } from "~/components/app-style/use-app-style";
+import { useAccountAppStyle, useListAppStyle } from "~/components/app-style/use-app-style";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import * as styles from "./list.css";
 
@@ -596,7 +596,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // fires for both the real click and the swipe path — see Items `onDelete`.
   const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
 
-  const deviceStyle = useDeviceAppStyle();
+  const accountStyle = useAccountAppStyle();
   const [listStyle, setListStyle] = useListAppStyle(loaderData.appStyleOverride);
   // Sent only while a saved style hasn't reached the server yet, so a stale
   // tab adding an item can't reset another member's choice — but still part
@@ -651,7 +651,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         <StylePicker
           title="List style"
           value={listStyle}
-          inherit={deviceStyle}
+          inherit={accountStyle}
           onSave={saveListStyle}
         />
         <Theme.Button formId={form.id} />

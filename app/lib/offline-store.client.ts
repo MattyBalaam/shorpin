@@ -24,7 +24,7 @@ export interface ListSnapshot<TLoaderData = unknown> {
   cachedAt: number;
 }
 
-export type QueuedMutationKind = "list-mutate" | "create-list" | "reorder-lists" | "set-app-style";
+export type QueuedMutationKind = "list-mutate" | "create-list" | "reorder-lists";
 
 export interface QueuedMutation {
   seq: number;

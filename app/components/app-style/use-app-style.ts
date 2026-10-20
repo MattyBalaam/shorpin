@@ -1,14 +1,14 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useMatches, useRouteLoaderData } from "react-router";
-import { type AppStyle, isAppStyle, parseAppStyle, serializeAppStyleCookie } from "~/lib/app-style";
+import { type AppStyle, DEFAULT_APP_STYLE, isAppStyle } from "~/lib/app-style";
 import type { loader as rootLoader } from "~/root";
 
 // Two layers decide the style on <html>:
 //
 // 1. The account's own choice, stored on its profile and cached in a cookie
 //    so the server renders <html> with it (no flash of the default on load).
-//    Writing the cookie client-side makes a save apply instantly, even
-//    offline; home persists it to the profile alongside (see home.tsx).
+//    The root loader returns it; saving on home is online-only and applies
+//    once the root loader revalidates (see root.tsx).
 // 2. A per-list override, stored on the list (`lists.theme_style`). Routes
 //    expose it as `appStyleOverride` in their loader data, which covers
 //    server rendering; while a list is mounted it also publishes its local
@@ -32,23 +32,9 @@ function createStore<T>(initial: T) {
   };
 }
 
-const deviceStyleChanges = createStore(0);
-
-export function setAppStyle(style: AppStyle) {
-  // document.cookie rather than cookieStore: getSnapshot has to read it
-  // synchronously, and cookieStore is missing outside secure contexts (LAN dev).
-  document.cookie = serializeAppStyleCookie(style);
-  deviceStyleChanges.set(deviceStyleChanges.get() + 1);
-}
-
-/** The account's chosen style (as cached here), ignoring any list override. */
-export function useDeviceAppStyle() {
-  const serverStyle = useRouteLoaderData<typeof rootLoader>("root")?.appStyle;
-  return useSyncExternalStore(
-    deviceStyleChanges.subscribe,
-    () => parseAppStyle(document.cookie),
-    () => serverStyle ?? parseAppStyle(null),
-  );
+/** The account's chosen style, ignoring any list override. */
+export function useAccountAppStyle() {
+  return useRouteLoaderData<typeof rootLoader>("root")?.appStyle ?? DEFAULT_APP_STYLE;
 }
 
 // `undefined` while no list is mounted; `{ style: null }` is a mounted list
@@ -66,12 +52,12 @@ function useLoaderOverride() {
   return null;
 }
 
-/** The style the page should render in: a list's override, else the device's. */
+/** The style the page should render in: a list's override, else the account's. */
 export function useEffectiveAppStyle() {
-  const device = useDeviceAppStyle();
+  const account = useAccountAppStyle();
   const fromLoader = useLoaderOverride();
   const local = useSyncExternalStore(localOverride.subscribe, localOverride.get, () => undefined);
-  return (local ? local.style : fromLoader) ?? device;
+  return (local ? local.style : fromLoader) ?? account;
 }
 
 /**

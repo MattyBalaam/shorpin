@@ -45,7 +45,16 @@ function ModalSubmit({ children, formId }: { children: ReactNode; formId: string
   );
 }
 
-export function Modal({ children, urlOnClose }: { children: ReactNode; urlOnClose: string }) {
+export function Modal({
+  children,
+  urlOnClose,
+  labelledBy,
+}: {
+  children: ReactNode;
+  urlOnClose: string;
+  /** Id of the element (usually the heading) that names the dialog. */
+  labelledBy?: string;
+}) {
   const navigate = useNavigate();
   const navigation = useNavigation();
 
@@ -61,6 +70,7 @@ export function Modal({ children, urlOnClose }: { children: ReactNode; urlOnClos
         }
       }}
       className={styles.dialog}
+      aria-labelledby={labelledBy}
       onClose={dismiss}
       onClick={(e) => {
         if (e.target === e.currentTarget) {

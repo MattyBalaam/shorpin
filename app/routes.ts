@@ -23,6 +23,7 @@ export default [
     route("/", "routes/home/home.tsx", [
       route("sign-ups", "routes/sign-ups.tsx"),
       route("config/:list", "routes/list/config.tsx"),
+      route("style", "routes/home/style.tsx"),
     ]),
     route("lists/:list", "routes/list/list.tsx"),
     route("lists/:list/confirm-delete", "routes/delete.tsx"),
