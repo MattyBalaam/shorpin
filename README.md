@@ -77,6 +77,14 @@ The layout is a fixed-height app shell, so it has to shrink above the on-screen 
 - iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll. Modal dialogs use it too, so they centre above the keyboard rather than behind it.
 - **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. A monthly workflow ([safari-interactive-widget.yml](.github/workflows/safari-interactive-widget.yml), running [scripts/check-interactive-widget.mjs](scripts/check-interactive-widget.mjs)) checks MDN's browser-compat-data and opens an issue once iOS Safari ships it. It can also be run by hand from the Actions tab. Then delete the effect, drop the `var()`s in `root.css.ts` and `modal.css.ts` and confirm on a device.
 
+**Top edge on iOS:**
+
+`viewport-fit=cover` runs the page under the status bar, so `<main>` pads its top by `env(safe-area-inset-top)`. Since iOS 26/27, home-screen apps also get a progressive blur over the top edge, which reaches past the inset and blurs the header. No CSS property or meta tag turns it off. `theme-color` is ignored, and the status-bar style made no difference here: the app has always used `default`.
+
+WebKit skips the blur when a `position: fixed` box with a background spans the top edge, and tints the status bar from that box instead. Reports put the threshold at about 6px tall, at least 80-90% of the width, and within 4px of the top. `statusBarBackdrop` in [app/root.css.ts](app/root.css.ts) is that box: a real element rendered first in `<body>` (pseudo-elements aren't sampled), at least 11px tall so WebKit reads its colour from style rather than sampling pixels, in `Canvas` to match the page. It only shows in standalone mode on iOS (`@supports (-webkit-touch-callout: none)`).
+
+In standalone mode, `prefers-color-scheme` is frozen for the life of the process, so after an OS light/dark switch the status bar keeps its old colour until the app is relaunched. The rest of the page is frozen the same way, so they still match. Drop the strip once WebKit gives web apps control over the edge effect.
+
 **Modal dialogs:**
 
 Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
@@ -321,6 +329,10 @@ Each route's integration spec has a `@visual` test that screenshots the page wit
 
 - **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. The visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image to generate and compare baselines in.
 - **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
+
+### WebKit behaviour tests
+
+Integration tests run in Chromium (`desktop`), which hides some bugs real iPhones hit. For example, Chromium's scroll anchoring masks a scroll position clamped when the list briefly shrinks. Tag a test `@webkit` to also run it in the `webkit` project (iPhone 17 Pro Max in WebKit). Unlike the visual projects, it runs in CI, since it compares behaviour rather than pixels.
 
 ### CI Playwright container version
 

@@ -40,6 +40,14 @@ export default defineConfig({
       testMatch: "**/touch.spec.ts",
       grepInvert: /@visual/,
     },
+    {
+      // Behaviour that differs in WebKit, e.g. scroll clamping that Chromium's
+      // scroll anchoring hides. Tag a test `@webkit` to run it here as well.
+      name: "webkit",
+      use: devices["iPhone 17 Pro Max"],
+      grep: /@webkit/,
+      grepInvert: /@visual/,
+    },
     // Visual snapshots — each route spec's `@visual` tests, at two sizes.
     // Local only for now: baselines are macOS renders (`-darwin` suffix) and
     // won't match CI's Linux container until they're generated in Docker.

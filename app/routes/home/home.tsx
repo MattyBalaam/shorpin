@@ -53,7 +53,12 @@ export const handle = {
 };
 
 export function HydrateFallback() {
-  return <p>Loading...</p>;
+  return (
+    <div role="status" className={styles.hydrateFallback}>
+      <VisuallyHidden>Loading...</VisuallyHidden>
+      <Spinner />
+    </div>
+  );
 }
 
 clientLoader.hydrate = true;

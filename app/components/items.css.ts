@@ -8,6 +8,8 @@ export const wrapper = style({
   width: "100%",
   minWidth: 0,
   marginBlockEnd: 0,
+  // Clears ScrollArea's faded edges when a saved add is scrolled into view.
+  scrollMarginBlock: "1.5rem",
   color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
 
   "@media": {
