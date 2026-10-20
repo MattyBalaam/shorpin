@@ -1,20 +1,17 @@
 import { useForm } from "@conform-to/react/future";
 import { Suspense, useEffect, useEffectEvent } from "react";
 import {
+  href,
   type MetaFunction,
   Outlet,
   Form as RouterForm,
-  useFetcher,
   useRevalidator,
   useRouteError,
 } from "react-router";
 import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
-import { AccountStyleSync } from "~/components/app-style/account-style-sync";
-import { StylePicker } from "~/components/app-style/style-picker";
-import type { AppStyle } from "~/lib/app-style";
-import { setAppStyle, useDeviceAppStyle } from "~/components/app-style/use-app-style";
+import { Link } from "~/components/link/link";
 import { Button } from "~/components/button/button";
 import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
@@ -27,9 +24,7 @@ import { dequeueMutations, listQueuedMutations } from "~/lib/offline-store.clien
 
 import type { Route } from "./+types/home";
 import * as styles from "./home.css";
-import { SET_APP_STYLE_INTENT, zCreate } from "./home.schema";
-
-const APP_STYLE_FETCHER_KEY = "app-style";
+import { zCreate } from "./home.schema";
 
 export { action, loader } from "./home.server";
 export { clientAction } from "./client-action";
@@ -71,19 +66,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
   });
 
   const isAddingList = useIsSubmitting("add-list");
-  const deviceStyle = useDeviceAppStyle();
-  const appStyleFetcher = useFetcher({ key: APP_STYLE_FETCHER_KEY });
   const { revalidate } = useRevalidator();
-
-  // The cookie write applies the style at once (and offline); the profile
-  // write is what makes it follow the account to other devices.
-  function saveAppStyle(style: AppStyle) {
-    setAppStyle(style);
-    void appStyleFetcher.submit(
-      { intent: SET_APP_STYLE_INTENT, "app-style": style },
-      { method: "POST" },
-    );
-  }
 
   // Neither create-list nor reorder-lists needs list.tsx's rebase treatment
   // (creation is append-only and de-duplicated server-side; reorder updates
@@ -141,12 +124,6 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
           <Revalidator data={loaderData.revalidatePromise} />
           <PendingSignUps countPromise={loaderData.waitlistCount} />
         </Suspense>
-        <Suspense fallback={null}>
-          <AccountStyleSync
-            accountStylePromise={loaderData.accountStyle}
-            isSaving={appStyleFetcher.state !== "idle"}
-          />
-        </Suspense>
       </div>
       <ScrollArea>
         <nav className={styles.listWrapper}>
@@ -184,11 +161,9 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
               </Button>
             </div>
           </RouterForm>
-          <StylePicker
-            title="Style"
-            value={deviceStyle}
-            onSave={(style) => style && saveAppStyle(style)}
-          />
+          <Link variant="outline" to={href("/style")}>
+            Style
+          </Link>
         </div>
       </Actions>
       <Outlet />

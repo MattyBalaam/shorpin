@@ -39,6 +39,9 @@ export const DEFAULT_APP_STYLE: AppStyle = "classic";
 
 export const APP_STYLE_COOKIE = "shorpin-style";
 
+/** The style picker's value for "no override": follow each viewer's own style. */
+export const INHERIT_APP_STYLE = "inherit";
+
 /** The attribute that scopes a style, on `<html>` and on preview cards. */
 export const APP_STYLE_ATTRIBUTE = "data-app-style";
 

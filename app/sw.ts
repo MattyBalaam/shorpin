@@ -116,7 +116,7 @@ interface QueuedMutation {
   seq: number;
   route: string;
   routeKey: string;
-  kind: "list-mutate" | "create-list" | "reorder-lists" | "set-app-style";
+  kind: "list-mutate" | "create-list" | "reorder-lists";
   fields: Array<[string, string]>;
 }
 

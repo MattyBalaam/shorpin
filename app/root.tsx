@@ -60,14 +60,19 @@ export const middleware = [toastMiddleware(), supabaseMiddleware];
 export const loader = async ({ context, request }: Route.LoaderArgs) => {
   const toast = getToast(context);
 
-  // The cookie caches the account's style (see app/lib/app-style.ts). Only
-  // when it's missing — signed out, or the first request after signing in on
-  // this device — is the profile consulted, and the cookie then set from it.
+  // The cookie caches the account's style (see app/lib/app-style.ts). Home
+  // always consults the profile too, so a change made on another device
+  // reaches this one's cookie; elsewhere the profile is only read when the
+  // cookie is missing — signed out, or the first request after signing in.
   const cached = readAppStyleCookie(request.headers.get("Cookie"));
-  if (cached) return { toast, appStyle: cached };
+  // Single-fetch data requests arrive as `/_.data` for home, `<path>.data`
+  // otherwise.
+  const pathname = new URL(request.url).pathname.replace(/_?\.data$/, "");
+  if (cached && pathname !== href("/")) return { toast, appStyle: cached };
 
   const accountStyle = await readAccountAppStyle(context.get(supabaseContext));
-  if (!accountStyle) return { toast, appStyle: DEFAULT_APP_STYLE };
+  if (!accountStyle) return { toast, appStyle: cached ?? DEFAULT_APP_STYLE };
+  if (accountStyle === cached) return { toast, appStyle: cached };
 
   return data(
     { toast, appStyle: accountStyle },
