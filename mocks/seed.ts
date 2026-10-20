@@ -92,7 +92,9 @@ export async function seed(
       email: waitlistEmail,
       first_name: "Pending",
       last_name: "User",
-      created_at: new Date().toISOString(),
+      // Fixed, so the sign-ups snapshot's date (masked, but still sized by
+      // its text) doesn't change width from day to day.
+      created_at: "2026-01-15T12:00:00.000Z",
     });
   }
 }

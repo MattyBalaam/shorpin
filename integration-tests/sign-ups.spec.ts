@@ -82,6 +82,6 @@ test("client-side navigation to a route with no offline handling of its own show
 test("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/sign-ups");
-  // Sign-up dates are the day the mock DB was reset.
+  // The seeded sign-up date is fixed; masked in case of timezone differences.
   await expectPageSnapshot(page, "sign-ups", { mask: [page.locator("time")] });
 });
