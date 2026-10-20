@@ -236,7 +236,6 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
   const { state, formData } = useNavigation();
   const isAdding = useIsSubmitting("add");
-  const isRecreating = useIsSubmitting("recreate");
 
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
@@ -632,6 +631,17 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     setLastDeletedValue(null);
   }
 
+  // Spans the add's action and the revalidation after it, not just
+  // "submitting": Items keeps the placeholder until the saved row arrives.
+  const submitAction = state === "idle" ? null : formData?.get(SUBMIT_ACTION);
+  const pendingAdd =
+    submitAction === "add" || submitAction === "recreate"
+      ? {
+          id: String(formData?.get(fields.newId.name) ?? ""),
+          value: String(formData?.get(fields.new.name) ?? ""),
+        }
+      : null;
+
   return (
     <Theme
       defaultPrimary={defaultValue.themePrimary}
@@ -685,9 +695,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             fieldMetadata={fields.items}
             edited={edited}
             newItems={loaderData.newItemIds}
-            pendingItem={
-              isAdding || isRecreating ? (formData?.get(fields.new.name) as string) : null
-            }
+            pendingItem={pendingAdd}
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
             onDelete={setLastDeletedValue}

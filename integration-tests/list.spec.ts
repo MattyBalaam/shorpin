@@ -64,16 +64,36 @@ test("owner can add an item on list", async ({ page, ctx }) => {
   await expect(page.getByLabel("Edit Butter")).toBeVisible();
 });
 
-test("an item added to a long list is scrolled into view", async ({ page, ctx }) => {
+test("an item added to a long list is scrolled into view @webkit", async ({ page, ctx }) => {
   // A short viewport so a handful of rows overflows the list's scroll area.
   await page.setViewportSize({ width: 375, height: 420 });
   await login(page, ctx.ownerEmail);
   await openList(page, "owner-empty");
+  // A slow network keeps the placeholder up long enough to scroll into view
+  // before the saved row replaces it, as on a phone. Dropping the placeholder
+  // a commit early clamps the scroll position in WebKit only.
+  await page.route(/\/lists\/owner-empty/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.continue();
+  });
 
   for (const value of ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]) {
     await page.getByLabel("New item").fill(value);
     await page.getByRole("button", { name: "Add" }).click();
-    await expect(page.getByLabel(`Edit ${value}`)).toBeInViewport();
+    const row = page.locator("li", { has: page.getByLabel(`Edit ${value}`) });
+    await expect(row).toBeVisible();
+    // Whole row, not just a sliver: the saved row is taller than its
+    // placeholder. Measured against the scroll area by hand, because WebKit's
+    // toBeInViewport doesn't count the scroll area's clipping.
+    await expect
+      .poll(() =>
+        row.evaluate((li) => {
+          const scroller = li.closest("ul")?.parentElement;
+          if (!scroller) return Infinity;
+          return li.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom;
+        }),
+      )
+      .toBeLessThanOrEqual(0);
   }
 });
 

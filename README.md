@@ -330,6 +330,10 @@ Each route's integration spec has a `@visual` test that screenshots the page wit
 - **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. The visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image to generate and compare baselines in.
 - **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
 
+### WebKit behaviour tests
+
+Integration tests run in Chromium (`desktop`), which hides some bugs real iPhones hit. For example, Chromium's scroll anchoring masks a scroll position clamped when the list briefly shrinks. Tag a test `@webkit` to also run it in the `webkit` project (iPhone 17 Pro Max in WebKit). Unlike the visual projects, it runs in CI, since it compares behaviour rather than pixels.
+
 ### CI Playwright container version
 
 The `integration` and `e2e-supabase` jobs run inside the
