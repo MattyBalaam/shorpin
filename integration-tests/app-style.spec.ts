@@ -9,11 +9,7 @@ async function goto(page: Page, path: string) {
 }
 
 async function pickStyle(page: Page, name: RegExp, action: "Save" | "Cancel") {
-  // A link to the /style route on home; still an in-page button on a list.
-  await page
-    .getByRole("link", { name: "Style", exact: true })
-    .or(page.getByRole("button", { name: "Style", exact: true }))
-    .click();
+  await page.getByRole("link", { name: "Style", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByRole("radio", { name }).check();

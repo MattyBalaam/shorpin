@@ -161,6 +161,7 @@ export const handlers = [
       state?: string;
       sort_order?: number;
       updated_at?: number;
+      theme_style?: string | null;
     };
     const idParam = url.searchParams.get("id")?.replace("eq.", "");
     const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
@@ -173,6 +174,25 @@ export const handlers = [
         await lists.update((q) => q.where({ id: list.id }), {
           data(draft) {
             draft.state = state;
+          },
+        });
+      }
+    }
+
+    // Mirrors the "members can update accessible lists" RLS policy.
+    if (slugParam && body.theme_style !== undefined && user) {
+      // Slugs repeat across test tenants, so only look among accessible lists.
+      const list = lists
+        .findMany((q) => q.where({ slug: slugParam }))
+        .find(
+          ({ id, user_id }) =>
+            user_id === user.id ||
+            listMembers.findFirst((q) => q.where({ list_id: id, user_id: user.id })),
+        );
+      if (list) {
+        await lists.update((q) => q.where({ id: list.id }), {
+          data(draft) {
+            draft.theme_style = body.theme_style;
           },
         });
       }

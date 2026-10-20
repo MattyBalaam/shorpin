@@ -25,7 +25,7 @@ export default [
       route("config/:list", "routes/list/config.tsx"),
       route("style", "routes/home/style.tsx"),
     ]),
-    route("lists/:list", "routes/list/list.tsx"),
+    route("lists/:list", "routes/list/list.tsx", [route("style", "routes/list/style.tsx")]),
     route("lists/:list/confirm-delete", "routes/delete.tsx"),
   ]),
   route("/sentry-example-page", "routes/sentry-example-page.tsx"),
