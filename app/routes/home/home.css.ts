@@ -264,3 +264,11 @@ export const formError = style({
   color: vars.palette.error,
   margin: 0,
 });
+
+// HydrateFallback sits in <main>'s grid beside the breadcrumbs, so it needs
+// its own cell: auto-placed, it lands on the breadcrumbs row and overlaps them.
+export const hydrateFallback = style({
+  gridRow: "content",
+  gridColumn: "content",
+  placeSelf: "center",
+});
