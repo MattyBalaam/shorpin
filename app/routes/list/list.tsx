@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   href,
   isRouteErrorResponse,
+  Outlet,
   type ShouldRevalidateFunctionArgs,
   useFetcher,
   useNavigation,
@@ -30,7 +31,7 @@ import {
 } from "~/lib/offline-store.client";
 import { withStaleVersionRetry } from "~/lib/version-guard.client";
 import type { Route } from "./+types/list";
-import { LIST_STYLE_DEFAULT, zList } from "./data";
+import { zList } from "./data";
 
 export { action, loader } from "./list.server";
 
@@ -178,10 +179,21 @@ export async function clientAction({ params, request, serverAction }: Route.Clie
 }
 
 // Prevent revalidation when offline, but allow initial navigation to this route
-export function shouldRevalidate({ currentUrl, nextUrl }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  currentParams,
+  nextParams,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
   const isRevalidation = currentUrl.pathname === nextUrl.pathname;
   if (isRevalidation && typeof navigator !== "undefined" && !navigator.onLine) {
     return false;
+  }
+  // Opening or closing a child route (the style dialog) keeps the list's
+  // data; saving there still revalidates it.
+  if (!isRevalidation && currentParams.list === nextParams.list) {
+    return defaultShouldRevalidate;
   }
   return true;
 }
@@ -195,8 +207,6 @@ import * as itemsStyles from "~/components/items.css";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { Theme } from "~/components/theme/theme";
-import { StylePicker } from "~/components/app-style/style-picker";
-import { useAccountAppStyle, useListAppStyle } from "~/components/app-style/use-app-style";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import * as styles from "./list.css";
 
@@ -596,23 +606,6 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // fires for both the real click and the swipe path — see Items `onDelete`.
   const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
 
-  const accountStyle = useAccountAppStyle();
-  const [listStyle, setListStyle] = useListAppStyle(loaderData.appStyleOverride);
-  // Sent only while a saved style hasn't reached the server yet, so a stale
-  // tab adding an item can't reset another member's choice — but still part
-  // of the form, so an offline save survives the reconnect rebase.
-  const isListStylePending = listStyle !== loaderData.appStyleOverride;
-
-  function saveListStyle(style: typeof listStyle) {
-    setListStyle(style);
-    const formElement = formRef.current;
-    if (!formElement) return;
-    const styleData = new FormData(formElement);
-    styleData.set(fields.new.name, "");
-    styleData.set(fields.themeStyle.name, style ?? LIST_STYLE_DEFAULT);
-    submit(styleData, { method: "POST" });
-  }
-
   // Recreate re-adds the captured value through the normal add path, so it
   // returns as a fresh item at the end of the list — hence "recreate", not "undo".
   // Guarded against firing while the triggering delete's own submission is
@@ -648,12 +641,9 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       defaultSecondary={defaultValue.themeSecondary}
     >
       <div className={styles.topActions}>
-        <StylePicker
-          title="List style"
-          value={listStyle}
-          inherit={accountStyle}
-          onSave={saveListStyle}
-        />
+        <Link variant="outline" to={href("/lists/:list/style", { list: params.list })}>
+          Style
+        </Link>
         <Theme.Button formId={form.id} />
       </div>
 
@@ -676,13 +666,6 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           type="hidden"
         />
         <input name="clientId" value={clientId} type="hidden" />
-        {isListStylePending && (
-          <input
-            name={fields.themeStyle.name}
-            value={listStyle ?? LIST_STYLE_DEFAULT}
-            type="hidden"
-          />
-        )}
         <Theme.Fields
           fieldNames={{
             primary: fields.themePrimary.name,
@@ -739,6 +722,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           </div>
         </Actions>
       </Form>
+      {/* The style dialog (routes/list/style.tsx), outside the list form. */}
+      <Outlet />
     </Theme>
   );
 }

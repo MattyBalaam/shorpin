@@ -1,5 +1,6 @@
 import { parseSubmission, report } from "@conform-to/react/future";
 
+import { href } from "react-router";
 import { dataWithError } from "remix-toast";
 import * as v from "valibot";
 import { isAppStyle } from "~/lib/app-style";
@@ -93,7 +94,9 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     }
 
     try {
-      return new URL(referer).pathname === `/lists/${list}`;
+      // Includes the style dialog, a child route: saving there isn't a visit.
+      const listPath = href("/lists/:list", { list });
+      return [listPath, href("/lists/:list/style", { list })].includes(new URL(referer).pathname);
     } catch {
       return false;
     }
