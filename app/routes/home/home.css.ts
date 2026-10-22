@@ -16,6 +16,7 @@ export const listWrapper = style({
 
 export const list = style({
   listStyle: "none",
+  margin: 0,
   padding: 0,
   gridColumn: "1 / -1",
   display: "grid",
@@ -23,6 +24,9 @@ export const list = style({
   width: "100%",
   minWidth: 0,
   alignSelf: "start" /** prevents items from stretching vertically */,
+  // Rows' enlarged hit areas reach past the first and last row; clip them so
+  // they don't add scrollable space to ScrollArea.
+  overflowY: "clip",
 });
 
 export const itemWrapper = style({
