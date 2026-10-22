@@ -89,6 +89,10 @@ In standalone mode, `prefers-color-scheme` is frozen for the life of the process
 
 Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
 
+**Scroll indicators:**
+
+[ScrollArea](app/components/scroll-area/scroll-area.tsx) shows a soft shade on an edge only when there's more content past it. Each edge is a zero-height sticky strip with a shadow, revealed by a scroll-driven animation on `scroll(nearest block)`: the top strip fades in over the first 1.5rem of scroll, and the bottom strip fades out over the last 1.5rem. When the area doesn't scroll the timeline is inactive, so both strips stay at their base `opacity: 0`. Scroll-state container queries (`scroll-state(scrollable: top)`) would read more directly, but WebKit doesn't support them, and iOS is the main target. Browsers without scroll-driven animations show no indicator.
+
 **Component Structure:**
 
 - Semantic HTML preferred (nav, ol, li elements)

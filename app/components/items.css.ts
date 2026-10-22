@@ -8,8 +8,8 @@ export const wrapper = style({
   width: "100%",
   minWidth: 0,
   marginBlockEnd: 0,
-  // Clears ScrollArea's faded edges when a saved add is scrolled into view.
-  scrollMarginBlock: "1.5rem",
+  // Keeps a row scrolled into view clear of ScrollArea's edge shade.
+  scrollMarginBlock: vars.spacing.sm,
   color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
 
   "@media": {
@@ -38,8 +38,8 @@ export const skeletonItem = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
-  // Clears ScrollArea's faded edges when scrolled into view.
-  scrollMarginBlock: "1.5rem",
+  // Keeps a row scrolled into view clear of ScrollArea's edge shade.
+  scrollMarginBlock: vars.spacing.sm,
   background: fallbackVar(vars.style.itemBackground, vars.palette.secondary),
 });
 
