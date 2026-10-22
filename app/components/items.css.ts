@@ -24,8 +24,12 @@ export const items = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   width: "100%",
+  margin: 0,
   padding: 0,
   alignContent: "start",
+  // Rows' enlarged hit areas reach past the first and last row; clip them so
+  // they don't add scrollable space to ScrollArea.
+  overflowY: "clip",
 });
 
 const shimmer = keyframes({
