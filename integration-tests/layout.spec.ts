@@ -53,6 +53,15 @@ test("scroll edges show only where there's more to scroll @webkit", async ({ pag
   await expect.poll(edgeOpacities).toEqual([1, 1]);
   await scrollTo(1e6);
   await expect.poll(edgeOpacities).toEqual([1, 0]);
+  // The last row ends flush with the scroll area, with no space below it.
+  const gapBelow = await page.evaluate(() => {
+    const list = document.querySelector("ul");
+    const scroller = list?.parentElement;
+    const last = list?.lastElementChild;
+    if (!scroller || !last) return NaN;
+    return scroller.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom;
+  });
+  expect(gapBelow).toBeCloseTo(0, 0);
 
   // Nothing to scroll: neither edge shows.
   await page.goto("/lists/owner-empty");
