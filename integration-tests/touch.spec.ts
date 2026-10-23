@@ -192,6 +192,25 @@ test("a vertical touch drag without a long-press doesn't reorder", async ({ page
   expect(await itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
 });
 
+test("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await expect.poll(() => listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
+
+  // Some browsers (e.g. iOS Safari) only cancel the pointer when something
+  // actually scrolls, and the short home list doesn't. Stop Chromium claiming
+  // the pan so the hook alone has to enforce the long-press.
+  await page.addStyleTag({ content: '[aria-label^="Reorder"] { touch-action: none !important; }' });
+
+  const distance = await centreDistance(page, "Reorder Owner Empty", "Reorder Shopping");
+  await touchDrag(page, "Reorder Owner Empty", { dy: distance - 10, steps: 20, stepDelay: 10 });
+
+  await page.waitForTimeout(300);
+  expect(await listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
+});
+
 test("a swipe that drifts a full row vertically reorders instead of deleting", async ({
   page,
   ctx,

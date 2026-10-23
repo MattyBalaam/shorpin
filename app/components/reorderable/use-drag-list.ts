@@ -340,8 +340,11 @@ export function useDragList<Group extends HTMLElement>({
 
       // Reordering only starts a full row's travel away, so small vertical
       // drift (including during a swipe) never shuffles the list. Crossing
-      // that line abandons any swipe in progress.
-      if (gesture.axis !== "y" && Math.abs(dy) >= rowHeight) {
+      // that line abandons any swipe in progress. An undecided touch never
+      // reorders by travel alone: it needs the long-press, even where the
+      // browser doesn't claim the pan (e.g. a list too short to scroll).
+      const undecidedTouch = event.pointerType === "touch" && !gesture.axis;
+      if (gesture.axis !== "y" && !undecidedTouch && Math.abs(dy) >= rowHeight) {
         lockToReorder();
       }
 
