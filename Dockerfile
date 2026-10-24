@@ -23,8 +23,11 @@ ARG VITE_GIT_HASH
 ARG VITE_GIT_DATE
 ARG VITE_PR_NUMBER
 ARG VITE_BRANCH
+# Coolify PR previews set this to `build:preview`, which bundles the MSW mock
+# backend into the server so previews never touch the real Supabase project.
+ARG BUILD_SCRIPT=build
 
-RUN pnpm build
+RUN pnpm run "$BUILD_SCRIPT"
 
 # ---- Runtime stage ----
 FROM node:24-alpine

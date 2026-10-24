@@ -7,4 +7,6 @@ test-results
 supabase/.branches
 supabase/.temp
 .env*
+# Placeholder values only; needed by `build:preview` (see Dockerfile BUILD_SCRIPT)
+!.env.preview
 *.local
