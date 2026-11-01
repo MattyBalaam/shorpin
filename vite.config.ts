@@ -2,6 +2,7 @@ import { reactRouter } from "@react-router/dev/vite";
 import { type SentryReactRouterBuildOptions, sentryReactRouter } from "@sentry/react-router/vite";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { visualizer } from "rollup-plugin-visualizer";
+import { msw } from "msw/vite";
 import { defineConfig } from "vite";
 import babel from "@rolldown/plugin-babel";
 import devtoolsJson from "vite-plugin-devtools-json";
@@ -48,7 +49,7 @@ export default defineConfig((config) => {
       },
     },
     ...(mode === "preview" && {
-      ssr: { noExternal: ["msw", "@msw/data"] },
+      ssr: { noExternal: ["@msw/data"] },
     }),
     define: {
       "import.meta.env.VITE_GIT_HASH": JSON.stringify(process.env.VITE_GIT_HASH ?? "unknown"),
@@ -61,6 +62,10 @@ export default defineConfig((config) => {
       vanillaExtractPlugin(),
       babel({ plugins: ["babel-plugin-react-compiler"] }),
       reactRouter(),
+      // Provides `virtual:msw` (used by entry.server.tsx in preview builds).
+      // The worker script is only emitted for client bundles that import it,
+      // which none do, so nothing ships to the browser.
+      msw(),
       sentryReactRouter(sentryConfig, config),
       VitePWA({
         strategies: "injectManifest",

@@ -14,13 +14,13 @@ export const streamTimeout = 5_000;
 // Function doesn't need a real Supabase project. Runs once on cold start;
 // state persists for the lifetime of the warm function instance.
 if (import.meta.env.MODE === "preview") {
-  const { setupServer } = await import("msw/node");
+  const { network } = await import("virtual:msw");
   const { handlers } = await import("../mocks/handlers.ts");
   const { seed } = await import("../mocks/seed");
   const { waitlist } = await import("../mocks/db");
 
-  const server = setupServer(...handlers);
-  server.listen({ onUnhandledRequest: "bypass" });
+  network.configure({ handlers, onUnhandledFrame: "bypass" });
+  await network.enable();
 
   await seed();
   await waitlist.create({
