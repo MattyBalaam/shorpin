@@ -207,6 +207,12 @@ export const actions = style({
   gap: vars.spacing.md,
 });
 
+// Style and the colour scheme toggle sit together at the end of the bar.
+export const appearance = style({
+  display: "flex",
+  gap: vars.spacing.sm,
+});
+
 export const addListForm = style({
   minWidth: 0,
 });

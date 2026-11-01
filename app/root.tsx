@@ -29,6 +29,7 @@ import {
   serializeAppStyleCookie,
 } from "~/lib/app-style";
 import { readAccountAppStyle } from "~/lib/app-style.server";
+import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import type { Route } from "./+types/root";
 import "~/styles/reset.css";
 
@@ -36,6 +37,7 @@ import "~/styles/typography.css";
 import "~/styles/app-styles.css";
 
 import { useEffectiveAppStyle } from "./components/app-style/use-app-style";
+import { useColorScheme } from "./components/color-scheme/color-scheme";
 import { ErrorState } from "./components/error-state/error-state";
 import { Link } from "./components/link/link";
 import { Spinner } from "./components/spinner/spinner";
@@ -59,18 +61,20 @@ export const middleware = [toastMiddleware(), supabaseMiddleware];
 
 export const loader = async ({ context, request }: Route.LoaderArgs) => {
   const toast = getToast(context);
+  const cookieHeader = request.headers.get("Cookie");
+  const colorScheme = parseColorScheme(cookieHeader);
 
   // The cookie caches the account's style (see app/lib/app-style.ts). Only
   // when it's missing — signed out, or the first request after signing in on
   // this device — is the profile consulted, and the cookie then set from it.
-  const cached = readAppStyleCookie(request.headers.get("Cookie"));
-  if (cached) return { toast, appStyle: cached };
+  const cached = readAppStyleCookie(cookieHeader);
+  if (cached) return { toast, colorScheme, appStyle: cached };
 
   const accountStyle = await readAccountAppStyle(context.get(supabaseContext));
-  if (!accountStyle) return { toast, appStyle: DEFAULT_APP_STYLE };
+  if (!accountStyle) return { toast, colorScheme, appStyle: DEFAULT_APP_STYLE };
 
   return data(
-    { toast, appStyle: accountStyle },
+    { toast, colorScheme, appStyle: accountStyle },
     { headers: { "Set-Cookie": serializeAppStyleCookie(accountStyle) } },
   );
 };
@@ -85,7 +89,11 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
     return await serverLoader();
   } catch (error) {
     if (isNetworkOrServerError(error)) {
-      return { toast: undefined, appStyle: parseAppStyle(document.cookie) };
+      return {
+        toast: undefined,
+        colorScheme: parseColorScheme(document.cookie),
+        appStyle: parseAppStyle(document.cookie),
+      };
     }
     throw error;
   }
@@ -108,9 +116,14 @@ export const meta: Route.MetaFunction = () => {
 
 export function Layout({ children }: LayoutRouteProps) {
   const appStyle = useEffectiveAppStyle();
+  const colorScheme = useColorScheme();
 
   return (
-    <html lang="en" className={themeClass} {...{ [APP_STYLE_ATTRIBUTE]: appStyle }}>
+    <html
+      lang="en"
+      className={themeClass}
+      {...{ [APP_STYLE_ATTRIBUTE]: appStyle, [COLOR_SCHEME_ATTRIBUTE]: colorScheme }}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta

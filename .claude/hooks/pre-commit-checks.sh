@@ -83,6 +83,7 @@ for f in "${STAGED[@]}"; do
     *.css.ts | *.d.ts | *.md | *.toml | *.yaml | *.yml | .claude/* | .githooks/*) ;;
     app/routes/home/*) add_specs home.spec.ts offline.spec.ts ;;
     app/components/app-style/* | app/lib/app-style.ts) add_specs app-style.spec.ts home.spec.ts ;;
+    app/components/color-scheme/* | app/lib/color-scheme.ts) add_specs color-scheme.spec.ts ;;
     app/routes/list/*) add_specs list.spec.ts delete.spec.ts config.spec.ts offline.spec.ts ;;
     app/routes/delete*) add_specs delete.spec.ts ;;
     app/routes/auth/*) add_specs auth.spec.ts ;;

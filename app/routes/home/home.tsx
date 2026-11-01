@@ -16,6 +16,7 @@ import { StylePicker } from "~/components/app-style/style-picker";
 import type { AppStyle } from "~/lib/app-style";
 import { setAppStyle, useDeviceAppStyle } from "~/components/app-style/use-app-style";
 import { Button } from "~/components/button/button";
+import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
 import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
 import { useIsOnline } from "~/components/online-status/online-status";
@@ -184,11 +185,14 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
               </Button>
             </div>
           </RouterForm>
-          <StylePicker
-            title="Style"
-            value={deviceStyle}
-            onSave={(style) => style && saveAppStyle(style)}
-          />
+          <div className={styles.appearance}>
+            <StylePicker
+              title="Style"
+              value={deviceStyle}
+              onSave={(style) => style && saveAppStyle(style)}
+            />
+            <ColorSchemeToggle />
+          </div>
         </div>
       </Actions>
       <Outlet />

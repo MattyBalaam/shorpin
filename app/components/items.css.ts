@@ -10,13 +10,11 @@ export const wrapper = style({
   marginBlockEnd: 0,
   // Clears ScrollArea's faded edges when a saved add is scrolled into view.
   scrollMarginBlock: "1.5rem",
-  color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
-
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: fallbackVar(vars.style.itemInk, vars.palette.textOnChromeDarkMode),
-    },
-  },
+  // light-dark() rather than a media query, so a pinned colour scheme applies.
+  color: fallbackVar(
+    vars.style.itemInk,
+    `light-dark(${vars.palette.textOnChrome}, ${vars.palette.textOnChromeDarkMode})`,
+  ),
 });
 
 export const items = style({
