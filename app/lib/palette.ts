@@ -325,8 +325,8 @@ export function toDarkModeCss(css: string) {
   return parsed ? toCss(toDarkOklch(parsed)) : `color-mix(in oklch, ${css} 30%, black)`;
 }
 
-// `color-scheme: dark` is only ever set when the OS prefers dark (see
-// app.css), so light-dark() here tracks that preference correctly.
+// `color-scheme` is only ever a single scheme, the OS's or the device's
+// pinned choice (see reset.css.ts), so light-dark() here tracks it correctly.
 export function toAdaptiveCss(lightCss: string) {
   return `light-dark(${lightCss}, ${toDarkModeCss(lightCss)})`;
 }
