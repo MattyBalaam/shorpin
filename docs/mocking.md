@@ -39,19 +39,24 @@ The mock server handles `SIGTERM` and `SIGINT` gracefully, closing its HTTP list
 
 ### Netlify deploy previews (`pnpm build:preview`)
 
-MSW runs server-side inside the Netlify Function via `entry.server.tsx`:
+MSW runs server-side inside the Netlify Function via `entry.server.tsx`, using the network that the `msw/vite` plugin (registered in `vite.config.ts`) exposes as `virtual:msw`:
 
 ```ts
 if (import.meta.env.MODE === "preview") {
-  const { setupServer } = await import("msw/node");
+  const { network } = await import("virtual:msw");
   const { handlers } = await import("../mocks/handlers");
   // ...
-  server.listen({ onUnhandledRequest: "bypass" });
+  network.configure({ handlers, onUnhandledFrame: "bypass" });
+  await network.enable();
   await seed();
 }
 ```
 
 The function intercepts all Supabase calls before they hit the network, so no real Supabase project is needed for a deploy preview. State lives in memory for the lifetime of the warm function instance.
+
+`msw` must stay external to the SSR bundle (only `@msw/data` is in `ssr.noExternal`): its `@mswjs/interceptors` dependency reads an `llhttp.wasm` file relative to its own module, which fails once inlined into `build/server`. The plugin only emits `mockServiceWorker.js` for client bundles that import `virtual:msw`, and none do, so no worker ships to the browser.
+
+`mocks/server.ts` runs under plain Node (not Vite), so it keeps using `setupServer` from `msw/node`. Handlers import from the v3 entrypoints: `msw/http` for `http`/`HttpResponse` and `msw/utils/<name>` for utilities like `delay`.
 
 ## Key files
 

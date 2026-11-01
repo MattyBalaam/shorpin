@@ -1,4 +1,5 @@
-import { delay, HttpResponse, http } from "msw";
+import { HttpResponse, http } from "msw/http";
+import { delay } from "msw/utils/delay";
 import { users } from "../../../db.ts";
 
 function emailFromRequest(request: Request): string | null {

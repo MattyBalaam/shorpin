@@ -1,4 +1,5 @@
-import { delay, HttpResponse, http } from "msw";
+import { HttpResponse, http } from "msw/http";
+import { delay } from "msw/utils/delay";
 import { broadcastEmitter } from "../../../broadcast.ts";
 
 // @supabase/realtime-js ≥2.108 uses per-event URLs instead of the old batch endpoint.

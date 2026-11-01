@@ -1,4 +1,5 @@
-import { delay, HttpResponse, http } from "msw";
+import { HttpResponse, http } from "msw/http";
+import { delay } from "msw/utils/delay";
 import { waitlist } from "../../../db.ts";
 import { inSameScope } from "../../../scope.ts";
 
