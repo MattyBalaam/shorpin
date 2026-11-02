@@ -74,7 +74,7 @@ export function StyleDialog({ title, value, urlOnClose, inherit }: StyleDialogPr
                   <button
                     type="button"
                     tabIndex={-1}
-                    className={`${clickableStyles.variant.primary} ${styles.previewButton}`}
+                    className={`${clickableStyles.variant.solid} ${styles.previewButton}`}
                   >
                     Add
                   </button>

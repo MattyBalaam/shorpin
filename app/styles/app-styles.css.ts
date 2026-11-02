@@ -22,6 +22,8 @@ const y2kFont = '"Trebuchet MS", Verdana, Tahoma, sans-serif';
 const paletteSurfaces = {
   controlBackground: "initial",
   controlInk: "initial",
+  solidBackground: "initial",
+  solidInk: "initial",
   barBackground: "initial",
   barBorder: "none",
   rowBackground: "initial",
@@ -39,6 +41,8 @@ function accentSurfaces(rule: string) {
   return {
     controlBackground: "CanvasText",
     controlInk: "Canvas",
+    solidBackground: "CanvasText",
+    solidInk: "Canvas",
     barBackground: "Canvas",
     barBorder: `${rule} solid ${primary}`,
     rowBackground: "Canvas",
@@ -70,6 +74,7 @@ const styles = {
     controlActiveTranslate: "0 1px",
     controlImage: "none",
     inputBorder: "1px solid color-mix(in oklch, currentColor 20%, transparent)",
+    outlineBorder: "1px solid currentColor",
     focusOutline: `2px solid color-mix(in oklch, ${primary} 55%, black)`,
     focusOutlineOffset: "2px",
     focusShadow: "none",
@@ -107,6 +112,7 @@ const styles = {
     controlActiveTranslate: "none",
     controlImage: "none",
     inputBorder: "initial",
+    outlineBorder: "initial",
     focusOutline: "auto",
     focusOutlineOffset: "0px",
     focusShadow: "none",
@@ -142,6 +148,7 @@ const styles = {
     controlActiveTranslate: "4px 4px",
     controlImage: "none",
     inputBorder: "3px solid currentColor",
+    outlineBorder: "3px solid currentColor",
     focusOutline: "4px solid currentColor",
     focusOutlineOffset: "3px",
     focusShadow: "none",
@@ -179,6 +186,7 @@ const styles = {
     controlActiveTranslate: "0 2px",
     controlImage: "none",
     inputBorder: "2px solid #0b0c0c",
+    outlineBorder: "initial",
     focusOutline: "3px solid transparent",
     focusOutlineOffset: "0px",
     focusShadow: "0 -2px #ffdd00, 0 4px #0b0c0c",
@@ -197,6 +205,9 @@ const styles = {
     // GOV.UK's grey secondary button, so the palette stays an accent.
     controlBackground: "light-dark(#f3f2f1, #383f41)",
     controlInk: "CanvasText",
+    // And its green primary button for a bar's main action.
+    solidBackground: "#00703c",
+    solidInk: "white",
   },
 
   y2k: {
@@ -219,6 +230,7 @@ const styles = {
     controlImage:
       "linear-gradient(rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.15) 50%, rgb(255 255 255 / 0) 51%, rgb(255 255 255 / 0.3))",
     inputBorder: `2px solid color-mix(in oklch, ${primary} 60%, black)`,
+    outlineBorder: "initial",
     focusOutline: "2px solid transparent",
     focusOutlineOffset: "0px",
     focusShadow: `0 0 0 3px color-mix(in oklch, ${primary} 50%, white), 0 0 14px 2px ${primary}`,
@@ -257,6 +269,7 @@ const styles = {
     controlActiveTranslate: "1px 1px",
     controlImage: "linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0))",
     inputBorder: "2px inset ButtonBorder",
+    outlineBorder: "initial",
     focusOutline: `2px dashed color-mix(in oklch, ${primary} 50%, black)`,
     focusOutlineOffset: "2px",
     focusShadow: "none",

@@ -2,9 +2,11 @@ import type { ButtonHTMLAttributes } from "react";
 import { Spinner } from "~/components/spinner/spinner";
 import * as clickableStyles from "~/components/shared/clickable-element.css";
 
-interface ButtonProps extends React.DetailedHTMLProps<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  HTMLButtonElement
+// No `disabled`: a disabled button can't say why it won't work. Keep it
+// clickable and explain instead (e.g. a toast) — see CONTRIBUTING.md.
+interface ButtonProps extends Omit<
+  React.DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>,
+  "disabled"
 > {
   isSubmitting?: boolean;
   variant?: Exclude<keyof typeof clickableStyles.variant, "link">;
@@ -15,7 +17,6 @@ export function Button({
   className,
   children,
   isSubmitting,
-  disabled: _toDoTEstIfWeNeedToDisable,
   variant = "primary",
   ...props
 }: ButtonProps) {
@@ -23,8 +24,6 @@ export function Button({
     <button
       className={[clickableStyles.variant[variant], className].join(" ")}
       type={type}
-      // test if we need to disable here, I think react router might handle this
-      // disabled={disabled || isSubmitting}
       {...props}
     >
       {isSubmitting ? <Spinner /> : children}

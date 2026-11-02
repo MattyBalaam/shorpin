@@ -36,7 +36,7 @@ export const [themeClass, vars] = createTheme({
     text: "black",
     // Ink for content painted directly on primary/secondary. Kept separate
     // from `text` because `text` also backs fixed elements (e.g. the solid
-    // "Add" pill) that must stay dark regardless of colour scheme.
+    // button variant) that must stay dark regardless of colour scheme.
     textOnPalette: "light-dark(black, white)",
     textOnChrome: "white",
     textOnChromeDarkMode: "black",

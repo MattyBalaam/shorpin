@@ -28,6 +28,8 @@ export const classicStyle = {
   // Painted over the control's palette background, e.g. a gloss gradient.
   controlImage: "none",
   inputBorder: "none",
+  // The outline variant's border; `initial` falls back to 2px currentColor.
+  outlineBorder: "initial",
   focusOutline: "2px solid yellow",
   focusOutlineOffset: "0px",
   focusShadow: "none",
@@ -49,6 +51,10 @@ export const classicStyle = {
   // the palette only for rules, dividers and badges.
   controlBackground: "initial",
   controlInk: "initial",
+  // The solid variant, for a bar's main action: `initial` paints it in
+  // `palette.text` with white ink, so it stands out on a palette-filled bar.
+  solidBackground: "initial",
+  solidInk: "initial",
   barBackground: "initial",
   barBorder: "none",
   rowBackground: "initial",

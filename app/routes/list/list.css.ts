@@ -38,15 +38,9 @@ export const addInput = style({
   color: "black",
 });
 
-// Pill "Add" button. Layered over Button's primary variant (which loads first),
-// so these visual overrides win — same pattern as item.css `tick`.
+// Matches the taller list input; the look comes from Button's solid variant.
 export const addButton = style({
-  background: vars.palette.text,
-  color: "white",
-  borderRadius: vars.style.pillRadius,
-  paddingInline: vars.spacing.lg,
-  fontSize: vars.fontSize.md,
-  fontWeight: vars.fontWeight.semibold,
+  height: "auto",
 });
 
 export const topActions = style({

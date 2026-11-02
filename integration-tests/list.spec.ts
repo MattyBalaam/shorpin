@@ -139,12 +139,43 @@ test("'Recreate last deleted' re-adds the deleted value as a fresh item", async 
   await page.getByRole("button", { name: "Delete Milk" }).click();
   await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
 
-  await page.getByRole("button", { name: "Recreate last deleted" }).click();
-
-  // Milk returns (as a freshly-added item at the end of the list)
-  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  // Retried: while the delete is still saving, a click only explains why it
+  // can't run yet (see the next test).
+  await expect(async () => {
+    await page.getByRole("button", { name: "Recreate last deleted" }).click();
+    // Milk returns (as a freshly-added item at the end of the list)
+    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
+  }).toPass();
   // The affordance clears once the value has been recreated
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
+});
+
+test("'Recreate last deleted' explains why it can't run while a change is saving", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  // Keeps the delete in flight long enough to click Recreate during it.
+  await page.route(/\/lists\/shopping/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
+
+  await page.getByRole("button", { name: "Delete Milk" }).click();
+  const recreate = page.getByRole("button", { name: "Recreate last deleted" });
+  // Never disabled: clicking says why instead.
+  await expect(recreate).toBeEnabled();
+  await recreate.click();
+  await expect(page.getByText("Still saving - try again in a moment")).toBeVisible();
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+
+  // Once the delete has saved, the same click works.
+  await page.unrouteAll({ behavior: "wait" });
+  await expect(async () => {
+    await recreate.click();
+    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
+  }).toPass();
 });
 
 /**
