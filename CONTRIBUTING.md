@@ -95,6 +95,26 @@ throw redirect("/login");
 throw redirect(`/lists/${slug}`);
 ```
 
+## UI Patterns
+
+### No disabled buttons
+
+Don't disable buttons (`Button` doesn't accept `disabled`). A disabled button gives no reason why it doesn't work, can't be focused, and is easy to miss. Keep it enabled, guard the handler, and tell the user why the action can't happen yet:
+
+```tsx
+// Good
+function recreate() {
+  if (state !== "idle") {
+    toast.info("Still saving - try again in a moment");
+    return;
+  }
+  // ...
+}
+
+// Avoid
+<button disabled={state !== "idle"} onClick={recreate}>
+```
+
 ## React Patterns
 
 ### useEffectEvent

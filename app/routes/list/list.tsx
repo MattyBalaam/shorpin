@@ -614,7 +614,11 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // recreated item back out (see integration-tests/list.spec.ts's recreate test).
   function recreateLastDeleted() {
     const formElement = formRef.current;
-    if (!formElement || !lastDeletedValue || state !== "idle") return;
+    if (!formElement || !lastDeletedValue) return;
+    if (state !== "idle") {
+      toast.info("Still saving - try again in a moment");
+      return;
+    }
 
     const recreateData = new FormData(formElement);
     recreateData.set(fields.new.name, lastDeletedValue);
@@ -711,14 +715,9 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             </Button>
 
             {lastDeletedValue ? (
-              <button
-                type="button"
-                onClick={recreateLastDeleted}
-                disabled={state !== "idle"}
-                className={styles.undoButton}
-              >
+              <Button variant="outline" onClick={recreateLastDeleted} className={styles.undoButton}>
                 Recreate last deleted
-              </button>
+              </Button>
             ) : null}
           </div>
         </Actions>
