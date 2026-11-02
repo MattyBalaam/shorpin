@@ -16,10 +16,8 @@ for (const width of [320, 375]) {
     await page.getByRole("button", { name: "Add" }).click();
     await expect(page.getByLabel(`Edit ${longItem}`)).toBeVisible();
 
-    // Toasts are fixed overlays that animate in from off-screen, not layout.
     const overflowing = await page.evaluate(() =>
       [...document.querySelectorAll("body *")]
-        .filter((el) => !el.closest("[data-sonner-toaster]"))
         .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
         .map((el) => `${el.tagName.toLowerCase()}.${el.className}`),
     );

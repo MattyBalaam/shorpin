@@ -12,7 +12,8 @@ export const main = style({
   // `viewport-fit=cover` lets the page run under the status bar / notch, where
   // iOS blurs whatever sits beneath it — keep content below the inset.
   paddingBlockStart: `max(env(safe-area-inset-top), ${vars.spacing.md})`,
-  gridTemplateRows: "[breadcrumbs] auto [content] minmax(0, 1fr) [actions] auto",
+  gridTemplateRows:
+    "[breadcrumbs] auto [notifications] auto [content] minmax(0, 1fr) [actions] auto",
   gridTemplateColumns:
     "[left] minmax(20px, 1fr) [content] minmax(0, 60ch) [right] minmax(20px, 1fr)",
 });
