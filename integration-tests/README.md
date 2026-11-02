@@ -85,7 +85,7 @@ Route specs end with a `@visual` test that calls `expectPageSnapshot(page, name)
 These projects run only `@visual` tests, and `desktop`/`touch` skip them. `pnpm test:integration` runs everything, `pnpm test:visual` runs just the snapshots, and `pnpm test:visual:update` rewrites the baselines after an intended UI change. Look over the changed PNGs before committing them. A failed comparison writes `-actual` and `-diff` images to `test-results/`, which `pnpm exec playwright show-report` shows side by side. The iPhone project needs WebKit: `pnpm exec playwright install webkit`.
 
 - **Local only.** Baselines are macOS renders (`-darwin` suffix), so the visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image.
-- **Service workers are blocked** in these projects, because the "Offline support ready" toast appears at a timing-dependent point.
+- **Service workers are blocked** in these projects, because the "Offline support ready" notification appears at a timing-dependent point.
 - **Masks** paint over content that changes between runs. Currently that's only the sign-up dates.
 - **`--repeat-each`** gives every repeat its own uuid, so screenshots showing emails won't match on repeats. Check stability with separate runs instead.
 - Left out: `/logout` (action only), `/auth/confirm` (always redirects), `/sentry-example-page` (depends on reaching Sentry), and resource routes.

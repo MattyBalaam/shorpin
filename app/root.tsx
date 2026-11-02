@@ -282,7 +282,6 @@ export default function App() {
             () =>
               toast.info("A new version is available", {
                 id: "app-update",
-                duration: Number.POSITIVE_INFINITY,
                 action: {
                   label: "Reload",
                   onClick: () => {
