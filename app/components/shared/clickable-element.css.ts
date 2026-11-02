@@ -21,7 +21,11 @@ const button = style({
   backgroundImage: tokens.controlImage,
   color: ink,
   boxShadow: tokens.controlShadow,
-  fontFamily: fallbackVar(tokens.controlFont, "revert"),
+  // Inherited rather than reverted: a reverted button takes the browser's
+  // control font (13.33px Arial in Chrome) while a link inherits the page's,
+  // so the two variants wouldn't match side by side.
+  fontSize: "inherit",
+  fontFamily: fallbackVar(tokens.controlFont, "inherit"),
   fontWeight: tokens.controlWeight,
   textTransform: tokens.controlTransform,
   letterSpacing: tokens.controlTracking,
