@@ -704,6 +704,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
               value="add"
               name={SUBMIT_ACTION}
               isSubmitting={isAdding}
+              variant="solid"
               className={styles.addButton}
             >
               Add

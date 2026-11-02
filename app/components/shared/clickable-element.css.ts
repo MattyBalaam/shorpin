@@ -57,12 +57,23 @@ export const variant = styleVariants({
       },
     },
   ],
+  // A bar's main action (e.g. Add): high contrast against a palette-filled
+  // bar, where primary would vanish into it.
+  solid: [
+    button,
+    {
+      vars: {
+        [background]: fallbackVar(tokens.solidBackground, vars.palette.text),
+        [ink]: fallbackVar(tokens.solidInk, "white"),
+      },
+    },
+  ],
   outline: [
     button,
     {
       // currentColor in `color` is the inherited colour.
       vars: { [background]: "none", [ink]: "currentColor" },
-      border: "2px solid currentColor",
+      border: fallbackVar(tokens.outlineBorder, "2px solid currentColor"),
     },
   ],
   destructive: [button, { vars: { [background]: "none", [ink]: vars.palette.error } }],

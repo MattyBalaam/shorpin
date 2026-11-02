@@ -156,6 +156,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
                 name={SUBMIT_ACTION}
                 value="add-list"
                 isSubmitting={isAddingList}
+                variant="solid"
               >
                 Add
               </Button>
