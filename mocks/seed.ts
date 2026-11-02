@@ -47,7 +47,7 @@ export async function seed(
     email: collabEmail,
   });
 
-  // Owner gets 2 lists: one with 10 items, one empty
+  // Owner gets 2 lists: one long enough to scroll (30 items), one empty
   const ownerList = await createListWithItems(
     owner.id,
     "Shopping",
@@ -63,6 +63,26 @@ export async function seed(
       "Yogurt",
       "Orange juice",
       "Coffee",
+      "Tea",
+      "Sugar",
+      "Rice",
+      "Pasta",
+      "Tomatoes",
+      "Onions",
+      "Garlic",
+      "Potatoes",
+      "Carrots",
+      "Chicken",
+      "Olive oil",
+      "Flour",
+      "Cereal",
+      "Peanut butter",
+      "Honey",
+      "Lettuce",
+      "Cucumber",
+      "Peppers",
+      "Washing-up liquid",
+      "Toilet roll",
     ],
     0,
   );

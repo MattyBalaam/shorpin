@@ -325,8 +325,8 @@ test("shows unread badge for lists not yet opened", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await expect(async () => {
-    // Shopping has 10 seeded items and has never been opened — all 10 are unread
-    await expect(page.getByText("10 unread")).toBeVisible();
+    // Shopping has 30 seeded items and has never been opened — all 30 are unread
+    await expect(page.getByText("30 unread")).toBeVisible();
   }).toPass();
 });
 
@@ -344,7 +344,7 @@ test("unread badge clears after opening the list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Badge visible before opening
-  await expect(page.getByText("10 unread")).toBeVisible();
+  await expect(page.getByText("30 unread")).toBeVisible();
 
   // Open the list — loader upserts a list_view
   await page.getByRole("link", { name: "Shopping" }).click();
@@ -355,7 +355,7 @@ test("unread badge clears after opening the list", async ({ page, ctx }) => {
   await page.waitForURL("/");
 
   // Badge should be gone — viewed_at is now newer than all item timestamps
-  await expect(page.getByText("10 unread")).not.toBeVisible();
+  await expect(page.getByText("30 unread")).not.toBeVisible();
 });
 
 test("collaborator sees unread badge for shared list not yet opened", async ({ page, ctx }) => {
@@ -378,13 +378,13 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
   await page.waitForURL("/lists/shopping");
   await page.getByRole("link", { name: "Back to index" }).click();
 
-  await expect(page.getByText("10 unread")).not.toBeVisible();
+  await expect(page.getByText("30 unread")).not.toBeVisible();
 
   await login(page, ctx.collabEmail);
   const shoppingRow = page
     .locator("li")
     .filter({ has: page.getByRole("link", { name: "Shopping", exact: true }) });
-  await expect(shoppingRow.getByText("10 unread")).toBeVisible();
+  await expect(shoppingRow.getByText("30 unread")).toBeVisible();
 });
 
 test("starred list opens on app launch, and un-starring falls back to home", async ({
