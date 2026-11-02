@@ -74,10 +74,22 @@ describe("toDarkModeCss / toAdaptiveCss", () => {
     expect(dark.L).toBeGreaterThanOrEqual(DARK_BACKGROUND_L[0]);
     expect(dark.L).toBeLessThanOrEqual(DARK_BACKGROUND_L[1]);
     expect(dark.h).toBeCloseTo(light.h, 0);
-    // The whole point of gamut-fitting independently (rather than scaling
-    // the light colour's chroma down) is that the dark variant isn't washed
-    // out relative to the light one.
+    // A light colour at its gamut limit stays at the (wider) dark one, rather
+    // than being washed out.
     expect(dark.c).toBeGreaterThan(light.c * 0.7);
+  });
+
+  test("keeps muted colours muted", () => {
+    const light = parse(toCss(toBackground({ L: 0.8, c: 0.014, h: 109 })));
+    const dark = parse(toDarkModeCss(toCss(light)));
+    expect(dark.c).toBeLessThan(0.03);
+  });
+
+  test("keeps vivid colours at the dark gamut's limit", () => {
+    const light = toBackground({ L: 0.5, c: 0.4, h: 194 });
+    const dark = parse(toDarkModeCss(toCss(light)));
+    expect(inSrgbGamut(dark)).toBe(true);
+    expect(inSrgbGamut({ ...dark, c: dark.c + 0.01 })).toBe(false);
   });
 
   test.each(Object.keys(strategies) as PaletteStrategy[])(
