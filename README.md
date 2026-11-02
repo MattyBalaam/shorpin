@@ -85,6 +85,10 @@ WebKit skips the blur when a `position: fixed` box with a background spans the t
 
 In standalone mode, `prefers-color-scheme` is frozen for the life of the process, so after an OS light/dark switch the status bar keeps its old colour until the app is relaunched. The rest of the page is frozen the same way, so they still match. Drop the strip once WebKit gives web apps control over the edge effect.
 
+**Scroll edge shadows:**
+
+[scroll-area.css.ts](app/components/scroll-area/scroll-area.css.ts) draws a dark shadow at each edge of the scroll area while there's content hidden past it. The shadows are painted gradients, not a `mask-image` fade, because a mask fades the content into the page and shows as a white shade in light mode. They're sticky `::before`/`::after` grid items inside the scroller, driven by `animation-timeline: scroll(nearest block)`. A named timeline via `timeline-scope` rendered nothing in WebKit, and `scroll(self)` on a pseudo-element doesn't resolve to the scroller in Chromium. When the content doesn't scroll, the timeline is inactive and neither shows. Browsers without scroll-driven animations (Firefox, for now) show no shadows.
+
 **Modal dialogs:**
 
 Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
