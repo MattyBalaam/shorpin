@@ -10,13 +10,11 @@ export const wrapper = style({
   marginBlockEnd: 0,
   // Keeps a row scrolled into view clear of ScrollArea's edge shade.
   scrollMarginBlock: vars.spacing.sm,
-  color: fallbackVar(vars.style.itemInk, vars.palette.textOnChrome),
-
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: fallbackVar(vars.style.itemInk, vars.palette.textOnChromeDarkMode),
-    },
-  },
+  // light-dark() rather than a media query, so a pinned colour scheme applies.
+  color: fallbackVar(
+    vars.style.itemInk,
+    `light-dark(${vars.palette.textOnChrome}, ${vars.palette.textOnChromeDarkMode})`,
+  ),
 });
 
 export const items = style({

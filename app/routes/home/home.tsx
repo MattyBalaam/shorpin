@@ -13,6 +13,7 @@ import { toast } from "~/lib/toast";
 import { Actions } from "~/components/actions/actions";
 import { Link } from "~/components/link/link";
 import { Button } from "~/components/button/button";
+import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
 import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
 import { useIsOnline } from "~/components/online-status/online-status";
@@ -162,9 +163,12 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
               </Button>
             </div>
           </RouterForm>
-          <Link variant="outline" to={href("/style")}>
-            Style
-          </Link>
+          <div className={styles.appearance}>
+            <Link variant="outline" to={href("/style")}>
+              Style
+            </Link>
+            <ColorSchemeToggle />
+          </div>
         </div>
       </Actions>
       <Outlet />

@@ -1,5 +1,6 @@
 import { fallbackVar, globalStyle } from "@vanilla-extract/css";
 
+import { COLOR_SCHEME_ATTRIBUTE } from "~/lib/color-scheme";
 import { reset } from "./layers.css";
 import { vars } from "./theme.css";
 
@@ -47,9 +48,11 @@ globalStyle("html, body", {
   },
 });
 
-// Only ever `dark` inside the media query, never `light dark`: light-dark()
-// colours (see palette.ts's toAdaptiveCss) track it, and nothing else should
-// change rendering as a side effect.
+// Only ever a single scheme, never `light dark`: light-dark() colours (see
+// palette.ts's toAdaptiveCss) track it, and nothing else should change
+// rendering as a side effect. "system" follows the OS; the device's own
+// choice (see app/lib/color-scheme.ts) pins it, and its attribute selector
+// outranks the bare `html` one.
 globalStyle("html", {
   "@layer": {
     [reset]: {
@@ -61,6 +64,16 @@ globalStyle("html", {
     },
   },
 });
+
+for (const scheme of ["light", "dark"] as const) {
+  globalStyle(`html[${COLOR_SCHEME_ATTRIBUTE}="${scheme}"]`, {
+    "@layer": {
+      [reset]: {
+        colorScheme: scheme,
+      },
+    },
+  });
+}
 
 /* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
 globalStyle("ul[role='list'], ol[role='list']", {
