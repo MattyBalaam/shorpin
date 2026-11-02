@@ -27,14 +27,10 @@ export const BACKGROUND_L: Range = [0.65, 0.85];
 // variant can stay vivid instead of fading to grey near black.
 export const DARK_BACKGROUND_L: Range = [0.35, 0.48];
 
-// Generous ceiling for the dark-mode chroma search (light mode instead uses
-// each strategy's own requested chroma as the ceiling, preserving the
-// intentionally muted look of strategies like "telegraph" or "scandinavian" —
-// dark mode has no such per-strategy intent to preserve, so it always aims
-// for maximum vividness). Actual chroma is always clamped to whatever's
-// in-gamut for the given L/h; this just bounds the search (see delphitools'
-// own clampOklch, which uses the same ceiling).
-const DARK_CHROMA_CEILING = 0.4;
+// Generous ceiling for gamut chroma searches. Actual chroma is always clamped
+// to whatever's in-gamut for the given L/h; this just bounds the search (see
+// delphitools' own clampOklch, which uses the same ceiling).
+const CHROMA_CEILING = 0.4;
 
 // Minimum OKLab distance between primary and secondary so the two stay
 // distinguishable after lightness compression.
@@ -307,13 +303,17 @@ function parseOklchCss(css: string): Oklch | null {
 }
 
 // Maps a light theme colour into DARK_BACKGROUND_L at the same relative
-// lightness, then fits chroma independently against DARK_CHROMA_CEILING
-// rather than scaling the light colour's own (already gamut-reduced) chroma
-// down — that's what keeps the dark variant vivid instead of washed out.
-function toDarkOklch({ L, h }: Oklch): Oklch {
+// lightness, keeping its saturation relative to the gamut: a colour at its
+// hue's sRGB limit stays at the limit in dark mode, and a near-grey (e.g.
+// "scandinavian") stays near-grey. Copying absolute chroma instead would wash
+// out hues whose gamut widens when darker (blues); always maxing it out made
+// muted colours garish and the two schemes look unrelated.
+function toDarkOklch({ L, c, h }: Oklch): Oklch {
   const relativeL = (L - BACKGROUND_L[0]) / (BACKGROUND_L[1] - BACKGROUND_L[0]);
   const targetL = remapLightness(relativeL, DARK_BACKGROUND_L);
-  return { L: targetL, c: maxChromaInGamut(targetL, h, DARK_CHROMA_CEILING), h };
+  const lightMax = maxChromaInGamut(L, h, CHROMA_CEILING);
+  const saturation = lightMax > 0 ? Math.min(c / lightMax, 1) : 0;
+  return { L: targetL, c: saturation * maxChromaInGamut(targetL, h, CHROMA_CEILING), h };
 }
 
 // Only oklch() strings (i.e. anything toBackground produced) carry the L/c/h
