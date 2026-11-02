@@ -48,7 +48,7 @@ Tests run with `fullyParallel: true`. Each test gets its own isolated slice of t
 
 Each worker's seed contains:
 
-- **Owner** — 2 lists: `Shopping` (Milk, Bread, Eggs, Butter, Cheese, Bananas, Apples, Yogurt, Orange juice, Coffee) and `Owner Empty`
+- **Owner** — 2 lists: `Shopping` (30 items, starting Milk, Bread, Eggs, Butter, Cheese, Bananas, Apples, Yogurt, Orange juice, Coffee — long enough to scroll) and `Owner Empty`
 - **Collab** — 2 lists: `Collab Shopping` (Coffee, Tea, Sugar) and `Collab Empty`
 - Collab is a member of owner's Shopping list
 - One pending waitlist entry (first name "Pending", last name "User")

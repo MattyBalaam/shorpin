@@ -1,4 +1,6 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { createContainer, style } from "@vanilla-extract/css";
+
+const scroller = createContainer();
 
 export const outer = style({
   gridColumn: "1 / -1",
@@ -16,6 +18,12 @@ export const inner = style({
   // short list down.
   alignContent: "start",
   overflow: "auto",
+  // The containing block for absolutely positioned content (e.g. visually
+  // hidden labels), which the scroller otherwise doesn't clip: rows scrolled
+  // out of view would give the page itself scrollable overflow.
+  position: "relative",
+  containerName: scroller,
+  containerType: "scroll-state",
 
   "@media": {
     "(prefers-reduced-motion: no-preference)": {
@@ -24,14 +32,11 @@ export const inner = style({
   },
 });
 
-const reveal = keyframes({
-  from: { opacity: 0 },
-  to: { opacity: 1 },
-});
-
 // A zero-height strip stuck to one edge of the scrollport. Half its shadow is
 // clipped by the scrollport, leaving a soft shade over the content. Hidden
-// unless its scroll timeline is active, i.e. the area actually scrolls.
+// unless there's more to scroll past its edge: scroll-state queries say so
+// where supported; elsewhere ScrollArea's `trackScrollEdges` mirrors them as
+// `data-scrollable-*` attributes.
 const edge = style({
   gridColumn: "1 / -1",
   position: "sticky",
@@ -40,10 +45,7 @@ const edge = style({
   pointerEvents: "none",
   opacity: 0,
   boxShadow: "0 0 0.75rem 0.375rem color-mix(in oklch, currentColor 30%, transparent)",
-  animationName: reveal,
-  animationTimingFunction: "linear",
-  animationFillMode: "both",
-  animationTimeline: "scroll(nearest block)",
+  transition: "opacity 150ms",
 });
 
 // Shows once there's content above.
@@ -51,7 +53,12 @@ export const edgeStart = style([
   edge,
   {
     insetBlockStart: 0,
-    animationRange: "0 1.5rem",
+    "@container": {
+      [`${scroller} scroll-state(scrollable: top)`]: { opacity: 1 },
+    },
+    selectors: {
+      [`${inner}[data-scrollable-top] > &`]: { opacity: 1 },
+    },
   },
 ]);
 
@@ -60,7 +67,11 @@ export const edgeEnd = style([
   edge,
   {
     insetBlockEnd: 0,
-    animationDirection: "reverse",
-    animationRange: "calc(100% - 1.5rem) 100%",
+    "@container": {
+      [`${scroller} scroll-state(scrollable: bottom)`]: { opacity: 1 },
+    },
+    selectors: {
+      [`${inner}[data-scrollable-bottom] > &`]: { opacity: 1 },
+    },
   },
 ]);
