@@ -716,7 +716,23 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
             {lastDeletedValue ? (
               <Button variant="outline" onClick={recreateLastDeleted} className={styles.undoButton}>
-                Recreate last deleted
+                <VisuallyHidden>Recreate last deleted</VisuallyHidden>
+                <svg aria-hidden className={styles.undoIcon} viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M9 14L4 9L9 4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M4 9H14.5C17.5376 9 20 11.4624 20 14.5C20 17.5376 17.5376 20 14.5 20H11"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </Button>
             ) : null}
           </div>

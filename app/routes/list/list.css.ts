@@ -16,6 +16,12 @@ export const undoButton = style({
   marginLeft: "auto",
 });
 
+export const undoIcon = style({
+  display: "block",
+  width: "18px",
+  height: "18px",
+});
+
 export const actions = style({
   gridColumn: "content",
   display: "flex",
