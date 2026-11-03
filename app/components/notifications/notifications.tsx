@@ -92,9 +92,12 @@ export function Notifications() {
     >
       <div className={styles.clip}>
         {/* Always rendered, so screen readers announce what's put in it. */}
-        <div role="status" className={shown ? styles.type[shown.type] : undefined}>
+        <div
+          role="status"
+          className={[styles.status, shown ? styles.type[shown.type] : undefined].join(" ")}
+        >
           {shown ? (
-            <>
+            <div className={styles.body}>
               <p className={styles.message}>
                 {shown.autoDismiss ? <DismissClock key={shown.key} id={shown.id} /> : null}
                 <span>{shown.message}</span>
@@ -126,7 +129,7 @@ export function Notifications() {
                   </Button>
                 ) : null}
               </div>
-            </>
+            </div>
           ) : null}
         </div>
       </div>

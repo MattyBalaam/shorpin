@@ -5,10 +5,12 @@ import { vars } from "~/styles/theme.css";
 // Collapsed to nothing until there's a notification, then grows to fit it.
 // Animating grid-template-rows (0fr ↔ 1fr) gives a height transition to the
 // content's own size, which `height: auto` can't do everywhere yet.
+// Full bleed, with its contents on the page's content column via subgrid.
 export const panel = style({
   gridRow: "notifications",
-  gridColumn: "content",
+  gridColumn: "1 / -1",
   display: "grid",
+  gridTemplateColumns: "subgrid",
   gridTemplateRows: "0fr",
 
   selectors: {
@@ -27,20 +29,22 @@ export const panel = style({
 // The grid item that shrinks to zero; spacing lives on its child, since
 // padding here would stop it collapsing fully.
 export const clip = style({
+  gridColumn: "1 / -1",
+  display: "grid",
+  gridTemplateColumns: "subgrid",
   minHeight: 0,
   overflow: "hidden",
 });
 
+// The band: edge to edge, square and flush with the rows around it.
+export const status = style({
+  gridColumn: "1 / -1",
+  display: "grid",
+  gridTemplateColumns: "subgrid",
+});
+
 const notification = style({
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: vars.spacing.sm,
-  marginBlock: vars.spacing.sm,
-  padding: vars.spacing.sm,
-  paddingInlineStart: vars.spacing.md,
-  borderRadius: vars.style.controlRadius,
+  paddingBlock: vars.spacing.sm,
   background: vars.palette.secondary,
   color: vars.palette.textOnPalette,
 });
@@ -50,6 +54,15 @@ export const type = styleVariants({
   info: [notification],
   warning: [notification, { boxShadow: `inset 4px 0 ${vars.palette.error}` }],
   error: [notification, { boxShadow: `inset 4px 0 ${vars.palette.error}` }],
+});
+
+export const body = style({
+  gridColumn: "content",
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: vars.spacing.sm,
 });
 
 export const message = style({
