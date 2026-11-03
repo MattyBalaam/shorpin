@@ -12,6 +12,7 @@ import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
 import { Link } from "~/components/link/link";
+import { BrushIcon } from "~/components/icon/icons";
 import { Button } from "~/components/button/button";
 import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
 import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
@@ -150,7 +151,12 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
               <VisuallyHidden>
                 <label htmlFor={fields["new-list"].id}>New list</label>
               </VisuallyHidden>
-              <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
+              <input
+                name={fields["new-list"].name}
+                id={fields["new-list"].id}
+                autoComplete="off"
+                className={styles.newListInput}
+              />
 
               <Button
                 type="submit"
@@ -165,6 +171,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
           </RouterForm>
           <div className={styles.appearance}>
             <Link variant="outline" to={href("/style")}>
+              <BrushIcon />
               Style
             </Link>
             <ColorSchemeToggle />

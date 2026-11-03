@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { useRouteLoaderData } from "react-router";
 import { Button } from "~/components/button/button";
+import { ContrastIcon, MoonIcon, SunIcon } from "~/components/icon/icons";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import {
   type ColorScheme,
@@ -41,13 +42,21 @@ export function useColorScheme() {
 
 const schemeNames = Object.keys(colorSchemes) as ColorScheme[];
 
+const schemeIcons = {
+  system: ContrastIcon,
+  light: SunIcon,
+  dark: MoonIcon,
+} satisfies Record<ColorScheme, () => ReactNode>;
+
 /** Cycles Auto → Light → Dark, showing the current choice. */
 export function ColorSchemeToggle() {
   const scheme = useColorScheme();
   const next = schemeNames[(schemeNames.indexOf(scheme) + 1) % schemeNames.length];
+  const SchemeIcon = schemeIcons[scheme];
 
   return (
     <Button variant="outline" onClick={() => setColorScheme(next)}>
+      <SchemeIcon />
       <VisuallyHidden>Colour scheme: </VisuallyHidden>
       {colorSchemes[scheme].label}
     </Button>
