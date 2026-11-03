@@ -14,7 +14,9 @@ async function goto(page: Page, path: string) {
 }
 
 function backgroundOf(page: Page, name: string) {
-  return page.getByRole("button", { name }).evaluate((el) => getComputedStyle(el).backgroundColor);
+  return page
+    .getByRole("button", { name, exact: true })
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
 }
 
 // Regression test for a bug where <Theme>'s live-override <style> used
@@ -33,16 +35,16 @@ test("a list's generated theme doesn't leak onto the home route after navigating
   const homeAddColourBefore = await backgroundOf(page, "Add");
 
   await goto(page, "/lists/shopping");
-  const listPaletteColourBefore = await backgroundOf(page, "🎨");
+  const listPaletteColourBefore = await backgroundOf(page, "Colours");
 
-  await page.getByRole("button", { name: "🎨" }).click();
+  await page.getByRole("button", { name: "Colours", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Use these colours" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
 
   // Sanity check: applying really did change the list's own theme colour —
   // otherwise "unchanged at home" below would pass for the wrong reason.
-  const listPaletteColourAfter = await backgroundOf(page, "🎨");
+  const listPaletteColourAfter = await backgroundOf(page, "Colours");
   expect(listPaletteColourAfter).not.toBe(listPaletteColourBefore);
 
   await page.getByRole("link", { name: "Back to index" }).click();

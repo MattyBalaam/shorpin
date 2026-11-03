@@ -67,7 +67,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 
 - Single `<main>` container with centered max-width
 - Breadcrumbs navigation component
-- Sonner toast notifications
+- Notification panel under the breadcrumbs (see [Notifications](#notifications))
 
 **On-screen keyboard sizing:**
 
@@ -399,7 +399,7 @@ Implementation files:
 - Client metrics collection: `app/lib/performance.client.ts`
 - Metric ingestion route: `app/routes/perf.ts`
 
-### Deferred Sentry & Sonner (client)
+### Deferred Sentry (client)
 
 The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
 
@@ -411,10 +411,13 @@ The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the cri
 
 Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
 
-Sonner gets the same treatment. Import `toast` from `~/lib/toast` and `<Toaster>` from `~/components/toaster/toaster`, never from `"sonner"` directly:
+### Notifications
 
-- `<Toaster>` renders client-only (after mount) and waits for sonner with `use()` on the cached import promise from `loadSonner()`, so the sonner chunk loads after hydration rather than during it.
-- Sonner drops toasts emitted before a `<Toaster>` has subscribed, and flash toasts (e.g. "You have been logged out.") fire on first render. The `toast` facade therefore queues until `<Toaster>` reports it has mounted. `auth.spec.ts` covers this.
+Notifications open a panel in the page grid's `notifications` row, between the breadcrumbs and the content, rather than floating over the page. It shows the newest one with a count of the rest. Successes are confirmations, so they clear themselves after 5s, with a small clock showing the time left. The countdown pauses while the panel is hovered or focused: the store stops its timers and keeps their time left, and the clock's CSS animation pauses with them (it starts part way through for one that was already counting down behind another). Everything else, and anything with an action (e.g. "Reload"), stays until the user clears it ("Clear", or "Clear all" when there's more than one). Showing one that's already queued (same `id`, which defaults to its type and message) moves it to the front instead of stacking a copy.
+
+- Call `toast.*` from `~/lib/toast` anywhere: loaders' flash messages (`remix-toast`, shown by the app and auth layouts), client actions and effects. It's a small external store, read by `<Notifications>` ([app/components/notifications](app/components/notifications)) with `useSyncExternalStore`.
+- It replaced Sonner, which floated toasts over the page, had to be lazy-loaded to stay off the critical path, and dropped toasts emitted before its `<Toaster>` mounted. The store has nothing to load and holds notifications until the panel reads them.
+- The panel animates `grid-template-rows` between `0fr` and `1fr` (skipped for reduced motion), and keeps the last notification on screen until the closing animation ends. Its `role="status"` region is always rendered, so screen readers announce new notifications.
 
 ## Deployment
 

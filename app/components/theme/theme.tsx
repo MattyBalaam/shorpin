@@ -3,6 +3,7 @@ import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
+import { PaletteIcon } from "../icon/icons";
 import { PalettePreview } from "./palette-preview";
 
 type Colors = { primary: string; secondary: string };
@@ -147,7 +148,10 @@ function ThemeButton({ formId }: ThemeButtonProps) {
 
   return (
     <>
-      <Button onClick={generateCandidate}>🎨</Button>
+      <Button onClick={generateCandidate}>
+        <PaletteIcon />
+        Colours
+      </Button>
       {candidate && (
         <dialog
           ref={dialogRef}

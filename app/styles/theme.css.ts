@@ -18,6 +18,9 @@ export const [themeClass, vars] = createTheme({
     xxxl: "3rem", // 48px
     // Shared height for all interactive controls (buttons, inputs)
     controlHeight: "1.8rem",
+    // Space above and below the header and the actions bar, so both bars
+    // frame their controls equally.
+    barPadding: "0.75rem",
   },
   palette: {
     // Defaults for home and any list without its own palette: an "ocean

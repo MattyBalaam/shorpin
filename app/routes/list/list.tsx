@@ -17,6 +17,7 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
+import { BrushIcon } from "~/components/icon/icons";
 import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import { formDataToPairs } from "~/lib/form-data-codec";
 import { isNetworkOrServerError } from "~/lib/network-error";
@@ -646,6 +647,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     >
       <div className={styles.topActions}>
         <Link variant="outline" to={href("/lists/:list/style", { list: params.list })}>
+          <BrushIcon />
           Style
         </Link>
         <Theme.Button formId={form.id} />

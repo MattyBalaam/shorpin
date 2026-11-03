@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Form, href, Outlet, useLocation, useRouteLoaderData } from "react-router";
-import { Toaster } from "~/components/toaster/toaster";
 import { toast } from "~/lib/toast";
 import { Breadcrumbs } from "~/components/breadcrumbs/breadcrumbs";
 import { Button } from "~/components/button/button";
+import { Notifications } from "~/components/notifications/notifications";
 import {
   OnlineStatusIndicator,
   OnlineStatusProvider,
@@ -41,8 +41,8 @@ export default function AppLayout() {
           </Button>
         </Form>
       ) : null}
+      <Notifications />
       <Outlet />
-      <Toaster position="top-right" />
     </OnlineStatusProvider>
   );
 }

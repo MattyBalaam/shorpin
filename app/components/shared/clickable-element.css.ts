@@ -31,6 +31,8 @@ const button = style({
   letterSpacing: tokens.controlTracking,
   display: "inline-flex",
   alignItems: "center",
+  // Between an icon and its label.
+  gap: vars.spacing.xs,
   // Unless the app style sets one, buttons keep the browser's own border
   // and links keep none.
   border: fallbackVar(tokens.controlBorder, "revert"),

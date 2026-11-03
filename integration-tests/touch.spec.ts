@@ -10,6 +10,10 @@ import { login } from "./helpers";
 
 const listPath = (slug: string) => `/lists/${slug}`;
 
+// "Offline support ready" would open the notification panel at an arbitrary
+// point, shifting the rows mid-gesture.
+test.use({ serviceWorkers: "block" });
+
 async function openList(page: Page, slug: string) {
   await page.goto(listPath(slug));
   await page.waitForURL(listPath(slug));

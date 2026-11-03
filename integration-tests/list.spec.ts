@@ -614,8 +614,9 @@ test("a concurrent addition from another device survives reconnect sync", async 
         response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
     );
 
+    // No check for the "Back online" notification: the collaborator's
+    // broadcast can arrive just after it and be shown in front of it.
     await ownerContext.setOffline(false);
-    await expect(ownerPage.getByText("Back online - syncing changes")).toBeVisible();
     await syncSubmitted;
     await expect(ownerPage.getByText("Offline", { exact: true })).not.toBeVisible();
 

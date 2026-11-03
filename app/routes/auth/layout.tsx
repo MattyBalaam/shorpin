@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useRouteLoaderData } from "react-router";
 import * as styles from "./layout.css";
-import { Toaster } from "~/components/toaster/toaster";
+import { Notifications } from "~/components/notifications/notifications";
 import { toast } from "~/lib/toast";
 import type { loader as rootLoader } from "~/root";
 
@@ -19,9 +19,11 @@ export default function AuthLayout() {
   );
 
   return (
-    <div className={styles.layout}>
-      <Outlet />
-      <Toaster position="top-right" />
-    </div>
+    <>
+      <Notifications />
+      <div className={styles.layout}>
+        <Outlet />
+      </div>
+    </>
   );
 }
