@@ -217,7 +217,9 @@ export const appearance = style({
   gap: vars.spacing.sm,
 });
 
+// Takes the bar's spare width, as the list page's add input does.
 export const addListForm = style({
+  flex: 1,
   minWidth: 0,
 });
 
@@ -267,6 +269,12 @@ export const signUpsLabel = style({
 export const newList = style({
   display: "flex",
   gap: vars.spacing.md,
+});
+
+export const newListInput = style({
+  flex: 1,
+  // Inputs have an intrinsic width from their default `size`; let it shrink.
+  minWidth: 0,
 });
 
 export const formError = style({

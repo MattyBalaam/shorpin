@@ -4,6 +4,8 @@ import { vars } from "~/styles/theme.css";
 export const nav = style({
   gridRow: "breadcrumbs",
   gridColumn: "content",
+  // Centred against the header's controls (sign out, list actions).
+  alignSelf: "center",
 });
 
 export const list = style({
@@ -13,10 +15,14 @@ export const list = style({
   display: "flex",
   flexWrap: "wrap",
   gap: "0.5em",
-  alignItems: "baseline",
+  // Not baseline: the back link is a control whose first baseline is its
+  // visually hidden label, which offsets the items and pads the header row.
+  alignItems: "center",
 });
 
 export const item = style({
+  // Drop typography's list-item spacing, which would pad the header row.
+  margin: 0,
   display: "inline-flex",
   alignItems: "center",
   gap: "0.5em",
