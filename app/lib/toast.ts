@@ -27,9 +27,13 @@ export interface Notification extends NotificationOptions {
   id: string;
   type: NotificationType;
   message: string;
+  autoDismiss: boolean;
+  /** Changes each time it's shown, so a repeat restarts its countdown. */
+  key: number;
 }
 
 let notifications: readonly Notification[] = [];
+let nextKey = 0;
 const listeners = new Set<() => void>();
 
 function update(next: readonly Notification[]) {
@@ -53,37 +57,50 @@ export function getServerNotifications() {
   return NO_NOTIFICATIONS;
 }
 
-const AUTO_DISMISS_MS = 5000;
-const timers = new Map<string, ReturnType<typeof setTimeout>>();
-// Ids whose time ran out while the panel was held (hovered or focused).
-const expired = new Set<string>();
+export const AUTO_DISMISS_MS = 5000;
+
+// While held, timers are stopped and keep their time left, so a countdown
+// shown for one (see <Notifications>) can pause and resume in step.
+type Timer = { timeLeft: number; startedAt: number; timeout?: ReturnType<typeof setTimeout> };
+const timers = new Map<string, Timer>();
 let isHeld = false;
 
+function startTimer(id: string, timer: Timer) {
+  timer.startedAt = performance.now();
+  timer.timeout = setTimeout(() => dismissNotification(id), timer.timeLeft);
+}
+
 function scheduleDismiss(id: string) {
-  clearTimeout(timers.get(id));
-  timers.set(
-    id,
-    setTimeout(() => {
-      timers.delete(id);
-      if (isHeld) expired.add(id);
-      else dismissNotification(id);
-    }, AUTO_DISMISS_MS),
-  );
+  cancelDismiss(id);
+  const timer: Timer = { timeLeft: AUTO_DISMISS_MS, startedAt: 0 };
+  timers.set(id, timer);
+  if (!isHeld) startTimer(id, timer);
 }
 
 function cancelDismiss(id: string) {
-  clearTimeout(timers.get(id));
+  clearTimeout(timers.get(id)?.timeout);
   timers.delete(id);
-  expired.delete(id);
 }
 
-/** Holds auto-dismissal while the user is reading or using the panel. */
+/** Pauses auto-dismissal while the user is reading or using the panel. */
 export function holdNotifications(held: boolean) {
+  if (held === isHeld) return;
   isHeld = held;
-  if (held) return;
-  // A fresh full delay, so one doesn't vanish the moment the pointer leaves.
-  for (const id of expired) scheduleDismiss(id);
-  expired.clear();
+  for (const [id, timer] of timers) {
+    if (held) {
+      clearTimeout(timer.timeout);
+      timer.timeLeft -= performance.now() - timer.startedAt;
+    } else {
+      startTimer(id, timer);
+    }
+  }
+}
+
+/** Milliseconds until the notification clears itself, if it will. */
+export function getTimeLeft(id: string) {
+  const timer = timers.get(id);
+  if (!timer) return undefined;
+  return isHeld ? timer.timeLeft : timer.timeLeft - (performance.now() - timer.startedAt);
 }
 
 export function dismissNotification(id: string) {
@@ -98,10 +115,11 @@ export function dismissAllNotifications() {
 
 function show(type: NotificationType, message: string, options: NotificationOptions = {}) {
   const id = options.id ?? `${type}:${message}`;
-  if (type === "success" && !options.action) scheduleDismiss(id);
+  const autoDismiss = type === "success" && !options.action;
+  if (autoDismiss) scheduleDismiss(id);
   else cancelDismiss(id);
   update([
-    { ...options, id, type, message },
+    { ...options, id, type, message, autoDismiss, key: nextKey++ },
     ...notifications.filter((notification) => notification.id !== id),
   ]);
 }

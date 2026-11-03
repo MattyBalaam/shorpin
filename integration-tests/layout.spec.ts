@@ -3,6 +3,10 @@ import { login } from "./helpers";
 
 const listPath = "/lists/shopping";
 
+// "Offline support ready" would open the notification panel at an arbitrary
+// point, resizing the list's scroll area mid-test.
+test.use({ serviceWorkers: "block" });
+
 const longItem = "Pearl river bridge / Kadoya / Kikkoman / Mushan premium soy (if you can find it)";
 
 for (const width of [320, 375]) {

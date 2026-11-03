@@ -1,4 +1,5 @@
-import { style, styleVariants } from "@vanilla-extract/css";
+import { createVar, keyframes, style, styleVariants } from "@vanilla-extract/css";
+import { AUTO_DISMISS_MS } from "~/lib/toast";
 import { vars } from "~/styles/theme.css";
 
 // Collapsed to nothing until there's a notification, then grows to fit it.
@@ -69,6 +70,32 @@ export const count = style({
   fontSize: vars.fontSize.sm,
   fontWeight: vars.fontWeight.bold,
   textAlign: "center",
+});
+
+// Registered so the angle animates; a plain custom property would jump.
+const timeLeft = createVar({ syntax: "<angle>", inherits: false, initialValue: "360deg" });
+
+const countDown = keyframes({
+  to: { vars: { [timeLeft]: "0deg" } },
+});
+
+// A pie that empties as the auto-dismiss time runs out. Its delay is set
+// from the store's time left on mount (see DismissClock), and it pauses
+// while the panel holds the timer.
+export const clock = style({
+  flexShrink: 0,
+  inlineSize: "1em",
+  blockSize: "1em",
+  borderRadius: "50%",
+  border: "1.5px solid currentColor",
+  background: `conic-gradient(currentColor ${timeLeft}, transparent 0)`,
+  animation: `${countDown} ${AUTO_DISMISS_MS}ms linear forwards`,
+
+  selectors: {
+    [`${panel}[data-held] &`]: {
+      animationPlayState: "paused",
+    },
+  },
 });
 
 export const buttons = style({

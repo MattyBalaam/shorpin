@@ -1,15 +1,34 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "~/components/button/button";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import {
+  AUTO_DISMISS_MS,
   dismissAllNotifications,
   dismissNotification,
   getNotifications,
   getServerNotifications,
+  getTimeLeft,
   holdNotifications,
   subscribeToNotifications,
 } from "~/lib/toast";
 import * as styles from "./notifications.css";
+
+/** Counts down to the notification clearing itself. */
+function DismissClock({ id }: { id: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Starts part way through when the timer is already running, e.g. for one
+  // that was queued behind the one just cleared.
+  useLayoutEffect(
+    function syncToTimer() {
+      const elapsed = AUTO_DISMISS_MS - (getTimeLeft(id) ?? 0);
+      ref.current?.style.setProperty("animation-delay", `${-elapsed}ms`);
+    },
+    [id],
+  );
+
+  return <span ref={ref} aria-hidden="true" className={styles.clock} />;
+}
 
 /**
  * A panel under the header showing the newest notification, with a count of
@@ -30,7 +49,10 @@ export function Notifications() {
 
   function hold(reason: "hovered" | "focused", held: boolean) {
     holdRef.current[reason] = held;
-    holdNotifications(holdRef.current.hovered || holdRef.current.focused);
+    const isHeld = holdRef.current.hovered || holdRef.current.focused;
+    holdNotifications(isHeld);
+    // Pauses the clock in step with the store's timer (see notifications.css.ts).
+    panelRef.current?.toggleAttribute("data-held", isHeld);
   }
 
   // Keeps the last notification on screen while the panel animates closed.
@@ -74,6 +96,7 @@ export function Notifications() {
           {shown ? (
             <>
               <p className={styles.message}>
+                {shown.autoDismiss ? <DismissClock key={shown.key} id={shown.id} /> : null}
                 <span>{shown.message}</span>
                 {rest.length > 0 ? (
                   <span className={styles.count}>

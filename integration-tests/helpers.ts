@@ -51,6 +51,9 @@ export async function login(page: Page, email: string) {
   await page.getByLabel("Password").fill("any-password"); // mock ignores the password
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("/");
+  // Home has then shown (and spent) the "Welcome back!" flash, so it can't
+  // open the notification panel on whatever page the test goes to next.
+  await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached();
 }
 
 /**

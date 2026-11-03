@@ -3,6 +3,7 @@ import {
   dismissAllNotifications,
   dismissNotification,
   getNotifications,
+  getTimeLeft,
   holdNotifications,
   toast,
 } from "./toast";
@@ -50,15 +51,24 @@ describe("toast", () => {
     expect(messages()).toEqual(["reload?", "failed"]);
   });
 
-  test("holds a success while the panel is held, then gives it a fresh delay", () => {
+  test("pauses a success's countdown while held, then resumes it", () => {
     toast.success("done");
+    vi.advanceTimersByTime(2000);
     holdNotifications(true);
-    vi.advanceTimersByTime(6000);
+    vi.advanceTimersByTime(10_000);
     expect(messages()).toEqual(["done"]);
+    expect(getTimeLeft("success:done")).toBe(3000);
     holdNotifications(false);
-    vi.advanceTimersByTime(4000);
+    vi.advanceTimersByTime(2999);
     expect(messages()).toEqual(["done"]);
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1);
     expect(messages()).toEqual([]);
+  });
+
+  test("restarts the countdown when a success is shown again", () => {
+    toast.success("done");
+    vi.advanceTimersByTime(4000);
+    toast.success("done");
+    expect(getTimeLeft("success:done")).toBe(5000);
   });
 });

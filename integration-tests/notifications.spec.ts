@@ -42,9 +42,6 @@ test("shows the newest notification with a count, and clears one or all", async 
   }
 
   await login(page, ctx.ownerEmail);
-  // Hydrated, so "Welcome back!"'s flash cookie is spent; the full load below
-  // starts with an empty queue.
-  await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached();
   await page.goto("/lists/shopping");
   await expect(page.locator('html[data-hydrated-path="/lists/shopping"]')).toBeAttached();
 
