@@ -9,6 +9,7 @@ import {
   getServerNotifications,
   getTimeLeft,
   holdNotifications,
+  startCountdown,
   subscribeToNotifications,
 } from "~/lib/toast";
 import * as styles from "./notifications.css";
@@ -17,11 +18,12 @@ import * as styles from "./notifications.css";
 function DismissClock({ id }: { id: string }) {
   const ref = useRef<HTMLSpanElement>(null);
 
-  // Starts part way through when the timer is already running, e.g. for one
-  // that was queued behind the one just cleared.
+  // Starts the store's countdown the first time it's shown, or picks it up
+  // part way through for one that was covered and has come back.
   useLayoutEffect(
     function syncToTimer() {
-      const elapsed = AUTO_DISMISS_MS - (getTimeLeft(id) ?? 0);
+      startCountdown(id);
+      const elapsed = AUTO_DISMISS_MS - (getTimeLeft(id) ?? AUTO_DISMISS_MS);
       ref.current?.style.setProperty("animation-delay", `${-elapsed}ms`);
     },
     [id],

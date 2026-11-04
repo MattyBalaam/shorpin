@@ -27,6 +27,10 @@ export default [
     ]),
     route("lists/:list", "routes/list/list.tsx", [route("style", "routes/list/style.tsx")]),
     route("lists/:list/confirm-delete", "routes/delete.tsx"),
+    // Manual testing aid, only in the mock and preview builds.
+    ...(import.meta.env.MODE === "mock" || import.meta.env.MODE === "preview"
+      ? [route("dev/notifications", "routes/dev/notifications.tsx")]
+      : []),
   ]),
   route("/sentry-example-page", "routes/sentry-example-page.tsx"),
   route("/api/sentry-example-api", "routes/api.sentry-example-api.ts"),
