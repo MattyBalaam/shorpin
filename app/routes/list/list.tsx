@@ -17,9 +17,10 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
-import { BrushIcon } from "~/components/icon/icons";
+import { BrushIcon, GroupIcon } from "~/components/icon/icons";
 import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import { formDataToPairs } from "~/lib/form-data-codec";
+import { groupByTag, listTags, withPickedTag } from "~/lib/item-tag";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { rebaseListItems, type ListItemRef } from "~/lib/offline-merge";
 import {
@@ -207,6 +208,7 @@ import * as errorStateStyles from "~/components/error-state/error-state.css";
 import * as itemsStyles from "~/components/items.css";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
+import { TagCombobox } from "~/components/tag-combobox/tag-combobox";
 import { Theme } from "~/components/theme/theme";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import * as styles from "./list.css";
@@ -589,6 +591,41 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     formRef,
   });
 
+  // A one-off reorder, saved through the same path as a drag, so the grouped
+  // order is shared with every member rather than being a local view.
+  function groupItemsByTag() {
+    if (state !== "idle") {
+      toast.info("Still saving - try again in a moment");
+      return;
+    }
+
+    const grouped = groupByTag(defaultValue.items);
+    if (grouped.every((id, index) => id === defaultValue.items[index]?.id)) {
+      toast.info("Already grouped by tag");
+      return;
+    }
+
+    reorder.onReorder(grouped);
+    reorder.onComplete();
+  }
+
+  const tags = listTags(defaultValue.items);
+  const newInputRef = useRef<HTMLInputElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  // React state rather than a form field, so Conform's reset after each add
+  // leaves it alone: the tag stays for the next add (until a reload), for
+  // adding a run of items with one tag.
+  const [newTag, setNewTag] = useState("");
+
+  // The tag combobox has no name of its own: before the form is read, its tag
+  // is folded into the typed value as `[tag]` (see item-tag.ts), so every
+  // add path (online, queued offline, replay) carries it unchanged.
+  function applyPickedTag() {
+    const input = newInputRef.current;
+    if (!input) return;
+    input.value = withPickedTag(input.value, newTag);
+  }
+
   // Delete shrinks the items field (once the row's exit animation finishes —
   // see items.tsx) then submits; the server infers "delete" from whichever
   // id is now missing from the submitted array (see mutate_list).
@@ -650,10 +687,20 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           <BrushIcon />
           Style
         </Link>
+        <Button variant="outline" type="button" onClick={groupItemsByTag}>
+          <GroupIcon />
+          <span className={styles.groupLabel}>Group by tag</span>
+        </Button>
         <Theme.Button formId={form.id} />
       </div>
 
-      <Form {...form.props} ref={formRef} method="POST" className={styles.form}>
+      <Form
+        {...form.props}
+        ref={formRef}
+        method="POST"
+        className={styles.form}
+        onSubmitCapture={applyPickedTag}
+      >
         {/* hidden submit button captures Enter key presses to add a new item.
             submitAction is a plain (non-reserved) field used only to tell
             client-side "was this particular submission an add" for the
@@ -689,6 +736,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             onReorderComplete={reorder.onComplete}
             onDelete={setLastDeletedValue}
             onRemove={onRemove}
+            tags={tags}
             reorderable
           />
         </ScrollArea>
@@ -699,13 +747,27 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
               <label htmlFor={fields.new.id}>New item</label>
             </VisuallyHidden>
             <input
+              ref={newInputRef}
               name={fields.new.name}
               id={fields.new.id}
               autoFocus
               autoComplete="off"
               className={styles.addInput}
             />
+            <TagCombobox
+              label="Tag"
+              hideLabel
+              placeholder="No tag"
+              className={styles.addTag}
+              inputClassName={`${styles.addInput} ${styles.addTagInput}`}
+              tags={tags}
+              value={newTag}
+              onChange={setNewTag}
+              // Enter adds, like Enter in the item input.
+              onEnter={() => addButtonRef.current?.form?.requestSubmit(addButtonRef.current)}
+            />
             <Button
+              ref={addButtonRef}
               type="submit"
               value="add"
               name={SUBMIT_ACTION}

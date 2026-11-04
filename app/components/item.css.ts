@@ -27,7 +27,7 @@ export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
   gridTemplateColumns:
-    "[input] minmax(0, 1fr) [state] auto [link] auto [edit] auto [drag] auto [done] auto",
+    "[input] minmax(0, 1fr) [link] auto [tag] auto [edit] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
@@ -37,17 +37,17 @@ export const item = style({
 
 export const value = style({
   gridRow: 1,
-  gridColumn: "input / span 2",
+  gridColumn: "input",
   paddingBlock: vars.spacing.sm,
   lineHeight: 1.35,
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",
 });
 
+// Inline after the item's text (inside `value`).
 export const state = style({
-  gridRow: 1,
-  gridColumn: "state",
-  paddingInlineEnd: vars.spacing.md,
+  marginInlineStart: vars.spacing.sm,
+  whiteSpace: "nowrap",
 });
 
 export const newIndicator = style({
@@ -253,4 +253,19 @@ export const saving = style({
     borderBlockEndColor: "transparent",
     animation: `1s infinite ${spin}`,
   },
+});
+
+// Its own column right before the edit button — which every row has — so
+// tags range right and line up down the list whatever else a row shows.
+export const tag = style({
+  gridRow: 1,
+  gridColumn: "tag",
+  justifySelf: "end",
+  paddingInline: vars.spacing.sm,
+  borderRadius: vars.style.pillRadius,
+  border: "1px solid currentColor",
+  fontSize: vars.fontSize.xs,
+  lineHeight: 1.6,
+  whiteSpace: "nowrap",
+  opacity: 0.75,
 });

@@ -1,9 +1,11 @@
 import { type FieldMetadata, useFormData } from "@conform-to/react/future";
-import { type PointerEventHandler, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEventHandler, useEffect, useRef, useState } from "react";
 import { useNavigation } from "react-router";
 import { DragGrip } from "~/components/reorderable/drag-grip";
 import { getFirstLink } from "~/lib/extract-link";
+import { formatItemTag, parseItemTag } from "~/lib/item-tag";
 import { Button } from "./button/button";
+import { TagCombobox } from "./tag-combobox/tag-combobox";
 import * as styles from "./item.css";
 import * as modalStyles from "./modal/modal.css";
 import { VisuallyHidden } from "./visually-hidden/visually-hidden";
@@ -16,6 +18,7 @@ export interface ItemRenderProps {
   onDragHandlePointerDown: PointerEventHandler<HTMLSpanElement>;
   onRequestDelete: () => void;
   reorderable?: boolean;
+  tags: string[];
 }
 
 // This is a row for an item in the list with an input and a delete button
@@ -27,6 +30,7 @@ export function Item({
   onDragHandlePointerDown,
   onRequestDelete,
   reorderable,
+  tags,
 }: ItemRenderProps) {
   const navigation = useNavigation();
 
@@ -39,7 +43,11 @@ export function Item({
       { fallback: defaultValue },
     ) ?? defaultValue;
 
-  const firstLink = getFirstLink(currentValue);
+  const { text, tag } = parseItemTag(currentValue);
+  // Labels name the row by its text alone, so a tag doesn't change how tests
+  // and assistive tech find it.
+  const label = parseItemTag(defaultValue).text;
+  const firstLink = getFirstLink(text);
 
   // Delete is committed locally (intent.remove) only once its exit animation
   // finishes, so by the time any submission is in flight for this row it's
@@ -73,7 +81,39 @@ export function Item({
       data-new={isNew}
     >
       <div className={styles.item}>
-        <span className={styles.value}>{currentValue}</span>
+        {/* The status (saving, edited, new) follows the text inline, wrapping
+            with it, rather than sitting in a column of its own. */}
+        <span className={styles.value}>
+          {text}
+          {edited && (isSavingEdit || navigation.state === "idle") ? (
+            <span className={styles.state}>
+              {isSavingEdit ? (
+                <>
+                  <VisuallyHidden>saving</VisuallyHidden>
+                  <span aria-hidden className={styles.saving}></span>
+                </>
+              ) : (
+                <>
+                  <VisuallyHidden> edited</VisuallyHidden>
+                  <span aria-hidden>✏️</span>
+                </>
+              )}
+            </span>
+          ) : isNew ? (
+            <span className={styles.state}>
+              <VisuallyHidden>new since last opening</VisuallyHidden>
+              <span aria-hidden className={styles.newIndicator}>
+                new
+              </span>
+            </span>
+          ) : null}
+        </span>
+        {tag ? (
+          <span className={styles.tag}>
+            <VisuallyHidden>tag: </VisuallyHidden>
+            {tag}
+          </span>
+        ) : null}
         <input
           ref={valueInputRef}
           type="hidden"
@@ -81,29 +121,6 @@ export function Item({
           id={fieldset.value.id}
           defaultValue={fieldset.value.defaultValue}
         />
-
-        {edited && (isSavingEdit || navigation.state === "idle") ? (
-          <span className={styles.state}>
-            {isSavingEdit ? (
-              <>
-                <VisuallyHidden>saving</VisuallyHidden>
-                <span aria-hidden className={styles.saving}></span>
-              </>
-            ) : (
-              <>
-                <VisuallyHidden> edited</VisuallyHidden>
-                <span aria-hidden>✏️</span>
-              </>
-            )}
-          </span>
-        ) : isNew ? (
-          <span className={styles.state}>
-            <VisuallyHidden>new since last opening</VisuallyHidden>
-            <span aria-hidden className={styles.newIndicator}>
-              new
-            </span>
-          </span>
-        ) : null}
 
         {firstLink ? (
           <a className={styles.linkButton} href={firstLink} target="_blank" rel="noreferrer">
@@ -143,7 +160,7 @@ export function Item({
         <button
           type="button"
           className={styles.editButton}
-          aria-label={`Edit ${fieldset.value.defaultValue}`}
+          aria-label={`Edit ${label}`}
           onClick={() => setIsEditing(true)}
         >
           <svg aria-hidden className={styles.editIcon} viewBox="0 0 24 24" fill="none">
@@ -160,10 +177,10 @@ export function Item({
 
         <span
           className={styles.dragHandle}
-          aria-label={`Reorder ${fieldset.value.defaultValue}`}
+          aria-label={`Reorder ${label}`}
           onPointerDown={onDragHandlePointerDown}
         >
-          <VisuallyHidden>Reorder {fieldset.value.defaultValue}</VisuallyHidden>
+          <VisuallyHidden>Reorder {label}</VisuallyHidden>
           <DragGrip />
         </span>
 
@@ -173,14 +190,16 @@ export function Item({
             type="button"
             onClick={onRequestDelete}
           >
-            <VisuallyHidden>Delete {fieldset.value.defaultValue}</VisuallyHidden>
+            <VisuallyHidden>Delete {label}</VisuallyHidden>
             {reorderable ? "✕" : "☑️"}
           </Button>
         </span>
 
         {isEditing ? (
           <EditDialog
-            defaultValue={currentValue}
+            defaultText={text}
+            defaultTag={tag}
+            tags={tags}
             onSave={saveEdit}
             onCancel={() => setIsEditing(false)}
           />
@@ -199,19 +218,25 @@ export function Item({
 }
 
 // Rendered inside the list <Form>, so it holds no named fields and no nested
-// <form method="dialog">: the textarea is read on save and written into the
-// row's hidden input, and every button is type="button".
+// <form method="dialog">: the textarea and tag combobox are read on save, joined
+// into one value (see item-tag.ts) and written into the row's hidden input,
+// and every button is type="button".
 function EditDialog({
-  defaultValue,
+  defaultText,
+  defaultTag,
+  tags,
   onSave,
   onCancel,
 }: {
-  defaultValue: string;
+  defaultText: string;
+  defaultTag: string | null;
+  tags: string[];
   onSave: (value: string) => void;
   onCancel: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [tag, setTag] = useState(defaultTag ?? "");
 
   useEffect(function openOnMount() {
     const dialog = dialogRef.current;
@@ -223,7 +248,14 @@ function EditDialog({
   }, []);
 
   function save() {
-    onSave(textareaRef.current?.value ?? defaultValue);
+    onSave(formatItemTag(textareaRef.current?.value ?? defaultText, tag));
+  }
+
+  function saveOnEnter(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      save();
+    }
   }
 
   return (
@@ -242,16 +274,12 @@ function EditDialog({
             ref={textareaRef}
             className={styles.editTextarea}
             aria-label="Item"
-            defaultValue={defaultValue}
+            defaultValue={defaultText}
             autoComplete="off"
             rows={3}
-            onKeyDown={function saveOnEnter(e) {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                save();
-              }
-            }}
+            onKeyDown={saveOnEnter}
           />
+          <TagCombobox label="Tag" tags={tags} value={tag} onChange={setTag} onEnter={save} />
         </div>
         <div className={modalStyles.actions}>
           <Button variant="outline" type="button" onClick={onCancel}>

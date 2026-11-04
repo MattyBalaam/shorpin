@@ -1,5 +1,6 @@
 import type { FieldMetadata } from "@conform-to/react/future";
 import { type PointerEvent, useRef, useState } from "react";
+import { parseItemTag } from "~/lib/item-tag";
 import { Item } from "./item";
 import * as styles from "./items.css";
 import type { StartDragOptions } from "./reorderable/use-drag-list";
@@ -17,6 +18,7 @@ function ReorderableItem({
   startDrag,
   collapse,
   scrollIntoViewOnMount,
+  tags,
 }: {
   itemId: string;
   item: FieldMetadata<{ id: string; value: string }>;
@@ -29,6 +31,7 @@ function ReorderableItem({
   startDrag: (event: PointerEvent<HTMLElement>, options?: StartDragOptions) => void;
   collapse: (element: HTMLElement) => Promise<void>;
   scrollIntoViewOnMount: boolean;
+  tags: string[];
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const [isDismissing, setIsDismissing] = useState(false);
@@ -80,6 +83,7 @@ function ReorderableItem({
         }
         onRequestDelete={handleDeleteClick}
         reorderable={reorderable}
+        tags={tags}
       />
     </li>
   );
@@ -95,6 +99,8 @@ interface ItemsProps {
   onReorderComplete?: (itemIds: string[]) => void;
   onDelete?: (value: string) => void;
   onRemove: (index: number) => void;
+  /** The list's tags, offered when editing an item's tag. */
+  tags?: string[];
   reorderable?: boolean;
 }
 
@@ -107,6 +113,7 @@ export function Items({
   onReorderComplete,
   onDelete,
   onRemove,
+  tags = [],
   reorderable,
 }: ItemsProps) {
   const items = fieldMetadata.getFieldList();
@@ -128,7 +135,7 @@ export function Items({
   // the list never drops it early. That would shrink the list and clamp the
   // scroll position, leaving the row below the fold when it arrives.
   const pending = pendingItem && !visibleIds.includes(pendingItem.id) ? pendingItem : null;
-  const pendingValue = pending?.value.trim() || null;
+  const pendingValue = (pending && parseItemTag(pending.value).text) || null;
 
   // Adds land at the end of the list, below the fold on a long list. The
   // placeholder scrolls itself into view, and the saved row that replaces it
@@ -153,6 +160,7 @@ export function Items({
           startDrag={startDrag}
           collapse={collapse}
           scrollIntoViewOnMount={itemId === arrivingId}
+          tags={tags}
         />
       ))}
       {visibleIds.length === 0 && !pendingValue && (

@@ -45,6 +45,19 @@ export const addInput = style({
 });
 
 // Matches the taller list input; the look comes from Button's solid variant.
+export const addTag = style({
+  flex: "0 1 8rem",
+  minWidth: 0,
+});
+
+// Styled with addInput, to match the item input beside it. addInput's
+// `flex: 1` widens the item input across the bar, but in the combobox's
+// column (label above input) it would grow the input's height instead.
+export const addTagInput = style({
+  flex: "none",
+  width: "100%",
+});
+
 export const addButton = style({
   height: "auto",
 });
@@ -55,4 +68,20 @@ export const topActions = style({
   justifySelf: "end",
   display: "flex",
   gap: vars.spacing.sm,
+});
+
+// On a phone the header can't fit a third labelled button beside the list
+// name, so "Group by tag" shows its icon alone; the label stays its
+// accessible name.
+export const groupLabel = style({
+  "@media": {
+    "screen and (max-width: 40rem)": {
+      position: "absolute",
+      width: "1px",
+      height: "1px",
+      overflow: "hidden",
+      clipPath: "inset(50%)",
+      whiteSpace: "nowrap",
+    },
+  },
 });
