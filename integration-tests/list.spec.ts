@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
@@ -322,6 +322,34 @@ test("an item added as 'text [tag]' shows its tag, which the modal edits", async
   await openList(page, "shopping");
   await expect(row.getByText("tag: fridge")).toBeVisible();
   await expect(row.getByText("tag: dairy")).toHaveCount(0);
+});
+
+// On iOS, tapping an option blurs the input before the click lands, which
+// used to close the list and let the click fall through to the dialog,
+// closing it without saving.
+test("picking a tag from the list keeps the edit modal open @webkit", async ({
+  page,
+  ctx,
+  hasTouch,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  // A tap on touch devices, for its event order (blur before click).
+  const press = (locator: Locator) => (hasTouch ? locator.tap() : locator.click());
+  await press(dialog.getByLabel("Tag"));
+  await press(page.getByRole("option", { name: "fruit" }));
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Tag")).toHaveValue("fruit");
+
+  const edited = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await edited;
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  await expect(row.getByText("tag: fruit")).toBeVisible();
 });
 
 test("a tag can be added and cleared in the edit modal", async ({ page, ctx }) => {
