@@ -176,7 +176,9 @@ export function TagCombobox({
             data-current={option.value.toLowerCase() === current}
             className={styles.option}
             // Keeps focus in the input, so blur doesn't close the list first.
-            onPointerDown={(e) => e.preventDefault()}
+            // On mousedown, not pointerdown: iOS WebKit drops a tap's click
+            // when its pointerdown is cancelled, so the option was never picked.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => pick(option.value)}
           >
             {option.label}
