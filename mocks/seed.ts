@@ -47,7 +47,9 @@ export async function seed(
     email: collabEmail,
   });
 
-  // Owner gets 2 lists: one long enough to scroll (30 items), one empty
+  // Owner gets 2 lists: one long enough to scroll (30 items), one empty.
+  // Some items carry a trailing `[tag]` (see app/lib/item-tag.ts); Milk,
+  // Bread and Eggs stay untagged as the tests' everyday fixtures.
   const ownerList = await createListWithItems(
     owner.id,
     "Shopping",
@@ -57,22 +59,22 @@ export async function seed(
       "Bread",
       "Eggs",
       "Butter",
-      "Cheese",
-      "Bananas",
-      "Apples",
-      "Yogurt",
+      "Cheese [dairy]",
+      "Bananas [fruit]",
+      "Apples [fruit]",
+      "Yogurt [dairy]",
       "Orange juice",
       "Coffee",
       "Tea",
       "Sugar",
       "Rice",
       "Pasta",
-      "Tomatoes",
-      "Onions",
+      "Tomatoes [veg]",
+      "Onions [veg]",
       "Garlic",
       "Potatoes",
-      "Carrots",
-      "Chicken",
+      "Carrots [veg]",
+      "Chicken [meat]",
       "Olive oil",
       "Flour",
       "Cereal",
@@ -81,8 +83,8 @@ export async function seed(
       "Lettuce",
       "Cucumber",
       "Peppers",
-      "Washing-up liquid",
-      "Toilet roll",
+      "Washing-up liquid [household]",
+      "Toilet roll [household]",
     ],
     0,
   );
@@ -93,7 +95,7 @@ export async function seed(
     collab.id,
     "Collab Shopping",
     "collab-shopping",
-    ["Coffee", "Tea", "Sugar", "Cream", "Honey", "Jam"],
+    ["Coffee", "Tea", "Sugar", "Cream [dairy]", "Honey", "Jam [spreads]"],
     0,
   );
   await createListWithItems(collab.id, "Collab Empty", "collab-empty", [], 1);

@@ -283,6 +283,225 @@ test("editing an item in the modal saves the new value", async ({ page, ctx }) =
   await expect(page.getByRole("button", { name: "Edit Milk" })).toHaveCount(0);
 });
 
+// Resolves once a save of the shopping list has been answered, so a test can
+// reload without aborting it, or edit again without two saves racing.
+function shoppingSaved(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+}
+
+test("an item added as 'text [tag]' shows its tag, which the modal edits", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByLabel("New item").fill("Oat milk [dairy]");
+  const added = shoppingSaved(page);
+  await page.getByRole("button", { name: "Add" }).click();
+  await added;
+
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Oat milk") });
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit Oat milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  await expect(dialog.getByLabel("Item")).toHaveValue("Oat milk");
+  await expect(dialog.getByLabel("Tag")).toHaveValue("dairy");
+
+  await dialog.getByLabel("Tag").fill("fridge");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const edited = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await edited;
+
+  await openList(page, "shopping");
+  await expect(row.getByText("tag: fridge")).toBeVisible();
+  await expect(row.getByText("tag: dairy")).toHaveCount(0);
+});
+
+test("a tag can be added and cleared in the edit modal", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  await dialog.getByLabel("Tag").fill("dairy");
+  const tagged = shoppingSaved(page);
+  await dialog.getByLabel("Tag").press("Enter");
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await tagged;
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  await dialog.getByLabel("Tag").fill("");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const cleared = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toHaveCount(0);
+  await cleared;
+
+  await openList(page, "shopping");
+  await expect(row).toBeVisible();
+  await expect(row.getByText("tag: dairy")).toHaveCount(0);
+});
+
+test("grouping by tag gathers tagged items and saves the order", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const editLabels = () =>
+    page
+      .locator('button[aria-label^="Edit "]')
+      .evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label")));
+  // Each group sits where its first item was: untagged (led by Milk), then
+  // dairy (Cheese), fruit (Bananas), veg (Tomatoes), meat, household.
+  const groupedTail = [
+    "Edit Cheese",
+    "Edit Yogurt",
+    "Edit Bananas",
+    "Edit Apples",
+    "Edit Tomatoes",
+    "Edit Onions",
+    "Edit Carrots",
+    "Edit Chicken",
+    "Edit Washing-up liquid",
+    "Edit Toilet roll",
+  ];
+
+  const grouped = shoppingSaved(page);
+  await page.getByRole("button", { name: "Group by tag" }).click();
+  await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
+  await grouped;
+  expect((await editLabels())[0]).toBe("Edit Milk");
+
+  await openList(page, "shopping");
+  await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
+
+  await page.getByRole("button", { name: "Group by tag" }).click();
+  await expect(page.getByText("Already grouped by tag")).toBeVisible();
+});
+
+test("the add bar's tag combobox tags each new item until a reload", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const tag = page.getByRole("combobox", { name: "Tag" });
+  const suggestions = page.getByRole("listbox", { name: "Suggestions" });
+  const newItem = page.getByLabel("New item");
+
+  await tag.click();
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+  await suggestions.getByRole("option", { name: "dairy" }).click();
+  await expect(tag).toHaveValue("dairy");
+
+  await newItem.fill("Oat milk");
+  await page.getByRole("button", { name: "Add" }).click();
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Oat milk") });
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await expect(tag).toHaveValue("dairy");
+
+  // The tag carries on to the next add.
+  await newItem.fill("Kefir");
+  await newItem.press("Enter");
+  const kefir = page.locator("li").filter({ has: page.getByLabel("Edit Kefir") });
+  await expect(kefir.getByText("tag: dairy")).toBeVisible();
+
+  // A tag typed into the value wins over the combobox's.
+  await newItem.fill("Brie [deli]");
+  await page.getByRole("button", { name: "Add" }).click();
+  const brie = page.locator("li").filter({ has: page.getByLabel("Edit Brie") });
+  await expect(brie.getByText("tag: deli")).toBeVisible();
+
+  // A new tag can be typed here too; Enter with nothing highlighted adds.
+  await tag.fill("bakery");
+  await newItem.fill("Bagels");
+  await tag.focus();
+  await tag.press("Enter");
+  const bagels = page.locator("li").filter({ has: page.getByLabel("Edit Bagels") });
+  await expect(bagels.getByText("tag: bakery")).toBeVisible();
+
+  await page.reload();
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await expect(tag).toHaveValue("");
+});
+
+test("the edit modal's tag combobox lists, filters, picks and adds tags", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  const tag = dialog.getByRole("combobox", { name: "Tag" });
+  const suggestions = dialog.getByRole("listbox", { name: "Suggestions" });
+
+  // The list floats over the dialog rather than pushing its contents down.
+  const save = dialog.getByRole("button", { name: "Save" });
+  const saveBefore = await save.boundingBox();
+  await tag.focus();
+  await expect(suggestions).toBeVisible();
+  expect(await save.boundingBox()).toEqual(saveBefore);
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+
+  // Typing filters; arrowing to an option and pressing Enter picks it
+  // without saving.
+  await tag.fill("da");
+  await expect(suggestions.getByRole("option")).toHaveText(["dairy", 'Add "da"']);
+  await tag.press("ArrowDown");
+  await expect(tag).toHaveAttribute("aria-activedescendant", /.+/);
+  await tag.press("Enter");
+  await expect(tag).toHaveValue("dairy");
+  await expect(suggestions).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  // With a tag chosen, opening again shows every tag, not just the match.
+  await tag.click();
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+  await expect(suggestions.locator('[data-current="true"]')).toHaveText("dairy");
+
+  // A new tag is offered as "Add …"; Escape closes only the list.
+  await tag.fill("deli");
+  await suggestions.getByRole("option", { name: 'Add "deli"' }).click();
+  await expect(tag).toHaveValue("deli");
+  await tag.fill("del");
+  await tag.press("Escape");
+  await expect(suggestions).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  await tag.fill("deli");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const saved = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await saved;
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  await expect(row.getByText("tag: deli")).toBeVisible();
+});
+
 test("pressing Enter in the edit modal saves", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");

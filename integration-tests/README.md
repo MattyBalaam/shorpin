@@ -50,6 +50,7 @@ Each worker's seed contains:
 
 - **Owner** — 2 lists: `Shopping` (30 items, starting Milk, Bread, Eggs, Butter, Cheese, Bananas, Apples, Yogurt, Orange juice, Coffee — long enough to scroll) and `Owner Empty`
 - **Collab** — 2 lists: `Collab Shopping` (Coffee, Tea, Sugar) and `Collab Empty`
+- Some seeded items carry a tag (e.g. `Cheese [dairy]`, `Bananas [fruit]`). Milk, Bread and Eggs are untagged. Row labels like `Edit Cheese` use the text alone.
 - Collab is a member of owner's Shopping list
 - One pending waitlist entry (first name "Pending", last name "User")
 

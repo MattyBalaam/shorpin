@@ -187,7 +187,21 @@ Instead:
 **Editing:** item values are shown as plain text and submitted from a hidden `items[n].value` input. They're no longer inline textareas, which were easy to focus by accident while scrolling or dragging. The row's edit button opens a `<dialog>` with a textarea. Saving writes the new value into the hidden input, dispatches `input` so Conform's `useFormData` updates `edited` and the shown text, and submits the list form.
 
 - The dialog renders inside the list `<Form>`, so its textarea has no `name`, and its buttons are `type="button"` rather than a nested `<form method="dialog">`.
-- Each row's edit button is labelled `Edit <value>`, so tests and assistive tech find rows by that label.
+- Each row's edit button is labelled `Edit <text>`, so tests and assistive tech find rows by that label.
+
+**Tags:** an item can carry one tag. It's stored inside the value as a trailing `[tag]` (e.g. `Milk [dairy]`) rather than in its own column. So tags need no migration, and they ride along on every path that already carries a value: add, edit, undo-delete and offline replay. [item-tag.ts](app/lib/item-tag.ts) parses and formats them:
+
+- Only the last bracket group, at the very end, counts. `Call [Sam] tomorrow` stays untagged, and a value that's only `[tag]` is shown as typed.
+- Typing `text [tag]` in the add box tags the new item.
+- The add bar also has a tag field: the same combobox as the edit dialog, so you can pick an existing tag or type a new one. It has no `name`. Instead, the form's `onSubmitCapture` folds its tag into the typed value as `[tag]` before anything reads the form, so online adds, offline queueing and replay all carry it unchanged. A tag typed into the value wins. The tag is React state, not a form field, so Conform's reset after each add leaves it alone and a run of items can share a tag until the page reloads. Enter in the tag field adds the item, like Enter in the item input.
+- The edit dialog splits the value into an Item textarea and a Tag field, then joins them back on save. Brackets are stripped from the tag.
+- The Tag field is a hybrid combobox ([tag-combobox.tsx](app/components/tag-combobox/tag-combobox.tsx), following the WAI-ARIA APG "list autocomplete" pattern).
+  - Opening it by focus, click or the arrow keys lists every tag, with the current one ticked, like a select. Only typing filters, so a chosen tag doesn't narrow the list to itself.
+  - A typed tag that doesn't exist yet is offered as `Add "…"`.
+  - Arrow keys move through the options and Enter picks one. With nothing highlighted, Enter saves the dialog. Escape closes the list without closing the dialog.
+- The listbox is a manual popover in the top layer, placed under the input with CSS anchor positioning (`flip-block` when there's no room below, as in the add bar). Each instance sets its own anchor name inline. With a shared name, the dialog's list could attach to the add bar's input. The dialog's scrolling body can't clip it, and opening or closing it never moves the dialog's contents, so it can simply close on blur. While open it can cover Save: pick a tag, press Escape or tap elsewhere first.
+- The row shows the text, with the tag as a pill in its own grid column just before the edit button. Every row has an edit button, so tags line up on the right whatever else a row shows. Row labels (`Edit`, `Reorder`, `Delete`) use the text alone, so adding a tag doesn't rename a row.
+- **Group by tag** (list header) reorders the list once and saves it through the same `reorderViaConform` path as a drag. The grouped order is the list's real order, shared with every member, rather than a local view. Each group sits where its first item was, and items keep their order inside a group. Untagged items count as a group, so grouping twice changes nothing. On narrow screens the button is icon-only so the header fits.
 
 ### Drag, reorder & swipe
 
