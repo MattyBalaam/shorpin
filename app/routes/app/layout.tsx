@@ -1,22 +1,18 @@
 import { useEffect } from "react";
-import { Form, href, Outlet, useLocation, useRouteLoaderData } from "react-router";
+import { Outlet, useRouteLoaderData } from "react-router";
 import { toast } from "~/lib/toast";
-import { Breadcrumbs } from "~/components/breadcrumbs/breadcrumbs";
-import { Button } from "~/components/button/button";
 import { Notifications } from "~/components/notifications/notifications";
 import {
   OnlineStatusIndicator,
   OnlineStatusProvider,
 } from "~/components/online-status/online-status";
 import type { loader as rootLoader } from "~/root";
-import * as styles from "./layout.css";
 
+// Each page renders its own header (see PageHeader), so it can put its
+// actions beside the breadcrumbs.
 export default function AppLayout() {
   const rootData = useRouteLoaderData<typeof rootLoader>("root");
   const notification = rootData?.toast;
-  const { pathname } = useLocation();
-  const showLogout =
-    pathname === "/" || pathname === "/sign-ups" || pathname.startsWith("/config/");
 
   useEffect(
     function showNewToast() {
@@ -30,17 +26,6 @@ export default function AppLayout() {
   return (
     <OnlineStatusProvider>
       <OnlineStatusIndicator />
-      <Breadcrumbs />
-      {showLogout ? (
-        <Form method="POST" action={href("/logout")} className={styles.logOut}>
-          <Button type="submit" aria-label="Sign out">
-            <span className={styles.logOutLabel}>Sign out</span>
-            <span aria-hidden="true" className={styles.logOutIcon}>
-              ⏻
-            </span>
-          </Button>
-        </Form>
-      ) : null}
       <Notifications />
       <Outlet />
     </OnlineStatusProvider>

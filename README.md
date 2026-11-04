@@ -66,7 +66,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 **Root Layout** ([app/root.tsx](app/root.tsx)):
 
 - Single `<main>` container with centered max-width
-- Breadcrumbs navigation component
+- Page header with the breadcrumbs and the page's actions (see [Page header](#page-header))
 - Notification panel under the breadcrumbs (see [Notifications](#notifications))
 
 **On-screen keyboard sizing:**
@@ -161,6 +161,7 @@ Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GO
 - [Items](app/components/items.tsx) - Drag-to-reorder list with swipe-to-delete (see [Drag, reorder & swipe](#drag-reorder--swipe))
 - [Item](app/components/item.tsx) - Individual list item with swipe-to-delete
 - [Breadcrumbs](app/components/breadcrumbs/breadcrumbs.tsx) - Navigation breadcrumbs using route handles
+- [PageHeader](app/components/page-header/page-header.tsx) - Breadcrumbs with the page's actions beside them (see [Page header](#page-header))
 
 **Patterns to Follow:**
 
@@ -424,6 +425,14 @@ The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the cri
 - The chunk is precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
 
 Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
+
+### Page header
+
+Each page under the app layout renders its own [`<PageHeader>`](app/components/page-header/page-header.tsx), passing its actions (Sign out and pending sign-ups on home; Style, Colours and Group by tag on a list). The layout used to render the breadcrumbs, with each page's actions placed separately in the same grid cell, so neither made room for the other and a long list name ran under the buttons.
+
+- The breadcrumbs and actions share one flex row. The current page's title shrinks and truncates with an ellipsis. The actions take the rest of the row, but never less than their icon-only width.
+- The actions are a size container. Below a threshold they show icons only, as square buttons. Each one wraps its text in `<ActionLabel>`, which is visually hidden then, so it stays the control's accessible name.
+- The threshold is fixed per header (`compactBelow`) because a container query can't read its content's width. Each is set to what that header's labelled actions need in the widest app style (brutalist): 15rem for home's two, and 27rem for the list's Style, Colours and Group by tag.
 
 ### Notifications
 

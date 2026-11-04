@@ -12,11 +12,12 @@ import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
 import { Link } from "~/components/link/link";
-import { BrushIcon } from "~/components/icon/icons";
+import { BrushIcon, PowerIcon } from "~/components/icon/icons";
 import { Button } from "~/components/button/button";
 import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
 import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
+import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
@@ -121,12 +122,20 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
 
   return (
     <>
-      <div className={styles.pendingSignUps}>
-        <Suspense fallback={null}>
-          <Revalidator data={loaderData.revalidatePromise} />
-          <PendingSignUps countPromise={loaderData.waitlistCount} />
-        </Suspense>
-      </div>
+      <PageHeader
+        actions={[
+          <Suspense key="sign-ups" fallback={null}>
+            <Revalidator data={loaderData.revalidatePromise} />
+            <PendingSignUps countPromise={loaderData.waitlistCount} />
+          </Suspense>,
+          <RouterForm key="sign-out" method="POST" action={href("/logout")}>
+            <Button type="submit">
+              <PowerIcon />
+              <ActionLabel>Sign out</ActionLabel>
+            </Button>
+          </RouterForm>,
+        ]}
+      />
       <ScrollArea>
         <nav className={styles.listWrapper}>
           <Suspense fallback={<Spinner />}>
