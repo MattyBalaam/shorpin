@@ -86,7 +86,7 @@ export function Breadcrumbs() {
           const isLast = index === breadcrumbs.length - 1;
 
           return (
-            <li key={crumb.to} className={styles.item}>
+            <li key={crumb.to} className={isLast ? styles.currentItem : styles.item}>
               {isLast ? (
                 <h1 className={styles.currentPage} aria-current="page">
                   {crumb.label}

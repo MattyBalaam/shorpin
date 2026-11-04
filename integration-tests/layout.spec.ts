@@ -30,6 +30,25 @@ for (const width of [320, 375]) {
   });
 }
 
+// The title and the header's actions share a row: a long title truncates, and
+// the actions drop to icons (keeping their names) rather than overlapping it.
+test("a long list name doesn't run under the header's actions at 320px", async ({ page, ctx }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await login(page, ctx.ownerEmail);
+  await page.getByLabel("New list").fill("Weekly big shop for the whole family");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.waitForURL(/\/lists\//);
+
+  const title = page.getByRole("heading", { name: "Weekly big shop for the whole family" });
+  const style = page.getByRole("link", { name: "Style", exact: true });
+  await expect(style).toBeVisible();
+  await expect(page.getByRole("button", { name: "Colours", exact: true })).toBeVisible();
+
+  const titleBox = await title.boundingBox();
+  const styleBox = await style.boundingBox();
+  expect(titleBox && styleBox && titleBox.x + titleBox.width).toBeLessThanOrEqual(styleBox?.x ?? 0);
+});
+
 // WebKit takes the fallback anyway; in Chromium this fakes the absence of
 // scroll-state queries to the ref callback and checks the attributes it sets
 // in their place (the queries still apply here, so opacity isn't the

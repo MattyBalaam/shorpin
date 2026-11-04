@@ -18,6 +18,7 @@ import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
 import { BrushIcon, GroupIcon } from "~/components/icon/icons";
+import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import { formDataToPairs } from "~/lib/form-data-codec";
 import { groupByTag, listTags, withPickedTag } from "~/lib/item-tag";
@@ -682,17 +683,24 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       defaultPrimary={defaultValue.themePrimary}
       defaultSecondary={defaultValue.themeSecondary}
     >
-      <div className={styles.topActions}>
-        <Link variant="outline" to={href("/lists/:list/style", { list: params.list })}>
-          <BrushIcon />
-          Style
-        </Link>
-        <Button variant="outline" type="button" onClick={groupItemsByTag}>
-          <GroupIcon />
-          <span className={styles.groupLabel}>Group by tag</span>
-        </Button>
-        <Theme.Button formId={form.id} />
-      </div>
+      <PageHeader
+        compactBelow="27rem"
+        actions={[
+          <Link
+            key="style"
+            variant="outline"
+            to={href("/lists/:list/style", { list: params.list })}
+          >
+            <BrushIcon />
+            <ActionLabel>Style</ActionLabel>
+          </Link>,
+          <Theme.Button key="colours" formId={form.id} />,
+          <Button key="group" variant="outline" type="button" onClick={groupItemsByTag}>
+            <GroupIcon />
+            <ActionLabel>Group by tag</ActionLabel>
+          </Button>,
+        ]}
+      />
 
       <Form
         {...form.props}

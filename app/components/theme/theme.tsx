@@ -4,6 +4,7 @@ import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
 import { PaletteIcon } from "../icon/icons";
+import { ActionLabel } from "../page-header/page-header";
 import { PalettePreview } from "./palette-preview";
 
 type Colors = { primary: string; secondary: string };
@@ -150,7 +151,7 @@ function ThemeButton({ formId }: ThemeButtonProps) {
     <>
       <Button onClick={generateCandidate}>
         <PaletteIcon />
-        Colours
+        <ActionLabel>Colours</ActionLabel>
       </Button>
       {candidate && (
         <dialog

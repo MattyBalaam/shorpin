@@ -1,4 +1,5 @@
 import { Button } from "~/components/button/button";
+import { PageHeader } from "~/components/page-header/page-header";
 import { toast } from "~/lib/toast";
 import * as styles from "./notifications.css";
 
@@ -30,18 +31,21 @@ const samples = {
 
 export default function NotificationsDemo() {
   return (
-    <div className={styles.page}>
-      <h1>Notifications</h1>
-      <div className={styles.buttons}>
-        <Button variant="solid" onClick={() => Object.values(samples).forEach((show) => show())}>
-          Show all
-        </Button>
-        {Object.entries(samples).map(([name, show]) => (
-          <Button key={name} variant="outline" onClick={show}>
-            {name}
+    <>
+      <PageHeader />
+      <div className={styles.page}>
+        <h1>Notifications</h1>
+        <div className={styles.buttons}>
+          <Button variant="solid" onClick={() => Object.values(samples).forEach((show) => show())}>
+            Show all
           </Button>
-        ))}
+          {Object.entries(samples).map(([name, show]) => (
+            <Button key={name} variant="outline" onClick={show}>
+              {name}
+            </Button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

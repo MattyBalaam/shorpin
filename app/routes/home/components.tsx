@@ -6,6 +6,7 @@ import { DragGrip } from "~/components/reorderable/drag-grip";
 import { reorderViaFormData } from "~/components/reorderable/reorder-strategies";
 import type { StartDragOptions } from "~/components/reorderable/use-drag-list";
 import { useReorderable } from "~/components/reorderable/use-reorderable";
+import { ActionLabel } from "~/components/page-header/page-header";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 import * as styles from "./home.css";
@@ -16,7 +17,7 @@ export function PendingSignUps({ countPromise }: { countPromise: Promise<number>
   if (count === 0) return null;
   return (
     <Link to={href("/sign-ups")}>
-      {count} <span className={styles.signUpsLabel}>pending</span>
+      {count} <ActionLabel>pending</ActionLabel>
     </Link>
   );
 }

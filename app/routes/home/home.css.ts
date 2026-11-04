@@ -1,4 +1,4 @@
-import { createContainer, fallbackVar, keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 const rowBackground = fallbackVar(vars.style.rowBackground, vars.palette.surface);
@@ -221,49 +221,6 @@ export const appearance = style({
 export const addListForm = style({
   flex: 1,
   minWidth: 0,
-});
-
-// Below this width the left gutter is too narrow for "N pending", which then
-// overlaps the breadcrumbs, so the link moves beside the sign-out button.
-// Roughly the 60ch column plus a 10ch-wide gutter either side.
-const narrowGutter = "screen and (max-width: 48rem)";
-
-const pendingSignUpsContainer = createContainer();
-
-export const pendingSignUps = style({
-  gridRow: "breadcrumbs",
-  gridColumn: "left",
-  containerName: pendingSignUpsContainer,
-  containerType: "inline-size",
-  display: "flex",
-  justifyContent: "flex-start",
-  alignItems: "center",
-  paddingInlineStart: vars.spacing.md,
-  "@media": {
-    [narrowGutter]: {
-      gridColumn: "content",
-      justifySelf: "end",
-      // Shrink-wrapped here, so it can't be a size container.
-      containerType: "normal",
-      paddingInlineStart: 0,
-      // Clears the sign-out button, which shares this cell (see layout.css.ts).
-      marginInlineEnd: `calc(${vars.spacing.controlHeight} * 1.5 + ${vars.spacing.md})`,
-    },
-  },
-});
-
-export const signUpsLabel = style({
-  display: "none",
-  "@container": {
-    [`${pendingSignUpsContainer} (min-width: 10ch)`]: {
-      display: "inline",
-    },
-  },
-  "@media": {
-    [narrowGutter]: {
-      display: "inline",
-    },
-  },
 });
 
 export const newList = style({
