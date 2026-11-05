@@ -1,19 +1,14 @@
 {
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/.server/**/*.ts",
-    "**/.server/**/*.tsx",
-    "**/.client/**/*.ts",
-    "**/.client/**/*.tsx",
-    ".react-router/types/**/*"
-  ],
+  "include": ["**/*.ts", "**/*.tsx"],
+  // Not yet ported from React Router (see legacy/README.md).
+  "exclude": ["node_modules", "legacy", ".output", "dist"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2024"],
-    "types": ["@react-router/node", "vite/client", "msw/vite/client"],
+    "types": ["node", "vite/client", "msw/vite/client"],
     "isolatedModules": true,
     "esModuleInterop": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
@@ -24,10 +19,8 @@
     "forceConsistentCasingInFileNames": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./src/*"]
     },
-    "noEmit": true,
-    "rootDirs": [".", "./.react-router/types"],
-    "plugins": [{ "name": "@react-router/dev" }]
+    "noEmit": true
   }
 }

@@ -1,7 +1,9 @@
 import { expect, test } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
-test("owner can open config modal for their list", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("owner can open config modal for their list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Configure" }).first().click();
@@ -10,7 +12,9 @@ test("owner can open config modal for their list", async ({ page, ctx }) => {
   await expect(page.getByRole("heading", { name: /Admin/ })).toBeVisible();
 });
 
-test("owner sees collaborator checkboxes in config modal", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("owner sees collaborator checkboxes in config modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Shopping list (collab is already a member)
@@ -25,7 +29,9 @@ test("owner sees collaborator checkboxes in config modal", async ({ page, ctx })
   await expect(page.getByText(ctx.collabEmail)).toBeVisible();
 });
 
-test("owner can add a collaborator to a list", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Owner Empty list (no current members)
@@ -46,7 +52,9 @@ test("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await expect(page).toHaveURL("/");
 });
 
-test("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/config/shopping");
   await expectPageSnapshot(page, "list-config");

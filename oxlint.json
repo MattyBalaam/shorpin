@@ -1,6 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "ignorePatterns": ["legacy/**", "src/routeTree.gen.ts", ".output/**"],
   "rules": {
-    "typescript/no-non-null-assertion": "error"
+    "typescript/no-non-null-assertion": "error",
+    // Solid's compiler assigns `let el!: HTMLElement` from `ref={el}`, which
+    // the linter can't see, so every element ref reads as never assigned.
+    "eslint/no-unassigned-vars": "off"
   }
 }

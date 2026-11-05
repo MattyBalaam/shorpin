@@ -19,7 +19,9 @@ async function pickStyle(page: Page, name: RegExp, action: "Save" | "Cancel") {
   await expect(page).not.toHaveURL(/\/style$/);
 }
 
-test("a style only applies once saved, and keeps after a reload", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("a style only applies once saved, and keeps after a reload", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-app-style", "classic");
@@ -64,7 +66,12 @@ test("a style only applies once saved, and keeps after a reload", async ({ page,
   await expect(html).toHaveAttribute("data-app-style", "brutalist");
 });
 
-test("a list's own style overrides the device style on that list only", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("a list's own style overrides the device style on that list only", async ({
+  page,
+  ctx,
+}) => {
   await login(page, ctx.ownerEmail);
   const html = page.locator("html");
 
@@ -99,7 +106,9 @@ test("a list's own style overrides the device style on that list only", async ({
   await expect(html).toHaveAttribute("data-app-style", "classic");
 });
 
-test("a11y: style picker", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("a11y: style picker", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.getByRole("link", { name: "Style", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Style" })).toBeVisible();
@@ -110,7 +119,9 @@ test("a11y: style picker", async ({ page, ctx }) => {
   });
 });
 
-test("on a short screen the picker's options scroll while its actions stay in view", async ({
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("on a short screen the picker's options scroll while its actions stay in view", async ({
   page,
   ctx,
 }) => {
@@ -133,7 +144,9 @@ test("on a short screen the picker's options scroll while its actions stay in vi
   await expect(heading).toBeInViewport({ ratio: 1 });
 });
 
-test("the style belongs to the account: signed-out pages are default, and it follows the user to another device", async ({
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("the style belongs to the account: signed-out pages are default, and it follows the user to another device", async ({
   page,
   browser,
   ctx,
@@ -167,7 +180,9 @@ test("the style belongs to the account: signed-out pages are default, and it fol
   await otherDevice.close();
 });
 
-test("a style saved on one device reaches another that already has one cached", async ({
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("a style saved on one device reaches another that already has one cached", async ({
   page,
   browser,
   ctx,
@@ -189,7 +204,12 @@ test("a style saved on one device reaches another that already has one cached", 
   await otherDevice.close();
 });
 
-test("the style dialog has its own URL, and leaving it changes nothing", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("the style dialog has its own URL, and leaving it changes nothing", async ({
+  page,
+  ctx,
+}) => {
   await login(page, ctx.ownerEmail);
   const html = page.locator("html");
 

@@ -16,13 +16,15 @@ for (const [name, path] of [
   ["forgot-password", "/forgot-password"],
   ["request-access", "/request-access"],
 ] as const) {
-  test(`${name} page matches its snapshot`, { tag: "@visual" }, async ({ page }) => {
+  // Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+  test.fixme(`${name} page matches its snapshot`, { tag: "@visual" }, async ({ page }) => {
     await page.goto(path);
     await expectPageSnapshot(page, name);
   });
 }
 
-test("set password page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+test.fixme("set password page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/set-password");
   await expectPageSnapshot(page, "set-password");

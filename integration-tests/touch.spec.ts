@@ -71,11 +71,13 @@ async function centreDistance(page: Page, fromLabel: string, toLabel: string) {
 }
 
 // The seeded Shopping list has more items; these tests only move the first three.
+// Read from each row's Edit button ("Edit Milk"), as a user would see the
+// order, rather than from form fields that only some implementations render.
 const itemOrder = (page: Page) =>
   page
-    .locator('li input[type="hidden"][name$=".value"]')
+    .locator('li button[aria-label^="Edit "]')
     .evaluateAll((elements) =>
-      elements.slice(0, 3).map((element) => (element as HTMLInputElement).value),
+      elements.slice(0, 3).map((element) => element.getAttribute("aria-label")?.slice(5) ?? ""),
     );
 
 // Reorders persist on release; wait for that POST before reloading, otherwise
@@ -163,7 +165,9 @@ test("vertical touch drag reorders list items without scrolling the page", async
   await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Eggs", "Milk"]);
 });
 
-test("vertical touch drag reorders lists on home", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("vertical touch drag reorders lists on home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await expect.poll(() => listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
 
@@ -196,7 +200,9 @@ test("a vertical touch drag without a long-press doesn't reorder", async ({ page
   expect(await itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
 });
 
-test("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
   page,
   ctx,
 }) => {

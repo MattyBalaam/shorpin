@@ -1,14 +1,18 @@
 import { test, expect } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
-test("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // The seed adds 1 waitlist entry, so the home page should show "1 pending"
   await expect(page.getByRole("link", { name: /pending/ })).toBeVisible();
 });
 
-test("admin can view sign-ups modal", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("admin can view sign-ups modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -18,7 +22,9 @@ test("admin can view sign-ups modal", async ({ page, ctx }) => {
   await expect(page.getByText(ctx.waitlistEmail)).toBeVisible();
 });
 
-test("admin can handle sign-ups", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("admin can handle sign-ups", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -36,7 +42,9 @@ test("admin can handle sign-ups", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: /pending/ })).toBeHidden();
 });
 
-test("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
   page,
   ctx,
 }) => {
@@ -57,7 +65,9 @@ test("client-side navigation to a route with no offline handling of its own fall
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
-test("client-side navigation to a route with no offline handling of its own shows an offline message when the browser itself has no connection", async ({
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("client-side navigation to a route with no offline handling of its own shows an offline message when the browser itself has no connection", async ({
   page,
   context,
   ctx,
@@ -79,7 +89,9 @@ test("client-side navigation to a route with no offline handling of its own show
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
-test("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/sign-ups");
   // The seeded sign-up date is fixed; masked in case of timezone differences.

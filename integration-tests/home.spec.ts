@@ -2,7 +2,9 @@ import type { Response } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
-test("owner can create a new list", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can create a new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByLabel("New list").fill("Groceries");
@@ -16,7 +18,9 @@ test("owner can create a new list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
 
-test("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page
@@ -35,7 +39,9 @@ test("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
   await page.waitForURL("/lists/owner-empty-1");
 });
 
-test("owner can create a list whose slug belongs to a list they can't see", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can create a list whose slug belongs to a list they can't see", async ({
   page,
   ctx,
 }) => {
@@ -48,7 +54,9 @@ test("owner can create a list whose slug belongs to a list they can't see", asyn
   await page.waitForURL(/\/lists\/collab-shopping-[0-9a-f]{6}$/);
 });
 
-test("owner can create a list while offline, synced on reconnect", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can create a list while offline, synced on reconnect", async ({
   page,
   ctx,
   context,
@@ -94,7 +102,9 @@ test("owner can create a list while offline, synced on reconnect", async ({
   await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
 });
 
-test("a stale-session redirect during reconnect sync doesn't drop a queued list, and it flushes once retried", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("a stale-session redirect during reconnect sync doesn't drop a queued list, and it flushes once retried", async ({
   page,
   ctx,
   context,
@@ -152,7 +162,9 @@ test("owner sees their two lists", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Owner Empty" })).toBeVisible();
 });
 
-test("owner can reorder lists from home", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can reorder lists from home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const getListOrder = async () =>
@@ -193,7 +205,9 @@ test("owner can reorder lists from home", async ({ page, ctx }) => {
   }).toPass();
 });
 
-test("owner can reorder lists while offline, synced on reconnect", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner can reorder lists while offline, synced on reconnect", async ({
   page,
   ctx,
   context,
@@ -258,7 +272,9 @@ test("owner can reorder lists while offline, synced on reconnect", async ({
   }).toPass();
 });
 
-test("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const firstList = () => page.locator('li a[href^="/lists/"]').first();
@@ -282,7 +298,9 @@ test("reordering does not snap back immediately after drop", async ({ page, ctx 
   await expect(firstList()).toHaveText("Owner Empty");
 });
 
-test("owner sees admin link for both their lists", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("owner sees admin link for both their lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
@@ -296,7 +314,9 @@ test("collaborator sees their lists plus the shared list", async ({ page, ctx })
   await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible(); // shared from owner
 });
 
-test("collaborator sees admin only for their own lists, not the shared one", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("collaborator sees admin only for their own lists, not the shared one", async ({
   page,
   ctx,
 }) => {
@@ -306,13 +326,17 @@ test("collaborator sees admin only for their own lists, not the shared one", asy
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
 });
 
-test("user adds new list", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("user adds new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
 });
 
-test("shows an error message when list creation fails", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("shows an error message when list creation fails", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByLabel("New list").fill("__fail__");
@@ -349,6 +373,9 @@ test("unread badge clears after opening the list", async ({ page, ctx }) => {
   // Open the list — loader upserts a list_view
   await page.getByRole("link", { name: "Shopping" }).click();
   await page.waitForURL("/lists/shopping");
+  // The URL changes as the navigation starts, before the list has loaded
+  // (and recorded the visit), so wait for the list itself.
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
   // Navigate back to home
   await page.getByRole("link", { name: "Back to index" }).click();
@@ -376,6 +403,9 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
 
   await page.getByRole("link", { name: "Shopping" }).click();
   await page.waitForURL("/lists/shopping");
+  // The URL changes as the navigation starts, before the list has loaded
+  // (and recorded the visit), so wait for the list itself.
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await page.getByRole("link", { name: "Back to index" }).click();
 
   await expect(page.getByText("30 unread")).not.toBeVisible();
@@ -387,7 +417,9 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
   await expect(shoppingRow.getByText("30 unread")).toBeVisible();
 });
 
-test("starred list opens on app launch, and un-starring falls back to home", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("starred list opens on app launch, and un-starring falls back to home", async ({
   page,
   ctx,
 }) => {
@@ -433,7 +465,9 @@ test("starred list opens on app launch, and un-starring falls back to home", asy
   await expect(page).toHaveURL("/");
 });
 
-test("installed app opens the starred list on launch even without start_url (iOS)", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("installed app opens the starred list on launch even without start_url (iOS)", async ({
   page,
   ctx,
 }) => {
@@ -468,7 +502,9 @@ test("installed app opens the starred list on launch even without start_url (iOS
   await expect(page).toHaveURL("/");
 });
 
-test("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+
+test.fixme("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await expectPageSnapshot(page, "home");
 });

@@ -72,7 +72,7 @@ export default defineConfig({
     },
     useDevServer
       ? {
-          command: `pnpm exec react-router dev --mode mock --port ${appPort}`,
+          command: `pnpm exec vite dev --mode mock --port ${appPort}`,
           url: `http://localhost:${appPort}`,
           env: {
             VITE_SUPABASE_URL: `http://localhost:${mockPort}`,
@@ -84,7 +84,7 @@ export default defineConfig({
           stderr: "pipe",
         }
       : {
-          command: `pnpm react-router build --mode mock && pnpm react-router-serve ./build/server/index.js`,
+          command: `pnpm exec vite build --mode mock && node .output/server/index.mjs`,
           url: `http://localhost:${appPort}`,
           env: {
             VITE_SUPABASE_URL: `http://localhost:${mockPort}`,

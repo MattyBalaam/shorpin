@@ -1,11 +1,11 @@
-A todo style app built with React Router SSR Framework mode. Oringally running on Netlify, but now using Coolify.
+A todo style app built with TanStack Start and Solid, server-rendered. Originally running on Netlify, but now using Coolify.
 
 This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
-- **Framework**: React Router v8 (SSR)
+- **Framework**: TanStack Start 2 (RC) with Solid 2 (RC), server-rendered — migrating from React Router v8 + React, see [Migration](#migration-to-tanstack-start--solid)
 - **Language**: TypeScript
 - **Styling**: Vanilla Extract CSS-in-JS
-- **Build Tool**: Vite
+- **Build Tool**: Vite, with Nitro building the Node server
 - **Testing**: Playwright with accessibility testing
 - **Package Manager**: pnpm
 
@@ -36,29 +36,50 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 - The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
 - CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
 
+## Migration to TanStack Start + Solid
+
+In progress, on the `spike/tanstack-solid` branch, to learn both. The list page, the layouts, the dev login and a minimal home are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
+
+Decisions so far:
+
+- **Latest of everything, including pre-releases:** Solid 2 RC, `@tanstack/solid-start` 2 RC, `@solidjs/vite-plugin` 3 (next), and Formisch's Solid 2 build (`@formisch/solid/v2`; the package's main entry still targets Solid 1).
+- **Route config, not file-based routing:** [src/routes.ts](src/routes.ts) is TanStack Router's virtual route config, the same shape as React Router's `routes.ts`. Route modules sit beside their helpers (`data.ts`, `*.css.ts`), which file-based routing would treat as routes.
+- **Server functions replace loaders and actions:** each route's data lives in a `*.functions.ts` module (Start's convention: importable from the client, which gets an RPC stub). `*.server.ts` stays for server-only helpers, which Start's import protection keeps out of the client.
+- **Auth sits on the data:** `authMiddleware` ([supabase.middleware.ts](src/lib/supabase.middleware.ts)) wraps every server function that touches a user's data and redirects to `/login` without a session. React Router's request middleware with a public-route allowlist is gone: a server function is its own endpoint, so it must check for itself.
+- **Isomorphic loaders replace `clientLoader`:** a TanStack Router loader runs on the server for the first page load, then in the browser on client navigations. The list's loader falls back to its IndexedDB snapshot there, and an effect caches what the server sent (which `clientLoader.hydrate` used to do).
+- **`.client.ts` imports are mocked on the server** (`importProtection.behavior: "mock"` in [vite.config.ts](vite.config.ts)), matching React Router's rule that such modules are empty there. Calling a mocked export still throws.
+- **Readable server function ids** (`list.functions--mutateList…`) through `generateFunctionId`, so DevTools and tests can tell requests apart. Specs match requests through helpers in [integration-tests/helpers.ts](integration-tests/helpers.ts) rather than the framework's wire format.
+- **No Conform:** the list page holds its state in two signals (confirmed server items, and what's on screen) and saves through one server function, one save at a time. See [List Mutations](#list-mutations-adddelete).
+- **Solid 2 gotchas met so far:**
+  - Reading a JSX prop builds its elements: read it once (`children()`), or keep data as data and build JSX in the template, or hydration can't match the server's HTML.
+  - `onSettled` throws on any return value but a cleanup function, including the Promise Chromium's `scrollIntoView` now returns.
+  - Attributes are written as named: `stroke-width`, not `strokeWidth`; `aria-hidden="true"`, since a bare boolean renders empty.
+  - Writes are batched: a signal read straight after its setter returns the old value until the batch flushes.
+- **Lint:** oxlint's `no-unassigned-vars` is off, because it can't see Solid's compiler assigning `ref={el}` variables.
+
 ## Architecture
 
 ### Routing Structure
 
-The app uses React Router 7's file-based routing with explicit route definitions in [app/routes.ts](app/routes.ts):
+Routes are declared in [src/routes.ts](src/routes.ts) (TanStack Router's virtual route config), and [src/routeTree.gen.ts](src/routeTree.gen.ts) is generated from it on every dev or build run:
 
 ```
-/ (home)                              → app/routes/home.tsx
-/lists/:list                          → app/routes/list/list.tsx
-/lists/:list/confirm-delete           → app/routes/delete.tsx
+/login                                → src/routes/auth/login.dev.tsx
+/ (home)                              → src/routes/home/home.tsx
+/lists/$list                          → src/routes/list/list.tsx
 ```
 
 **Route Hierarchy:**
 
-- Root Layout: [app/root.tsx](app/root.tsx) - Provides main container (max-width: 60ch), toast notifications, and breadcrumbs
+- Root Layout: [src/root.tsx](src/root.tsx) - The document shell (`shellComponent`) and main container (max-width: 60ch). The auth and app layouts add notifications; pages render their own header with breadcrumbs
 - Flat routing structure with one level of nesting for the delete confirmation modal
-- Dynamic route parameter `:list` maps to list slugs in the database
+- Dynamic route parameter `$list` maps to list slugs in the database
 
 **Data Loading:**
 
-- Loaders fetch data server-side (Supabase queries)
-- Real-time updates via Supabase broadcast channels
-- Form actions handle mutations with optimistic UI updates via Conform
+- Loaders call server functions (Supabase queries), on the server for the first load and from the browser after
+- Real-time updates via Supabase broadcast channels, which refetch with `router.invalidate()`
+- Mutations are server functions called from event handlers, with the page's own signals as optimistic state
 - List item mutations are consolidated into a single Supabase RPC (`public.mutate_list`) to keep add/edit/reorder/delete/undelete, deleted-item pruning, and list view timestamp writes transactional
 
 ### UI & Layout Patterns
@@ -96,7 +117,7 @@ Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > 
 **Component Structure:**
 
 - Semantic HTML preferred (nav, ol, li elements)
-- Form components using React Aria and Conform
+- Forms use Formisch with valibot schemas (Conform on routes not yet ported)
 - Reusable clickable elements with shared styles
 
 ### Styling Approach
@@ -168,33 +189,25 @@ Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GO
 - Named functions in useEffect callbacks (see [CONTRIBUTING.md](CONTRIBUTING.md))
 - Grid layouts with template areas and named grid lines
 - Co-located styles using Vanilla Extract
-- Conform for form validation and state management
+- Formisch for form validation and state (Conform on routes not yet ported)
 
 ### List Mutations (Add/Delete)
 
-The list route (`app/routes/list/list.tsx`) does **not** use Conform's `__INTENT__`/`intents:` custom-intent system for add-item or delete-item. Conform's formal intent handlers always call `preventDefault()` for any named intent — only a bare `type: 'submit'` submission ever reaches the network — so anything routed through `__INTENT__` for a server mutation silently never fires (see PR #64 for the full investigation).
+The list page ([src/routes/list/list.tsx](src/routes/list/list.tsx)) keeps the list in two signals: `serverItems`, what the server last confirmed, and `items`, what's on screen. Both are writable derived signals that reset when the loader delivers new data. Every change (add, edit, delete, reorder, group by tag) sends the list's whole desired state to one server function, `mutateList` ([list.functions.ts](src/routes/list/list.functions.ts)), which calls the `mutate_list` RPC and returns the saved items:
 
-Instead:
+- **Add** is a non-empty `new` (with a client-generated `newId`) alongside the current items. The RPC inserts whenever `new` is present.
+- **Delete** is inferred server-side by diffing the submitted `items` against the database: any active row missing from it is marked deleted.
+- **Saves run one at a time, in order**, so a slow response can never land after a newer save's and overwrite it. Only the newest save's response replaces what's on screen. (React Router got the same effect by cancelling the older navigation.)
+- A row is removed by id once its exit animation ends. With no form fields indexed by position, nothing else gets renumbered meanwhile, which used to make the order of these steps matter.
+- `edited` (the ✏️ marker) is every item whose value differs from `serverItems`.
 
-- **Add** is signalled purely by a non-empty `new` field on an ordinary submit. The server (`mutate_list` RPC, and its mock in `mocks/api/rest/v1/list_items.ts`) inserts whenever that field is present — no intent needed.
-- **Delete** is inferred server-side by diffing the submitted `items[]` array against the DB: any row that's currently active but missing from the array gets marked deleted. The client already submits the full items array on every request (edits/reorders rely on this too), so this needed no new payload shape.
-- Conform itself is still used for schema validation and its **built-in** array intents (`intent.update`/`intent.remove`, used by `reorderViaConform`/`removeViaConform` in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts)) — only the custom named-intent layer was removed.
-
-**Delete sequencing matters:** shrinking Conform's tracked items array renumbers every later item's field name (e.g. `items[2]` becomes `items[1]`). If that happens while the outgoing row's `<input>`s are still mid-exit-animation, two inputs can briefly share one name and corrupt the submission — which the diff-based delete would read as "delete everything missing," not just a cosmetic glitch. `items.tsx`'s `ReorderableItem` closes this two ways:
-
-- It never calls `intent.remove()` until the row's own exit animation has actually finished (the delete button's collapse and a swipe's fly-out both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already invisible.
-- There is no separate exit animation after removal: once the array shrinks, React unmounts the row in the same commit, so a stale, soon-to-be-renumbered node is never kept mounted alongside its renumbered sibling.
-
-**Editing:** item values are shown as plain text and submitted from a hidden `items[n].value` input. They're no longer inline textareas, which were easy to focus by accident while scrolling or dragging. The row's edit button opens a `<dialog>` with a textarea. Saving writes the new value into the hidden input, dispatches `input` so Conform's `useFormData` updates `edited` and the shown text, and submits the list form.
-
-- The dialog renders inside the list `<Form>`, so its textarea has no `name`, and its buttons are `type="button"` rather than a nested `<form method="dialog">`.
-- Each row's edit button is labelled `Edit <text>`, so tests and assistive tech find rows by that label.
+**Editing:** item values are shown as plain text. The row's edit button (`Edit <text>`, the label tests and assistive tech find rows by) opens a `<dialog>` with a textarea and tag field; Save hands the new value to the page through `onEdit`.
 
 **Tags:** an item can carry one tag. It's stored inside the value as a trailing `[tag]` (e.g. `Milk [dairy]`) rather than in its own column. So tags need no migration, and they ride along on every path that already carries a value: add, edit, undo-delete and offline replay. [item-tag.ts](app/lib/item-tag.ts) parses and formats them:
 
 - Only the last bracket group, at the very end, counts. `Call [Sam] tomorrow` stays untagged, and a value that's only `[tag]` is shown as typed.
 - Typing `text [tag]` in the add box tags the new item.
-- The add bar also has a tag field: the same combobox as the edit dialog, so you can pick an existing tag or type a new one. It has no `name`. Instead, the form's `onSubmitCapture` folds its tag into the typed value as `[tag]` before anything reads the form, so online adds, offline queueing and replay all carry it unchanged. A tag typed into the value wins. The tag is React state, not a form field, so Conform's reset after each add leaves it alone and a run of items can share a tag until the page reloads. Enter in the tag field adds the item, like Enter in the item input.
+- The add bar also has a tag field: the same combobox as the edit dialog, so you can pick an existing tag or type a new one. The add folds its tag into the typed value as `[tag]`, so online adds, offline queueing and replay all carry it unchanged. A tag typed into the value wins. The tag is a signal rather than part of the input, so clearing the input after each add leaves it, and a run of items can share a tag until the page reloads. Enter in the tag field adds the item, like Enter in the item input.
 - The edit dialog splits the value into an Item textarea and a Tag field, then joins them back on save. Brackets are stripped from the tag.
 - The Tag field is a hybrid combobox ([tag-combobox.tsx](app/components/tag-combobox/tag-combobox.tsx), following the WAI-ARIA APG "list autocomplete" pattern).
   - Opening it by focus, click or the arrow keys lists every tag, with the current one ticked, like a select. Only typing filters, so a chosen tag doesn't narrow the list to itself.
@@ -202,23 +215,23 @@ Instead:
   - Arrow keys move through the options and Enter picks one. With nothing highlighted, Enter saves the dialog. Escape closes the list without closing the dialog.
 - The listbox is a manual popover in the top layer, placed under the input with CSS anchor positioning (`flip-block` when there's no room below, as in the add bar). Each instance sets its own anchor name inline. With a shared name, the dialog's list could attach to the add bar's input. The dialog's scrolling body can't clip it, and opening or closing it never moves the dialog's contents, so it can simply close on blur. While open it can cover Save: pick a tag, press Escape or tap elsewhere first.
 - The row shows the text, with the tag as a pill in its own grid column just before the edit button. Every row has an edit button, so tags line up on the right whatever else a row shows. Row labels (`Edit`, `Reorder`, `Delete`) use the text alone, so adding a tag doesn't rename a row.
-- **Group by tag** (list header) reorders the list once and saves it through the same `reorderViaConform` path as a drag. The grouped order is the list's real order, shared with every member, rather than a local view. Each group sits where its first item was, and items keep their order inside a group. Untagged items count as a group, so grouping twice changes nothing. On narrow screens the button is icon-only so the header fits.
+- **Group by tag** (list header) reorders the list once and saves it the same way as a drag. The grouped order is the list's real order, shared with every member, rather than a local view. Each group sits where its first item was, and items keep their order inside a group. Untagged items count as a group, so grouping twice changes nothing. On narrow screens the button is icon-only so the header fits.
 
 ### Drag, reorder & swipe
 
-Reorderable lists (list items and home lists) use a small in-house gesture hook, [use-drag-list.ts](app/components/reorderable/use-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
+Reorderable lists (list items, and home lists once ported) use a small in-house gesture controller, [create-drag-list.ts](src/components/reorderable/create-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
 
 - **Gesture intent:**
   - **Swipe:** a gesture becomes a swipe-to-delete once it moves 10px, mostly horizontally. This only applies where the row opts in via `swipe`.
   - **Reorder:** reordering only starts after a full row's vertical travel. Small drift never shuffles the list, and crossing that line cancels any swipe in progress, so the row can't be deleted.
   - **Touch scrolling:** on touch, the handle uses `touch-action: pan-y`, so a vertical thumb movement over it scrolls the list. To reorder on touch, long-press the handle (300ms) first. The row lifts and the hook cancels `touchmove` so the browser doesn't scroll.
 - **Reorder** — a row swaps with its neighbour once its leading edge crosses the neighbour's centre. Layout is measured with `offsetTop`, which ignores transforms, so in-flight animations and the lifted scale never skew the thresholds. Pointer travel is measured relative to the list, so scrolling mid-drag keeps the row under the pointer.
-- **Sibling animation (FLIP)** — before each reorder or removal the hook snapshots every row's position; after React commits it animates each sibling from its old position to its new slot.
+- **Sibling animation (FLIP)** — before each reorder or removal the controller snapshots every row's position. A `MutationObserver` on the list reports the rows moving (after the DOM updates, before the next paint), and it animates each sibling from its old position to its new slot. React ran this after every commit; Solid has no commit to hook, and rows being added, removed or moved is all it needs.
 - **Swipe-to-delete** — dismisses past 140px or above 500px/s (velocity over the last 100ms); otherwise springs back.
 - **Springs** — sampled once into CSS `linear()` easings, so WAAPI plays them with no physics runtime.
-- Gesture listeners attach to `window` rather than using pointer capture, because React reorders rows by moving DOM nodes, which can drop capture mid-drag.
+- Gesture listeners attach to `window` rather than using pointer capture, because reordering moves DOM nodes, which can drop capture mid-drag.
 
-[`useReorderable`](app/components/reorderable/use-reorderable.ts) owns the optimistic order and wires itself to the hook; persistence stays in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts).
+[`createReorderable`](src/components/reorderable/create-reorderable.ts) holds the order while a drag is under way and hands the final order to the page, which saves it.
 
 ### Offline / Local-first (Home + List)
 
@@ -244,13 +257,13 @@ Home's list-reordering doesn't need this treatment: it updates `sort_order` per-
 
 **Runtime page cache (`shorpin-pages`, via Workbox `NetworkFirst`):** the IndexedDB caches above only serve offline reads to a tab that's already hydrated — a genuine fresh navigation (hard reload, cold open, new tab) while offline is a real browser navigation that the service worker intercepts, and until this cache existed it always fell back to the generic static `offline.html`, even when the user's actual list data was sitting right there in IndexedDB. Home and list navigations (and _only_ those two — see `isCacheablePageUrl` in `app/lib/page-cache.ts`) now go through a `NetworkFirst` strategy instead: always try the network first, and cache the successful response; only serve the cached copy when the network genuinely fails. `offline.html` remains the last-resort fallback for a page never visited. Bounded with Workbox's `ExpirationPlugin` (`maxEntries: 50`) so a long session doesn't grow it unbounded. Because this is cached _rendered HTML_ from an authenticated SSR route, it's per-user data — cleared on logout (`app/routes/auth/logout.tsx`) via `caches.delete("shorpin-pages")`, the same shared-device protection `clearAllOfflineData()` already gives the IndexedDB stores. Offline reads (from either cache) never re-verify auth — there's no network to check against — but every request made once back online goes through the normal Supabase auth middleware exactly as always; nothing about caching weakens that.
 
-**Reconnect sync must only rebase onto genuinely fresh server state:** just after reconnecting, the fresh-data fetch can fail while the connection is still settling, yet the sync's submit a moment later succeeds. `clientLoader` falls back to the cached list when a fetch fails, and that list predates anything other devices added meanwhile, so rebasing onto it would submit a snapshot that `mutate_list` reads as deleting those items. `clientLoader` therefore flags every cached fallback with `fromCache: true`. `performRebaseSync` never rebases onto flagged data; it retries the fetch with exponential backoff (1s doubling, capped at 30s) until it gets real server state. `list.spec.ts`'s "a failed fresh-data fetch on reconnect…" test covers this.
+**Reconnect sync must only rebase onto genuinely fresh server state:** just after reconnecting, the fresh-data fetch can fail while the connection is still settling, yet the sync's save a moment later succeeds. The cached list predates anything other devices added meanwhile, so rebasing onto it would submit a snapshot that `mutate_list` reads as deleting those items. So the list page's `syncIfPending` calls `getList` itself and never falls back to the cache: on a network failure it retries with exponential backoff (1s doubling, capped at 30s) until it gets real server state. (The loader's cached fallbacks carry `fromCache: true`, so nothing mistakes them for fresh data.) `list.spec.ts`'s "a failed fresh-data fetch on reconnect…" test covers this.
 
-**Reconnect sync must treat a redirected-away response as a failed delivery, not a success:** a stale/unrefreshable session makes `supabaseMiddleware` (`app/lib/supabase.middleware.ts`) throw a redirect to `/login` _before_ the route's action runs. The mutation-replay paths that use a raw `fetch()` (home's `onOnline` handler, the service worker's `drainSimpleMutations` Background Sync backstop) pass `redirect: "manual"` and check the response's `type`/`ok` before dequeuing — otherwise `fetch()` would silently follow the redirect, resolve "successfully" against the `/login` page, and the mutation would be dropped from the queue despite never having reached the actual action. List's rebase-and-resubmit sync (which goes through React Router's `submit()`, not raw `fetch`) does the equivalent check by confirming the browser is still on the expected list route before dequeuing. Both home and list also retry a pending queue once on mount (not just on an `online` transition), so an edit left queued by a stale-session redirect actually gets flushed once the user re-authenticates and comes back, instead of sitting inert until another real connectivity blip happens to occur on that page.
+**Reconnect sync must treat a redirected-away response as a failed delivery, not a success:** a stale/unrefreshable session makes `supabaseMiddleware` (`app/lib/supabase.middleware.ts`) throw a redirect to `/login` _before_ the route's action runs. The mutation-replay paths that use a raw `fetch()` (home's `onOnline` handler, the service worker's `drainSimpleMutations` Background Sync backstop) pass `redirect: "manual"` and check the response's `type`/`ok` before dequeuing — otherwise `fetch()` would silently follow the redirect, resolve "successfully" against the `/login` page, and the mutation would be dropped from the queue despite never having reached the actual action. List's rebase-and-resubmit sync calls server functions directly, so a redirect arrives as a thrown `redirect`: it follows it to `/login` and leaves the queue in place. Both home and list also retry a pending queue once on mount (not just on an `online` transition), so an edit left queued by a stale-session redirect actually gets flushed once the user re-authenticates and comes back, instead of sitting inert until another real connectivity blip happens to occur on that page.
 
 **Offline additions keep their client-generated ids, so a replayed sync can't duplicate them:** the queue is only dropped once the sync's response arrives, so a reload or tab close while that request is in flight leaves an edit the server already applied still queued, and the next mount sends it again. The rebase handles that for `items[]` (the already-applied row is just "fresh" state), but additions travel separately in `newItems`. So each addition's offline id goes along in the parallel `newItemIds` array, and `mutate_list` uses it as the row id with `ON CONFLICT (id) DO NOTHING` (migration `20261011000000`). It's a parallel array rather than `{ id, value }` objects so either the client or the migration can deploy first: the older function simply ignores `newItemIds`.
 
-**List edits queue on a failed request, not only when the browser reports offline:** `navigator.onLine` lags a dropped connection by several seconds on mobile, so `list.tsx`'s `clientAction` also falls back to the offline queue when the server request fails with a network/5xx error (it clones the request first, since `serverAction` consumes the body). That fallback can't know whether the server applied the request and only the response was lost. Edits, deletes and reorders are safe to send again because the sync rebases them onto fresh state. Adds are made safe by giving every add a client-generated `newId`; `list.server.ts`'s `toIdempotentAdd` sends it to `mutate_list` as a `newItems`/`newItemIds` entry, so a replay hits `ON CONFLICT DO NOTHING`. A fallback-queued edit has no offline→online transition to trigger the sync, so the route starts the sync itself and lets `performRebaseSync`'s backoff wait for the server.
+**List edits queue on a failed request, not only when the browser reports offline:** `navigator.onLine` lags a dropped connection by several seconds on mobile, so the list page also falls back to the offline queue when a save fails with a network error or a server function reports its backend unavailable. That fallback can't know whether the server applied the request and only the response was lost. Edits, deletes and reorders are safe to send again because the sync rebases them onto fresh state. Adds are made safe by giving every add a client-generated `newId`; `list.functions.ts`'s `toIdempotentAdd` sends it to `mutate_list` as a `newItems`/`newItemIds` entry, so a replay hits `ON CONFLICT DO NOTHING`. A fallback-queued edit has no offline→online transition to trigger the sync, so the page starts the sync itself and lets its backoff wait for the server.
 
 ### App icons
 

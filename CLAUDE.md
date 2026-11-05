@@ -4,7 +4,7 @@ Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Stack
 
-React Router v7 SSR · TypeScript · Vanilla Extract · Playwright · pnpm · Supabase
+TanStack Start + Solid 2 (migrating from React Router + React, see README) · TypeScript · Vanilla Extract · Playwright · pnpm · Supabase
 
 ## Communication
 

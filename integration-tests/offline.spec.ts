@@ -12,7 +12,9 @@ import { login } from "./helpers";
 // tests need the default (non---dev) `pnpm test:integration` build — CI
 // already runs that variant.
 
-test("service worker registers and precaches the app shell", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
+
+test.fixme("service worker registers and precaches the app shell", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const registration = await page.evaluate(async () => {
@@ -33,7 +35,9 @@ test("service worker registers and precaches the app shell", async ({ page, ctx 
   expect(totalEntries).toBeGreaterThan(0);
 });
 
-test("navigating offline to an uncached route shows the offline fallback shell, not a browser error page", async ({
+// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
+
+test.fixme("navigating offline to an uncached route shows the offline fallback shell, not a browser error page", async ({
   page,
   context,
   ctx,
@@ -53,7 +57,9 @@ test("navigating offline to an uncached route shows the offline fallback shell, 
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
 });
 
-test("hard reload while offline shows the last-cached page, not the generic offline shell", async ({
+// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
+
+test.fixme("hard reload while offline shows the last-cached page, not the generic offline shell", async ({
   page,
   context,
   ctx,
@@ -74,7 +80,9 @@ test("hard reload while offline shows the last-cached page, not the generic offl
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 });
 
-test("an offline edit still queues successfully even when Background Sync is unavailable", async ({
+// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
+
+test.fixme("an offline edit still queues successfully even when Background Sync is unavailable", async ({
   page,
   context,
   ctx,
@@ -99,7 +107,9 @@ test("an offline edit still queues successfully even when Background Sync is una
   await expect(page.getByText("Sync Tag Test (pending", { exact: false })).toBeVisible();
 });
 
-test("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
+// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
+
+test.fixme("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
   page,
   ctx,
 }) => {
@@ -113,14 +123,16 @@ test("navigating back to a visited list while the network is down shows the cach
   // Kill the network without flipping navigator.onLine — what a real device
   // does in the gap before it notices the connection has gone. Every loader
   // (root's included) attempts, and fails, a real fetch.
-  await page.route(/\.data|__manifest/, (route) => route.abort("internetdisconnected"));
+  await page.route(/\/_serverFn\//, (route) => route.abort("internetdisconnected"));
 
   await page.getByRole("link", { name: "Shopping" }).first().click();
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
 });
 
-test("cancelling the network error modal goes back to the previous page", async ({
+// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
+
+test.fixme("cancelling the network error modal goes back to the previous page", async ({
   page,
   context,
   ctx,

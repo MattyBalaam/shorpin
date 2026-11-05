@@ -56,6 +56,21 @@ export async function login(page: Page, email: string) {
   await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached();
 }
 
+// The list page's requests, named by its server functions (readable ids:
+// see generateFunctionId in vite.config.ts). These keep specs off the
+// framework's wire format: React Router's were `/lists/<slug>.data`.
+// Each spec touches one list, so the function name is enough.
+
+/** Loading the list (GET) or saving it (POST). */
+export const listRequests = /\/_serverFn\/[^?]*--(getList|mutateList)_/;
+
+/** True for the response to a save of the list. */
+export function isListSave(response: { url(): string; request(): { method(): string } }) {
+  return (
+    /\/_serverFn\/[^?]*--mutateList_/.test(response.url()) && response.request().method() === "POST"
+  );
+}
+
 /**
  * Intercepts the first GET matching `urlPattern` and holds it until the
  * returned `release()` is called. Subsequent matching GETs pass through

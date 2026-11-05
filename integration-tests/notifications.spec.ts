@@ -4,7 +4,9 @@ import { login } from "./helpers";
 // Otherwise "Offline support ready" can join the queue and shift the counts.
 test.use({ serviceWorkers: "block" });
 
-test("a success notification clears itself", async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 5, the dev notifications page (see legacy/README.md).
+
+test.fixme("a success notification clears itself", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.waitForURL("/login");
@@ -14,7 +16,9 @@ test("a success notification clears itself", async ({ page, ctx }) => {
   await expect(panel).toHaveJSProperty("offsetHeight", 0, { timeout: 10_000 });
 });
 
-test("shows the newest notification with a count, and clears one or all", async ({
+// Not yet ported to Solid. Stage 5, the dev notifications page (see legacy/README.md).
+
+test.fixme("shows the newest notification with a count, and clears one or all", async ({
   page,
   ctx,
   context,

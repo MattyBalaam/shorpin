@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { expectPageSnapshot, login } from "./helpers";
+import { expectPageSnapshot, isListSave, listRequests, login } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -72,7 +72,7 @@ test("an item added to a long list is scrolled into view @webkit", async ({ page
   // A slow network keeps the placeholder up long enough to scroll into view
   // before the saved row replaces it, as on a phone. Dropping the placeholder
   // a commit early clamps the scroll position in WebKit only.
-  await page.route(/\/lists\/owner-empty/, async (route) => {
+  await page.route(listRequests, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     await route.continue();
   });
@@ -157,7 +157,7 @@ test("'Recreate last deleted' explains why it can't run while a change is saving
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
   // Keeps the delete in flight long enough to click Recreate during it.
-  await page.route(/\/lists\/shopping/, async (route) => {
+  await page.route(listRequests, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await route.continue();
   });
@@ -286,10 +286,7 @@ test("editing an item in the modal saves the new value", async ({ page, ctx }) =
 // Resolves once a save of the shopping list has been answered, so a test can
 // reload without aborting it, or edit again without two saves racing.
 function shoppingSaved(page: Page) {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-  );
+  return page.waitForResponse(isListSave);
 }
 
 test("an item added as 'text [tag]' shows its tag, which the modal edits", async ({
@@ -598,10 +595,7 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   // another device) — wait for that resubmission to actually land before
   // reloading, rather than just the "syncing" toast, since a full reload
   // aborts any request still in flight.
-  const syncSubmitted = page.waitForResponse(
-    (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-  );
+  const syncSubmitted = page.waitForResponse(isListSave);
 
   await context.setOffline(false);
 
@@ -625,7 +619,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 
   // A dead connection that navigator.onLine hasn't noticed yet — what a
   // phone does for a few seconds after losing signal.
-  await page.route("**/lists/shopping.data*", (route) => route.abort("internetdisconnected"));
+  await page.route(listRequests, (route) => route.abort("internetdisconnected"));
 
   await page.getByLabel("New item").fill("Lie-fi butter");
   await page.getByRole("button", { name: "Add" }).click();
@@ -636,7 +630,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 
   // No offline→online transition happens, so the sync's own backoff retry
   // has to deliver it once the server is reachable.
-  await page.unroute("**/lists/shopping.data*");
+  await page.unroute(listRequests);
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -653,7 +647,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
 
   // The POST reaches the server and is applied, but the response never
   // makes it back, so the client queues the same add offline.
-  await page.route("**/lists/shopping.data*", async (route) => {
+  await page.route(listRequests, async (route) => {
     if (route.request().method() === "POST") await route.fetch();
     await route.abort("internetdisconnected");
   });
@@ -663,7 +657,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
   await expect(page.getByLabel("Edit Lost-response jam")).toBeVisible();
   await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
 
-  await page.unroute("**/lists/shopping.data*");
+  await page.unroute(listRequests);
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -690,10 +684,7 @@ test("multiple items added offline all sync to the server on reconnect", async (
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByLabel("Edit Offline sugar")).toBeVisible({ timeout: 10000 });
 
-  const syncSubmitted = page.waitForResponse(
-    (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-  );
+  const syncSubmitted = page.waitForResponse(isListSave);
 
   await context.setOffline(false);
 
@@ -737,7 +728,7 @@ test.describe(() => {
     const syncDelivered = new Promise<void>((resolve) => {
       delivered = resolve;
     });
-    await page.route("**/lists/shopping.data*", async (route) => {
+    await page.route(listRequests, async (route) => {
       if (route.request().method() !== "POST") return route.continue();
       await route.fetch();
       delivered();
@@ -745,7 +736,7 @@ test.describe(() => {
 
     await context.setOffline(false);
     await syncDelivered;
-    await page.unroute("**/lists/shopping.data*");
+    await page.unroute(listRequests);
 
     // The remount retries the still-queued edit, rebased onto fresh server
     // state that already contains the addition.
@@ -771,32 +762,15 @@ test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flu
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
 
-  // The rebase-and-resubmit sync goes through RR's single-fetch protocol
-  // (submit(), not a raw fetch), so a middleware redirect arrives encoded
-  // as a 204 + X-Remix-Redirect/-Status headers, not a raw 3xx — see
-  // fetchAndDecodeViaTurboStream in react-router's single-fetch client.
-  // This is what supabaseMiddleware's redirect(href("/login")) actually
-  // produces for a stale/unrefreshable session.
-  let redirectedPostSeen = false;
-  await page.route("**/lists/shopping.data", async (route) => {
-    if (route.request().method() === "POST") {
-      redirectedPostSeen = true;
-      await route.fulfill({
-        status: 204,
-        headers: { "X-Remix-Redirect": "/login", "X-Remix-Status": "302" },
-      });
-      return;
-    }
-    await route.continue();
-  });
+  // A stale session: with the auth cookies gone, the server's auth check
+  // redirects the sync's requests to /login, as for any expired session.
+  await context.clearCookies();
 
   await context.setOffline(false);
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
-  await expect.poll(() => redirectedPostSeen).toBe(true);
-  // React Router follows the redirect as a normal completed navigation.
   await page.waitForURL("/login");
-
-  await page.unroute("**/lists/shopping.data");
+  // The queued edit survived the redirect.
+  expect(await queuedMutationCount(page)).toBeGreaterThan(0);
 
   // Log back in and return — no further online/offline transition occurs
   // here, so only the mount-time retry (not just onOnline) can pick the
@@ -856,10 +830,7 @@ test("a concurrent addition from another device survives reconnect sync", async 
     await collabPage.getByRole("button", { name: "Add" }).click();
     await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
 
-    const syncSubmitted = ownerPage.waitForResponse(
-      (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-    );
+    const syncSubmitted = ownerPage.waitForResponse(isListSave);
 
     // No check for the "Back online" notification: the collaborator's
     // broadcast can arrive just after it and be shown in front of it.
@@ -911,7 +882,7 @@ test("a failed fresh-data fetch on reconnect never syncs against stale cached da
     // list that predates Margarine. Syncing against that would delete it.
     let failedFetches = 0;
     let failUntil = Number.POSITIVE_INFINITY;
-    await ownerPage.route("**/lists/shopping.data*", async (route) => {
+    await ownerPage.route(listRequests, async (route) => {
       if (route.request().method() === "GET" && Date.now() < failUntil) {
         failedFetches += 1;
         await route.abort("internetdisconnected");
@@ -920,15 +891,12 @@ test("a failed fresh-data fetch on reconnect never syncs against stale cached da
       await route.continue();
     });
 
-    const syncSubmitted = ownerPage.waitForResponse(
-      (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-    );
+    const syncSubmitted = ownerPage.waitForResponse(isListSave);
     failUntil = Date.now() + 1500;
     await ownerContext.setOffline(false);
     await syncSubmitted;
     expect(failedFetches).toBeGreaterThan(0);
-    await ownerPage.unroute("**/lists/shopping.data*");
+    await ownerPage.unroute(listRequests);
 
     await openList(ownerPage, "shopping");
     await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
@@ -1186,7 +1154,9 @@ test("reordering items does not create unread or new markers for self", async ({
   ).toHaveCount(0);
 });
 
-test("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+// Not yet ported to Solid. Stage 3, the list's palette picker (see legacy/README.md).
+
+test.fixme("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto(listPath("shopping"));
   await expectPageSnapshot(page, "list");
