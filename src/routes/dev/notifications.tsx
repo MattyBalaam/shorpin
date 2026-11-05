@@ -22,9 +22,8 @@ export const Route = createFileRoute("/_app/dev/notifications")({
   component: NotificationsDemo,
 });
 
-// Mirrors the service worker's "new version" prompt, which otherwise only
-// shows after a redeploy. (Legacy root.tsx showed it; it comes back with the
-// service worker, stage 6.)
+// Mirrors the service worker's "new version" prompt (src/root.tsx), which
+// otherwise only shows after a redeploy.
 function showUpdate() {
   toast.info("A new version is available", {
     id: "app-update",

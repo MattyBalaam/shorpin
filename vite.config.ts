@@ -3,7 +3,33 @@ import solid from "@solidjs/vite-plugin";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { nitro } from "nitro/vite";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import { VitePWA, type VitePWAOptions } from "vite-plugin-pwa";
+
+/**
+ * vite-plugin-pwa, building the worker once, at the point in Nitro's build
+ * where .output/public is complete but the server isn't built yet. The
+ * plugin's own build step runs in every environment's closeBundle (client,
+ * ssr and nitro here): the first two run before Nitro has copied public/
+ * (offline.html) into .output/public, and the last runs after the server
+ * has baked in its table of static files, so it would 404 sw.js.
+ */
+function serviceWorker(options: Partial<VitePWAOptions>): Plugin[] {
+  const plugins = VitePWA(options).filter((plugin) => plugin.name !== "vite-plugin-pwa:build");
+  const main = plugins.find((plugin) => plugin.name === "vite-plugin-pwa");
+  return [
+    ...plugins,
+    {
+      name: "shorpin:service-worker",
+      apply: "build",
+      nitro: {
+        setup(nitro) {
+          nitro.hooks.hook("vite:compile:before", () => main?.api.generateSW());
+        },
+      },
+    },
+  ];
+}
 
 export default defineConfig({
   resolve: {
@@ -58,5 +84,26 @@ export default defineConfig({
     }),
     // Must come after tanstackStart().
     solid({ ssr: true }),
+    serviceWorker({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      // Nitro's static output, which the server serves from the root.
+      outDir: ".output/public",
+      injectManifest: {
+        // Hashed JS/CSS/font assets, plus the one static HTML file
+        // (offline.html — the SW's navigation fallback). Never precache
+        // real route HTML more broadly than that: it's per-user/SSR and
+        // would go stale or leak data across accounts (see src/sw.ts's
+        // navigation handler and README.md). Home/list page HTML is cached
+        // at runtime instead (Workbox NetworkFirst in src/sw.ts, cleared on
+        // sign-out).
+        globPatterns: ["**/*.{js,css,woff2}", "offline.html"],
+        globIgnores: ["**/node_modules/**"],
+      },
+      manifest: false, // public/manifest.webmanifest is hand-maintained
+      injectRegister: false, // registered in root.tsx, in builds only
+      devOptions: { enabled: false }, // no worker under `pnpm dev`
+    }),
   ],
 });

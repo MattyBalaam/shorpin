@@ -1,5 +1,5 @@
-// Shared between app/sw.ts (service worker bundle) and
-// app/routes/auth/logout.tsx (client bundle) — single source of truth so the
+// Shared between src/sw.ts (service worker bundle) and
+// src/routes/home/home.tsx's sign-out (client bundle) — single source of truth so the
 // two can't drift on what "the page cache" means.
 
 export const PAGE_CACHE_NAME = "shorpin-pages";

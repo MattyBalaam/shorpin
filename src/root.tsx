@@ -18,6 +18,8 @@ import { Spinner } from "~/components/spinner/spinner";
 import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/lib/app-style";
 import { getAccountAppStyle } from "~/lib/app-style.functions";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
+import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
+import { toast } from "~/lib/toast";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import "~/styles/reset.css";
 import "~/styles/typography.css";
@@ -154,6 +156,59 @@ function App() {
       stopStart();
       stopEnd();
     };
+  });
+
+  onSettled(function manageServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    const controller = new AbortController();
+
+    // Clean up any registration that isn't the current worker (e.g. the
+    // splash-screen SW removed in 4d22c02, still registered in some
+    // returning users' browsers), leaving our own alone.
+    void navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        const scriptUrl =
+          registration.active?.scriptURL ??
+          registration.installing?.scriptURL ??
+          registration.waiting?.scriptURL;
+        if (scriptUrl && !scriptUrl.endsWith("/sw.js")) void registration.unregister();
+      }
+    });
+
+    // Builds only: there's no sw.js under `pnpm dev` (see vite.config.ts).
+    if (!import.meta.env.PROD) return () => controller.abort();
+
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        // Set only while a new worker is taking over (first install, or an
+        // update the user accepted). The precache and page cache aren't
+        // usable until it activates, so say when that happens.
+        const worker = registration.installing ?? registration.waiting;
+        worker?.addEventListener("statechange", () => {
+          if (worker.state === "activated") toast.success("Offline support ready");
+        });
+
+        watchForUpdates(
+          registration,
+          () =>
+            toast.info("A new version is available", {
+              id: "app-update",
+              action: {
+                label: "Reload",
+                onClick: () => {
+                  void activateWaitingWorker(registration).then(() => window.location.reload());
+                },
+              },
+            }),
+          controller.signal,
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("Service worker registration failed", error);
+      });
+
+    return () => controller.abort();
   });
 
   onSettled(function trackKeyboardViewport() {

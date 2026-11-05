@@ -239,7 +239,6 @@ function ListPage() {
     setItems(desired);
     await updateListDesired(slug(), desired);
     await enqueueMutation({
-      route: window.location.pathname,
       routeKey: listRouteKey(slug()),
       kind: "list-mutate",
       // Unused: the reconnect sync rebases the snapshot rather than

@@ -21,9 +21,8 @@ import type { ListItem } from "./home.schema";
 
 export type HomeLoaderData = HomeData & { fromCache: boolean };
 
-// Queued entries keep the shape React Router posted to `/`, so the service
-// worker's Background Sync backstop (see legacy/sw.ts) can still replay them.
-const HOME_ROUTE = "/";
+// Queued entries keep the field names React Router posted to `/`, so a
+// queue left over from the React build still replays.
 const CREATE_FIELD = "new-list";
 const ORDER_FIELD = "list-order";
 
@@ -105,7 +104,6 @@ export async function queueCreate(name: string, userId: string): Promise<ListIte
   // (unlike list-item mutations) queued creates can just replay in order —
   // no rebase needed.
   await enqueueMutation({
-    route: HOME_ROUTE,
     routeKey: "home",
     kind: "create-list",
     fields: [[CREATE_FIELD, name]],
@@ -132,7 +130,6 @@ export async function queueReorder(order: string[]) {
   if (priorReorders.length > 0) await dequeueMutations(priorReorders.map(({ seq }) => seq));
 
   await enqueueMutation({
-    route: HOME_ROUTE,
     routeKey: "home",
     kind: "reorder-lists",
     fields: order.map((id) => [ORDER_FIELD, id]),

@@ -93,11 +93,11 @@ These projects run only `@visual` tests, and `desktop`/`touch` skip them. `pnpm 
 
 ### Service worker (`offline.spec.ts`)
 
-The current SW (`app/sw.ts`) precaches the app shell and falls back to `public/offline.html` for navigations made with no network — see README.md's "Offline / Local-first" section for the full design. It only registers in production-ish builds (`import.meta.env.PROD`); since the integration tests use `--mode mock` (which Vite treats as a production build), it's active during tests, but only for the default (non-`--dev`) build variant — SW-dependent tests don't run under `pnpm test:integration --dev`.
+The SW ([src/sw.ts](../src/sw.ts)) precaches the app shell and falls back to `public/offline.html` for navigations made with no network — see README.md's "Offline / Local-first" section for the full design. It only registers in builds (`import.meta.env.PROD`); since the integration tests build with `--mode mock` (which Vite treats as a production build), it's active during tests, but only for the default (non-`--dev`) build variant — SW-dependent tests don't run under `pnpm test:integration --dev`.
 
-**Background Sync can't be reliably asserted directly** — headless Chromium (including this test environment) commonly disables it outright (`UnknownError: Background Sync is disabled`), independent of `"SyncManager" in window` reporting `true`. `offline-store.browser.ts`'s `enqueueMutation` treats the registration call as strictly best-effort for exactly this reason (wrapped in its own try/catch); the test verifies that property — an offline edit still queues successfully — rather than the registration call's own success, which this environment can't guarantee either way.
+**Simulating a redeploy** — Playwright can't intercept the browser's fetch of a worker script, so the redeploy test edits the built `.output/public/sw.js` in place. Nitro serves static files with the `Content-Length` and `ETag` it recorded at build time, so the edit keeps the file's length (a longer file is cut off), and the test clears the HTTP cache over CDP so the update check doesn't get a 304. That makes it Chromium-only.
 
-**Workbox precache cache keys aren't literal URLs** — non-hashed precached entries (like `offline.html`) get a `?__WB_REVISION__=...` query param appended to their cache key for cache-busting. A plain `caches.match("/offline.html")` misses; `app/sw.ts` uses `workbox-precaching`'s `matchPrecache("offline.html")` instead, which resolves this correctly.
+**Workbox precache cache keys aren't literal URLs** — non-hashed precached entries (like `offline.html`) get a `?__WB_REVISION__=...` query param appended to their cache key for cache-busting. A plain `caches.match("/offline.html")` misses; `src/sw.ts` uses `workbox-precaching`'s `matchPrecache("offline.html")` instead, which resolves this correctly.
 
 The per-route offline CRUD specs (list.spec.ts's and home.spec.ts's own offline tests) live in their respective files, not here — `offline.spec.ts` is reserved for assertions that need SW/browser-level state (Service Worker registration, Cache Storage) rather than app UI.
 
@@ -110,7 +110,7 @@ The per-route offline CRUD specs (list.spec.ts's and home.spec.ts's own offline 
 | `delete.spec.ts`   | Soft-delete a list via the config modal                                                      |
 | `home.spec.ts`     | Home page — create list, list visibility per role, admin link counts, offline create/reorder |
 | `list.spec.ts`     | List detail — display items, add/delete item, offline sync, concurrent-edit rebase           |
-| `offline.spec.ts`  | Service worker — registration/precache, offline navigation fallback, Background Sync         |
+| `offline.spec.ts`  | Service worker — registration/precache, offline navigation fallback, update prompt           |
 | `sign-ups.spec.ts` | Waitlist — pending count badge, modal view, mark as handled                                  |
 | `touch.spec.ts`    | Touch gestures (`touch` project) — swipe-to-delete, fling, spring-back, touch reorder        |
 

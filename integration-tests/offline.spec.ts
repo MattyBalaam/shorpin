@@ -8,13 +8,11 @@ import { login } from "./helpers";
 // specs (list.spec.ts, home.spec.ts): this file needs a different lifecycle
 // (warm the SW up online, then go offline) and inspects browser-level state
 // (Service Worker registration, Cache Storage) rather than app UI. The SW
-// only registers in production-ish builds (import.meta.env.PROD), so these
+// only registers in builds (import.meta.env.PROD), so these
 // tests need the default (non---dev) `pnpm test:integration` build — CI
 // already runs that variant.
 
-// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
-
-test.fixme("service worker registers and precaches the app shell", async ({ page, ctx }) => {
+test("service worker registers and precaches the app shell", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const registration = await page.evaluate(async () => {
@@ -35,9 +33,7 @@ test.fixme("service worker registers and precaches the app shell", async ({ page
   expect(totalEntries).toBeGreaterThan(0);
 });
 
-// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
-
-test.fixme("navigating offline to an uncached route shows the offline fallback shell, not a browser error page", async ({
+test("navigating offline to an uncached route shows the offline fallback shell, not a browser error page", async ({
   page,
   context,
   ctx,
@@ -49,7 +45,7 @@ test.fixme("navigating offline to an uncached route shows the offline fallback s
 
   await context.setOffline(true);
 
-  // /sign-ups has no clientLoader-based offline handling of its own (scope
+  // /sign-ups has no loader-based offline handling of its own (scope
   // is deliberately limited to home + list) — a real network attempt here
   // fails, forcing the SW's navigation fallback rather than app-level
   // IndexedDB-backed caching to handle it.
@@ -57,9 +53,7 @@ test.fixme("navigating offline to an uncached route shows the offline fallback s
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
-
-test.fixme("hard reload while offline shows the last-cached page, not the generic offline shell", async ({
+test("hard reload while offline shows the last-cached page, not the generic offline shell", async ({
   page,
   context,
   ctx,
@@ -69,7 +63,7 @@ test.fixme("hard reload while offline shows the last-cached page, not the generi
 
   // A real (non-SPA) navigation, so the SW's navigate handler actually sees
   // it and runtime-caches the response — matches how a hard reload/cold
-  // open reaches the SW, unlike React Router's client-side transitions.
+  // open reaches the SW, unlike the router's client-side transitions.
   await page.goto("/lists/shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
@@ -78,33 +72,6 @@ test.fixme("hard reload while offline shows the last-cached page, not the generi
 
   await expect(page.getByRole("heading", { name: "You're offline" })).toHaveCount(0);
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
-});
-
-// Not yet ported to Solid. Stage 6, the service worker (see legacy/README.md).
-
-test.fixme("an offline edit still queues successfully even when Background Sync is unavailable", async ({
-  page,
-  context,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await page.evaluate(() => navigator.serviceWorker.ready);
-
-  // Headless Chromium (this test environment included) commonly disables
-  // Background Sync outright ("UnknownError: Background Sync is disabled"),
-  // regardless of "SyncManager" in window being true. offline-store.browser.ts's
-  // enqueueMutation treats the registration call as strictly best-effort
-  // (wrapped in its own try/catch) for exactly this reason — the offline
-  // edit itself must still succeed and queue whether or not the browser
-  // can actually register the sync tag. That resilience, not the
-  // registration call's own success, is what this test verifies.
-  await context.setOffline(true);
-  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
-
-  await page.getByLabel("New list").fill("Sync Tag Test");
-  await page.getByRole("button", { name: "Add" }).click();
-
-  await expect(page.getByText("Sync Tag Test (pending", { exact: false })).toBeVisible();
 });
 
 test("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
@@ -149,16 +116,32 @@ test("cancelling the network error modal goes back to the previous page", async 
 
 // Playwright can't intercept the browser's own fetch of a worker script
 // (page/context routes and CDP Fetch all miss it), so a redeploy is simulated
-// for real: append a comment to the built sw.js for the duration of the test.
-// The result is still a valid worker, so tests running in parallel just
-// install it as a first install in their fresh contexts.
-const builtWorkerPath = path.resolve("build/client/sw.js");
+// for real: change the built sw.js for the duration of the test. The edit
+// keeps the file's length, because Nitro serves it with the Content-Length
+// recorded at build time (a longer file is cut off at the old length, so the
+// browser sees no change). It flips one character of offline.html's precache
+// revision, so the result is still a valid worker and tests running in
+// parallel just install it as a first install in their fresh contexts. The
+// ETag is from the build too, so the test also clears the HTTP cache, which
+// the browser's update check would otherwise revalidate against (a 304).
+const builtWorkerPath = path.resolve(".output/public/sw.js");
+
+function nextBuild(worker: string) {
+  const revision = /"revision":"([0-9a-f])(?=[0-9a-f]*","url":"offline\.html")/;
+  const next = worker.replace(revision, (match, first: string) =>
+    match.replace(first, first === "0" ? "1" : "0"),
+  );
+  if (next === worker) throw new Error("offline.html's precache revision not found in sw.js");
+  return next;
+}
 
 test("a redeployed service worker waits and offers a reload instead of taking over", async ({
   page,
+  browserName,
   ctx,
 }) => {
   test.skip(!existsSync(builtWorkerPath), "Needs the built app (not --dev)");
+  test.skip(browserName !== "chromium", "Clears the HTTP cache over CDP");
 
   await login(page, ctx.ownerEmail);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -167,7 +150,9 @@ test("a redeployed service worker waits and offers a reload instead of taking ov
 
   const original = await readFile(builtWorkerPath, "utf8");
   try {
-    await writeFile(builtWorkerPath, `${original}\n// next build ${ctx.ownerEmail}\n`);
+    await writeFile(builtWorkerPath, nextBuild(original));
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Network.clearBrowserCache");
     await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.getRegistration();
       await registration?.update();

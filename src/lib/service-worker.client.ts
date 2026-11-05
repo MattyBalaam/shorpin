@@ -1,7 +1,7 @@
 import { SKIP_WAITING } from "./service-worker-messages";
 
 // Update flow: a redeployed sw.js installs in the background and then waits
-// behind the worker controlling this page (app/sw.ts doesn't skipWaiting on
+// behind the worker controlling this page (src/sw.ts doesn't skipWaiting on
 // install), so pages never run one build's JS under another build's worker.
 // The page offers a reload; accepting tells the waiting worker to activate.
 
