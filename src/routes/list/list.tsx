@@ -302,7 +302,9 @@ function ListPage() {
   // async function: call the server, rebase, call the server again.
   const retry = { attempt: 0, timer: 0 };
   let syncInFlight = false;
-  onCleanup(() => window.clearTimeout(retry.timer));
+  // The global, not window's: cleanup also runs when the server disposes
+  // the render, where there's no window.
+  onCleanup(() => clearTimeout(retry.timer));
 
   // The fetch can fail just after reconnecting (the connection is still
   // settling). Rebasing onto the cached list instead would submit a snapshot
