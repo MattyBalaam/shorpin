@@ -6,7 +6,7 @@ excluded from typecheck, lint and the build.
 
 Ported so far (in `src/`): the root document, the auth and app layouts, the dev login,
 sign-out, home (lists with unread counts, create, reorder, the launch-list star and the
-offline cache and queued replays), the list page, list config, delete list, the style dialogs
+offline cache and queued replays), the list page (with its palette picker and Style link), list config, delete list, the style dialogs
 (home and list), app styles and the colour-scheme toggle.
 
 Still to port:
@@ -14,8 +14,6 @@ Still to port:
 - **Routes:** production login, forgot/set password, request access, auth confirm, sign-ups,
   dev notifications page, health, version, perf, and the Sentry example routes.
 - **Home:** the sign-ups count.
-- **List:** the palette picker (`Theme.Button`) and the Style link (the `/lists/$list/style`
-  dialog itself is ported).
 - **Platform:** the service worker (`sw.ts`, offline shell, page cache, background sync),
   Sentry (client, and the server's `instrument.server.mjs`), and the `entry.*` files (Start
   provides defaults). `react-router.config.ts` is here too.

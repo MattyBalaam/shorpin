@@ -25,9 +25,8 @@ function backgroundOf(page: Page, name: string) {
 // values, every distinct list visited left its own permanent, never-removed
 // override in <head> — the most recently inserted one then won the cascade
 // everywhere, including on unrelated routes like home, after navigating
-// away. See app/components/theme/theme.tsx.
-// Not yet ported to Solid. Stage 3, the list's palette picker (see legacy/README.md).
-test.fixme("a list's generated theme doesn't leak onto the home route after navigating away", async ({
+// away. See src/components/theme/theme.tsx.
+test("a list's generated theme doesn't leak onto the home route after navigating away", async ({
   page,
   ctx,
 }) => {

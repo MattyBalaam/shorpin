@@ -64,12 +64,7 @@ test("a style only applies once saved, and keeps after a reload", async ({ page,
   await expect(html).toHaveAttribute("data-app-style", "brutalist");
 });
 
-// Not yet ported to Solid. Stage 3, the list's palette picker and Style link (see legacy/README.md).
-
-test.fixme("a list's own style overrides the device style on that list only", async ({
-  page,
-  ctx,
-}) => {
+test("a list's own style overrides the device style on that list only", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   const html = page.locator("html");
 

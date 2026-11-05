@@ -9,27 +9,27 @@ interface PaneProps {
   secondary: string;
 }
 
-function Pane({ label, ink, paneBackground, primary, secondary }: PaneProps) {
+function Pane(props: PaneProps) {
   return (
-    <div className={styles.pane} style={{ background: paneBackground }}>
-      <p className={styles.paneLabel} style={{ color: ink }}>
-        {label}
+    <div class={styles.pane} style={{ background: props.paneBackground }}>
+      <p class={styles.paneLabel} style={{ color: props.ink }}>
+        {props.label}
       </p>
-      <div className={styles.row} style={{ background: secondary }}>
-        <span className={styles.line} style={{ background: ink }} />
-        <span className={styles.badge} style={{ background: primary, color: ink }}>
+      <div class={styles.row} style={{ background: props.secondary }}>
+        <span class={styles.line} style={{ background: props.ink }} />
+        <span class={styles.badge} style={{ background: props.primary, color: props.ink }}>
           New
         </span>
       </div>
-      <div className={styles.row} style={{ background: secondary }}>
-        <span className={styles.line} style={{ background: ink, width: "70%" }} />
+      <div class={styles.row} style={{ background: props.secondary }}>
+        <span class={styles.line} style={{ background: props.ink, width: "70%" }} />
       </div>
       <button
         type="button"
-        tabIndex={-1}
+        tabindex={-1}
         aria-hidden="true"
-        className={styles.button}
-        style={{ background: primary, color: ink }}
+        class={styles.button}
+        style={{ background: props.primary, color: props.ink }}
       >
         Add
       </button>
@@ -46,22 +46,22 @@ interface PalettePreviewProps {
 // side so both are visible regardless of the viewer's own OS colour scheme.
 // The dark pane mirrors exactly what Theme injects for prefers-color-scheme:
 // dark (see toDarkModeCss), so what's previewed here is what ships.
-export function PalettePreview({ primary, secondary }: PalettePreviewProps) {
+export function PalettePreview(props: PalettePreviewProps) {
   return (
-    <div className={styles.grid}>
+    <div class={styles.grid}>
       <Pane
         label="Light"
         ink="black"
         paneBackground="#f5f5f5"
-        primary={primary}
-        secondary={secondary}
+        primary={props.primary}
+        secondary={props.secondary}
       />
       <Pane
         label="Dark"
         ink="white"
         paneBackground="#1a1a1a"
-        primary={toDarkModeCss(primary)}
-        secondary={toDarkModeCss(secondary)}
+        primary={toDarkModeCss(props.primary)}
+        secondary={toDarkModeCss(props.secondary)}
       />
     </div>
   );

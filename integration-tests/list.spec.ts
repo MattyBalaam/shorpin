@@ -1154,9 +1154,7 @@ test("reordering items does not create unread or new markers for self", async ({
   ).toHaveCount(0);
 });
 
-// Not yet ported to Solid. Stage 3, the list's palette picker (see legacy/README.md).
-
-test.fixme("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+test("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto(listPath("shopping"));
   await expectPageSnapshot(page, "list");

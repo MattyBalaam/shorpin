@@ -32,11 +32,7 @@ for (const width of [320, 375]) {
 
 // The title and the header's actions share a row: a long title truncates, and
 // the actions drop to icons (keeping their names) rather than overlapping it.
-// Not yet ported to Solid. Stage 3, the list's palette picker (see legacy/README.md).
-test.fixme("a long list name doesn't run under the header's actions at 320px", async ({
-  page,
-  ctx,
-}) => {
+test("a long list name doesn't run under the header's actions at 320px", async ({ page, ctx }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await login(page, ctx.ownerEmail);
   await page.getByLabel("New list").fill("Weekly big shop for the whole family");

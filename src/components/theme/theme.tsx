@@ -1,6 +1,13 @@
-import { type Element, Show } from "solid-js";
-import { toAdaptiveCss } from "~/lib/palette";
+import { createSignal, type Element, onSettled, Show } from "solid-js";
+import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
+import * as modalStyles from "../modal/modal.css";
+import { Button } from "../button/button";
+import { PaletteIcon } from "../icon/icons";
+import { ActionLabel } from "../page-header/page-header";
+import { PalettePreview } from "./palette-preview";
+
+export type ThemeColors = { primary: string; secondary: string };
 
 // Extract CSS variable name from vanilla-extract var reference
 // e.g., "var(--abc123)" -> "--abc123"
@@ -13,9 +20,9 @@ const primaryVarName = extractVarName(vars.palette.primary);
 const secondaryVarName = extractVarName(vars.palette.secondary);
 
 /**
- * Applies a list's own palette to the page. Not yet ported (see
- * legacy/README.md): the 🎨 palette picker and its preview dialog
- * (Theme.Button), which also saved the choice through the list form.
+ * Applies a list's own palette to the page. A plain <style> that mounts and
+ * unmounts with the page, so a list's colours never outlive it (React's
+ * href/precedence hoisting once leaked them onto home; see theme.spec.ts).
  */
 export function Theme(props: { primary?: string; secondary?: string; children?: Element }) {
   return (
@@ -32,3 +39,86 @@ export function Theme(props: { primary?: string; secondary?: string; children?: 
     </>
   );
 }
+
+function PaletteDialog(props: {
+  candidate: ThemeColors;
+  onShuffle: () => void;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  let dialog!: HTMLDialogElement;
+
+  // Mounted only while there's a candidate; showModal() needs it connected.
+  onSettled(() => {
+    dialog.showModal();
+  });
+
+  return (
+    <dialog
+      ref={dialog}
+      class={modalStyles.dialog}
+      aria-label="Colours"
+      // Cancel, Escape and the backdrop all end here.
+      onClose={() => props.onClose()}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) dialog.close();
+      }}
+    >
+      <div class={modalStyles.content}>
+        <div class={modalStyles.body}>
+          <PalettePreview primary={props.candidate.primary} secondary={props.candidate.secondary} />
+        </div>
+        <div class={modalStyles.actions}>
+          <Button variant="outline" onClick={() => dialog.close()}>
+            Cancel
+          </Button>
+          <Button onClick={() => props.onShuffle()}>Shuffle</Button>
+          <Button
+            onClick={() => {
+              props.onConfirm();
+              dialog.close();
+            }}
+          >
+            Use these colours
+          </Button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
+/**
+ * The 🎨 palette picker: generates a random palette and previews it in a
+ * dialog until it's confirmed. The candidate is kept here, apart from the
+ * page's colours, so cancelling never touches the live theme. The page owns
+ * the colours (and saves them), so `onConfirm` hands them over.
+ */
+function ThemeButton(props: { onConfirm: (colors: ThemeColors) => void }) {
+  const [candidate, setCandidate] = createSignal<ThemeColors | null>(null);
+
+  function shuffle() {
+    const { primary, secondary } = generateThemeColors();
+    setCandidate({ primary, secondary });
+  }
+
+  return (
+    <>
+      <Button onClick={shuffle}>
+        <PaletteIcon />
+        <ActionLabel>Colours</ActionLabel>
+      </Button>
+      <Show when={candidate()}>
+        {(colors) => (
+          <PaletteDialog
+            candidate={colors()}
+            onShuffle={shuffle}
+            onConfirm={() => props.onConfirm(colors())}
+            onClose={() => setCandidate(null)}
+          />
+        )}
+      </Show>
+    </>
+  );
+}
+
+Theme.Button = ThemeButton;

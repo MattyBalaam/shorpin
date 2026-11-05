@@ -7,7 +7,7 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Button } from "~/components/button/button";
 import { ErrorState } from "~/components/error-state/error-state";
 import * as errorStateStyles from "~/components/error-state/error-state.css";
-import { GroupIcon } from "~/components/icon/icons";
+import { BrushIcon, GroupIcon } from "~/components/icon/icons";
 import { Items } from "~/components/items";
 import * as itemsStyles from "~/components/items.css";
 import { Link } from "~/components/link/link";
@@ -15,7 +15,7 @@ import { useIsOnline } from "~/components/online-status/online-status";
 import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { TagCombobox } from "~/components/tag-combobox/tag-combobox";
-import { Theme } from "~/components/theme/theme";
+import { Theme, type ThemeColors } from "~/components/theme/theme";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import { groupByTag, listTags, withPickedTag } from "~/lib/item-tag";
 import { isNetworkOrServerError } from "~/lib/network-error";
@@ -187,6 +187,13 @@ function ListPage() {
 
   const tags = createMemo(() => listTags(items()));
 
+  // The list's palette: the loader's, until the picker sets a new one (saved
+  // with the list, so every later save carries it too).
+  const [colors, setColors] = createSignal<ThemeColors | null>(() => {
+    const { themePrimary: primary, themeSecondary: secondary } = data();
+    return primary && secondary ? { primary, secondary } : null;
+  });
+
   // Saves run one at a time, in order, so a slow response can never land
   // after a newer save's and overwrite it. React Router achieved the same by
   // cancelling the older navigation.
@@ -202,8 +209,8 @@ function ListPage() {
     return {
       name: list.name,
       items: next,
-      themePrimary: list.themePrimary,
-      themeSecondary: list.themeSecondary,
+      themePrimary: colors()?.primary ?? list.themePrimary,
+      themeSecondary: colors()?.secondary ?? list.themeSecondary,
       ...extra,
     };
   }
@@ -449,6 +456,11 @@ function ListPage() {
 
   // A one-off reorder, saved like a drag, so the grouped order is shared
   // with every member rather than being a local view.
+  function applyColors(next: ThemeColors) {
+    setColors(next);
+    void save(items());
+  }
+
   function groupItemsByTag() {
     if (isSaving()) {
       toast.info("Still saving - try again in a moment");
@@ -483,10 +495,15 @@ function ListPage() {
   }
 
   return (
-    <Theme primary={data().themePrimary} secondary={data().themeSecondary}>
+    <Theme primary={colors()?.primary} secondary={colors()?.secondary}>
       <PageHeader
         compactBelow="27rem"
         actions={[
+          <Link variant="outline" to="/lists/$list/style" params={{ list: slug() }}>
+            <BrushIcon />
+            <ActionLabel>Style</ActionLabel>
+          </Link>,
+          <Theme.Button onConfirm={applyColors} />,
           <Button variant="outline" type="button" onClick={groupItemsByTag}>
             <GroupIcon />
             <ActionLabel>Group by tag</ActionLabel>
