@@ -92,7 +92,7 @@ test.fixme("an offline edit still queues successfully even when Background Sync 
 
   // Headless Chromium (this test environment included) commonly disables
   // Background Sync outright ("UnknownError: Background Sync is disabled"),
-  // regardless of "SyncManager" in window being true. offline-store.client.ts's
+  // regardless of "SyncManager" in window being true. offline-store.browser.ts's
   // enqueueMutation treats the registration call as strictly best-effort
   // (wrapped in its own try/catch) for exactly this reason — the offline
   // edit itself must still succeed and queue whether or not the browser

@@ -1,3 +1,8 @@
+// Browser-only (`*.browser.ts`): each export is wrapped in createClientOnlyFn,
+// so the server build stubs it and drops this module's browser code. Keep the
+// top level free of browser APIs (see "Client-only modules" in README.md).
+import { createClientOnlyFn } from "@tanstack/solid-start";
+
 // Detects a client bundle that predates a server-side fix (e.g. a proxy/
 // action-origin misconfig, like PR #94) so mutations from an already-open
 // tab fail against the redeployed server. Compares the hash baked into this
@@ -37,7 +42,9 @@ async function refreshServiceWorker(): Promise<void> {
  * once, transparently. Any other failure (including a retry that still
  * fails) is rethrown for the route's ErrorBoundary to handle.
  */
-export async function withStaleVersionRetry<T>(attempt: () => Promise<T>): Promise<T> {
+export const withStaleVersionRetry = createClientOnlyFn(async function withStaleVersionRetry<T>(
+  attempt: () => Promise<T>,
+): Promise<T> {
   try {
     return await attempt();
   } catch (error) {
@@ -47,4 +54,4 @@ export async function withStaleVersionRetry<T>(attempt: () => Promise<T>): Promi
 
     return attempt();
   }
-}
+});

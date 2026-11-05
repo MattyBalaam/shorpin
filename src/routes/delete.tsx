@@ -14,7 +14,7 @@ import { Link } from "~/components/link/link";
 import { PageHeader } from "~/components/page-header/page-header";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { toast } from "~/lib/toast";
-import { withStaleVersionRetry } from "~/lib/version-guard.client";
+import { withStaleVersionRetry } from "~/lib/version-guard.browser";
 import { deleteList, getDeleteTarget } from "./delete.functions";
 import * as styles from "./delete.css";
 

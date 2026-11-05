@@ -1,3 +1,7 @@
+// Browser-only (`*.browser.ts`): each export is wrapped in createClientOnlyFn,
+// so the server build stubs it and drops this module's browser code. Keep the
+// top level free of browser APIs (see "Client-only modules" in README.md).
+import { createClientOnlyFn } from "@tanstack/solid-start";
 import type { SerializedFormData } from "./form-data-codec";
 import { requestToPromise, STORES, tx } from "./idb.client";
 import type { ListItemRef } from "./offline-merge";
@@ -36,7 +40,9 @@ export interface QueuedMutation {
   queuedAt: number;
 }
 
-export async function getHomeSnapshot<TListItem>(): Promise<HomeSnapshot<TListItem> | undefined> {
+export const getHomeSnapshot = createClientOnlyFn(async function getHomeSnapshot<
+  TListItem,
+>(): Promise<HomeSnapshot<TListItem> | undefined> {
   return tx(STORES.homeCache, "readonly", (transaction) =>
     requestToPromise(
       transaction.objectStore(STORES.homeCache).get("home") as IDBRequest<
@@ -44,15 +50,17 @@ export async function getHomeSnapshot<TListItem>(): Promise<HomeSnapshot<TListIt
       >,
     ),
   );
-}
+});
 
-export async function putHomeSnapshot<TListItem>(snapshot: HomeSnapshot<TListItem>): Promise<void> {
+export const putHomeSnapshot = createClientOnlyFn(async function putHomeSnapshot<TListItem>(
+  snapshot: HomeSnapshot<TListItem>,
+): Promise<void> {
   await tx(STORES.homeCache, "readwrite", (transaction) => {
     transaction.objectStore(STORES.homeCache).put(snapshot);
   });
-}
+});
 
-export async function getListSnapshot<TLoaderData>(
+export const getListSnapshot = createClientOnlyFn(async function getListSnapshot<TLoaderData>(
   slug: string,
 ): Promise<ListSnapshot<TLoaderData> | undefined> {
   return tx(STORES.listSnapshots, "readonly", (transaction) =>
@@ -62,17 +70,20 @@ export async function getListSnapshot<TLoaderData>(
       >,
     ),
   );
-}
+});
 
-export async function putListSnapshot<TLoaderData>(
+export const putListSnapshot = createClientOnlyFn(async function putListSnapshot<TLoaderData>(
   snapshot: ListSnapshot<TLoaderData>,
 ): Promise<void> {
   await tx(STORES.listSnapshots, "readwrite", (transaction) => {
     transaction.objectStore(STORES.listSnapshots).put(snapshot);
   });
-}
+});
 
-export async function updateListDesired(slug: string, desired: ListItemRef[]): Promise<void> {
+export const updateListDesired = createClientOnlyFn(async function updateListDesired(
+  slug: string,
+  desired: ListItemRef[],
+): Promise<void> {
   await tx(STORES.listSnapshots, "readwrite", async (transaction) => {
     const store = transaction.objectStore(STORES.listSnapshots);
     const existing = await requestToPromise(
@@ -81,14 +92,17 @@ export async function updateListDesired(slug: string, desired: ListItemRef[]): P
     if (!existing) return;
     store.put({ ...existing, desired });
   });
-}
+});
 
 /**
  * Pins `baseline` for future reconnect rebases. No-op if no snapshot exists
  * yet for this slug — callers should have already run `putListSnapshot` at
  * least once (e.g. from a successful clientLoader fetch).
  */
-export async function freezeListBaseline(slug: string, baseline: ListItemRef[]): Promise<void> {
+export const freezeListBaseline = createClientOnlyFn(async function freezeListBaseline(
+  slug: string,
+  baseline: ListItemRef[],
+): Promise<void> {
   await tx(STORES.listSnapshots, "readwrite", async (transaction) => {
     const store = transaction.objectStore(STORES.listSnapshots);
     const existing = await requestToPromise(
@@ -97,14 +111,14 @@ export async function freezeListBaseline(slug: string, baseline: ListItemRef[]):
     if (!existing) return;
     store.put({ ...existing, baseline, baselineFetchedAt: Date.now() });
   });
-}
+});
 
 // The Background Sync API isn't part of TypeScript's built-in DOM lib.
 interface SyncManager {
   register(tag: string): Promise<void>;
 }
 
-export async function enqueueMutation(
+export const enqueueMutation = createClientOnlyFn(async function enqueueMutation(
   entry: Omit<QueuedMutation, "seq" | "queuedAt">,
 ): Promise<number> {
   const seq = await tx(STORES.mutationQueue, "readwrite", (transaction) =>
@@ -137,9 +151,11 @@ export async function enqueueMutation(
   }
 
   return seq;
-}
+});
 
-export async function listQueuedMutations(routeKey?: string): Promise<QueuedMutation[]> {
+export const listQueuedMutations = createClientOnlyFn(async function listQueuedMutations(
+  routeKey?: string,
+): Promise<QueuedMutation[]> {
   return tx(STORES.mutationQueue, "readonly", (transaction) => {
     const store = transaction.objectStore(STORES.mutationQueue);
     const source = routeKey
@@ -147,27 +163,31 @@ export async function listQueuedMutations(routeKey?: string): Promise<QueuedMuta
       : (store.getAll() as IDBRequest<QueuedMutation[]>);
     return requestToPromise(source);
   });
-}
+});
 
-export async function dequeueMutations(seqs: number[]): Promise<void> {
+export const dequeueMutations = createClientOnlyFn(async function dequeueMutations(
+  seqs: number[],
+): Promise<void> {
   await tx(STORES.mutationQueue, "readwrite", (transaction) => {
     const store = transaction.objectStore(STORES.mutationQueue);
     for (const seq of seqs) store.delete(seq);
   });
-}
+});
 
 /**
  * Wipes all three stores — used on logout so a shared device doesn't leak
  * one account's cached lists/queued edits into the next session.
  */
-export async function clearAllOfflineData(): Promise<void> {
-  await tx(
-    [STORES.homeCache, STORES.listSnapshots, STORES.mutationQueue],
-    "readwrite",
-    (transaction) => {
-      transaction.objectStore(STORES.homeCache).clear();
-      transaction.objectStore(STORES.listSnapshots).clear();
-      transaction.objectStore(STORES.mutationQueue).clear();
-    },
-  );
-}
+export const clearAllOfflineData = createClientOnlyFn(
+  async function clearAllOfflineData(): Promise<void> {
+    await tx(
+      [STORES.homeCache, STORES.listSnapshots, STORES.mutationQueue],
+      "readwrite",
+      (transaction) => {
+        transaction.objectStore(STORES.homeCache).clear();
+        transaction.objectStore(STORES.listSnapshots).clear();
+        transaction.objectStore(STORES.mutationQueue).clear();
+      },
+    );
+  },
+);

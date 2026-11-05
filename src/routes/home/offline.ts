@@ -14,7 +14,7 @@ import {
   type HomeSnapshot,
   listQueuedMutations,
   putHomeSnapshot,
-} from "~/lib/offline-store.client";
+} from "~/lib/offline-store.browser";
 import { resolveSlug, slugify } from "~/lib/slugify";
 import { createList, getHome, type HomeData, reorderLists } from "./home.functions";
 import type { ListItem } from "./home.schema";

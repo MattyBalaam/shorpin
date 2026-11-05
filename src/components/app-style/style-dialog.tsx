@@ -4,7 +4,7 @@ import { Modal } from "~/components/modal/modal";
 import * as clickableStyles from "~/components/shared/clickable-element.css";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { toast } from "~/lib/toast";
-import { withStaleVersionRetry } from "~/lib/version-guard.client";
+import { withStaleVersionRetry } from "~/lib/version-guard.browser";
 import { APP_STYLE_ATTRIBUTE, appStyles, type AppStyle, INHERIT_APP_STYLE } from "~/lib/app-style";
 import * as styles from "./style-picker.css";
 

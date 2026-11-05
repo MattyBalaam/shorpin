@@ -1,3 +1,8 @@
+// Browser-only (`*.browser.ts`): each export is wrapped in createClientOnlyFn,
+// so the server build stubs it and drops this module's browser code. Keep the
+// top level free of browser APIs (see "Client-only modules" in README.md).
+import { createClientOnlyFn } from "@tanstack/solid-start";
+
 // Detects an installed-app launch without relying on the manifest's
 // start_url (`/?launch`), which iOS home screen apps ignore — they open at
 // `/` (or wherever the page was when added). See README.md's "Default list
@@ -22,7 +27,9 @@ function isStandalone() {
  * the document's own navigation entry points somewhere else or was already
  * consumed).
  */
-export function consumeStandaloneLaunch(url: URL): boolean {
+export const consumeStandaloneLaunch = createClientOnlyFn(function consumeStandaloneLaunch(
+  url: URL,
+): boolean {
   if (consumed) return false;
   consumed = true;
 
@@ -30,4 +37,4 @@ export function consumeStandaloneLaunch(url: URL): boolean {
 
   const [entry] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
   return entry?.type === "navigate" && new URL(entry.name).pathname === url.pathname;
-}
+});

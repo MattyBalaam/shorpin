@@ -1,5 +1,6 @@
 import { isServer } from "@solidjs/web";
 import { createFileRoute, isRedirect, Outlet, useRouter } from "@tanstack/solid-router";
+import { createClientOnlyFn } from "@tanstack/solid-start";
 import { createEffect, createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
 import type * as v from "valibot";
 import { Actions } from "~/components/actions/actions";
@@ -27,12 +28,17 @@ import {
   listQueuedMutations,
   putListSnapshot,
   updateListDesired,
-} from "~/lib/offline-store.client";
+} from "~/lib/offline-store.browser";
 import { toast } from "~/lib/toast";
-import { withStaleVersionRetry } from "~/lib/version-guard.client";
+import { withStaleVersionRetry } from "~/lib/version-guard.browser";
 import type { zList } from "./data";
 import * as styles from "./list.css";
 import { getList, type ListData, mutateList } from "./list.functions";
+
+// supabase.client builds its client at the top level, so it stays a
+// `.client` module (mocked on the server) and loads lazily; the wrapper keeps
+// that import out of the server bundle.
+const loadRealtime = createClientOnlyFn(() => import("~/lib/supabase.client"));
 
 type ListPayload = v.InferInput<typeof zList>;
 
@@ -397,7 +403,7 @@ function ListPage() {
       let cancelled = false;
       let unsubscribe: (() => void) | undefined;
 
-      import("~/lib/supabase.client")
+      loadRealtime()
         .then(({ realtimeClient }) => {
           if (cancelled) return;
           const channel = realtimeClient

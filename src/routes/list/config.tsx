@@ -6,7 +6,7 @@ import { Link } from "~/components/link/link";
 import { Modal } from "~/components/modal/modal";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { toast } from "~/lib/toast";
-import { withStaleVersionRetry } from "~/lib/version-guard.client";
+import { withStaleVersionRetry } from "~/lib/version-guard.browser";
 import { getListConfig, saveCollaborators } from "./config.functions";
 
 import * as styles from "./config.css";
