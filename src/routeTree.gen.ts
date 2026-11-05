@@ -12,10 +12,15 @@ import { Route as rootRouteImport } from './root'
 import { Route as routesAppLayoutRouteImport } from './routes/app/layout'
 import { Route as routesAuthLayoutRouteImport } from './routes/auth/layout'
 import { Route as routesHomeHomeRouteImport } from './routes/home/home'
-import { Route as routesAuthLoginDotdevRouteImport } from './routes/auth/login.dev'
+import { Route as routesAuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as routesAuthLoginRouteImport } from './routes/auth/login'
+import { Route as routesAuthRequestAccessRouteImport } from './routes/auth/request-access'
+import { Route as routesAuthSetPasswordRouteImport } from './routes/auth/set-password'
 import { Route as routesHomeIndexRouteImport } from './routes/home/index'
+import { Route as routesHomeSignUpsRouteImport } from './routes/home/sign-ups'
 import { Route as routesHomeStyleRouteImport } from './routes/home/style'
 import { Route as routesListListRouteImport } from './routes/list/list'
+import { Route as routesAuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as routesListConfigRouteImport } from './routes/list/config'
 import { Route as routesDeleteRouteImport } from './routes/delete'
 import { Route as routesListStyleRouteImport } from './routes/list/style'
@@ -32,14 +37,35 @@ const routesHomeHomeRoute = routesHomeHomeRouteImport.update({
   id: '/_home',
   getParentRoute: () => routesAppLayoutRoute,
 } as any)
-const routesAuthLoginDotdevRoute = routesAuthLoginDotdevRouteImport.update({
+const routesAuthForgotPasswordRoute =
+  routesAuthForgotPasswordRouteImport.update({
+    id: '/forgot-password',
+    path: '/forgot-password',
+    getParentRoute: () => routesAuthLayoutRoute,
+  } as any)
+const routesAuthLoginRoute = routesAuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => routesAuthLayoutRoute,
+} as any)
+const routesAuthRequestAccessRoute = routesAuthRequestAccessRouteImport.update({
+  id: '/request-access',
+  path: '/request-access',
+  getParentRoute: () => routesAuthLayoutRoute,
+} as any)
+const routesAuthSetPasswordRoute = routesAuthSetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => routesAuthLayoutRoute,
 } as any)
 const routesHomeIndexRoute = routesHomeIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => routesHomeHomeRoute,
+} as any)
+const routesHomeSignUpsRoute = routesHomeSignUpsRouteImport.update({
+  id: '/sign-ups',
+  path: '/sign-ups',
   getParentRoute: () => routesHomeHomeRoute,
 } as any)
 const routesHomeStyleRoute = routesHomeStyleRouteImport.update({
@@ -51,6 +77,11 @@ const routesListListRoute = routesListListRouteImport.update({
   id: '/lists/$list',
   path: '/lists/$list',
   getParentRoute: () => routesAppLayoutRoute,
+} as any)
+const routesAuthConfirmRoute = routesAuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => routesAuthLayoutRoute,
 } as any)
 const routesListConfigRoute = routesListConfigRouteImport.update({
   id: '/config/$list',
@@ -70,18 +101,28 @@ const routesListStyleRoute = routesListStyleRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof routesHomeIndexRoute
-  '/login': typeof routesAuthLoginDotdevRoute
+  '/forgot-password': typeof routesAuthForgotPasswordRoute
+  '/login': typeof routesAuthLoginRoute
+  '/request-access': typeof routesAuthRequestAccessRoute
+  '/set-password': typeof routesAuthSetPasswordRoute
+  '/sign-ups': typeof routesHomeSignUpsRoute
   '/style': typeof routesHomeStyleRoute
   '/lists/$list': typeof routesListListRouteWithChildren
+  '/auth/confirm': typeof routesAuthConfirmRoute
   '/config/$list': typeof routesListConfigRoute
   '/lists/$list/confirm-delete': typeof routesDeleteRoute
   '/lists/$list/style': typeof routesListStyleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof routesHomeIndexRoute
-  '/login': typeof routesAuthLoginDotdevRoute
+  '/forgot-password': typeof routesAuthForgotPasswordRoute
+  '/login': typeof routesAuthLoginRoute
+  '/request-access': typeof routesAuthRequestAccessRoute
+  '/set-password': typeof routesAuthSetPasswordRoute
+  '/sign-ups': typeof routesHomeSignUpsRoute
   '/style': typeof routesHomeStyleRoute
   '/lists/$list': typeof routesListListRouteWithChildren
+  '/auth/confirm': typeof routesAuthConfirmRoute
   '/config/$list': typeof routesListConfigRoute
   '/lists/$list/confirm-delete': typeof routesDeleteRoute
   '/lists/$list/style': typeof routesListStyleRoute
@@ -91,9 +132,14 @@ export interface FileRoutesById {
   '/_app': typeof routesAppLayoutRouteWithChildren
   '/_auth': typeof routesAuthLayoutRouteWithChildren
   '/_app/_home': typeof routesHomeHomeRouteWithChildren
-  '/_auth/login': typeof routesAuthLoginDotdevRoute
+  '/_auth/forgot-password': typeof routesAuthForgotPasswordRoute
+  '/_auth/login': typeof routesAuthLoginRoute
+  '/_auth/request-access': typeof routesAuthRequestAccessRoute
+  '/_auth/set-password': typeof routesAuthSetPasswordRoute
+  '/_app/_home/sign-ups': typeof routesHomeSignUpsRoute
   '/_app/_home/style': typeof routesHomeStyleRoute
   '/_app/lists/$list': typeof routesListListRouteWithChildren
+  '/_auth/auth/confirm': typeof routesAuthConfirmRoute
   '/_app/_home/': typeof routesHomeIndexRoute
   '/_app/_home/config/$list': typeof routesListConfigRoute
   '/_app/lists/$list/confirm-delete': typeof routesDeleteRoute
@@ -103,18 +149,28 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/forgot-password'
     | '/login'
+    | '/request-access'
+    | '/set-password'
+    | '/sign-ups'
     | '/style'
     | '/lists/$list'
+    | '/auth/confirm'
     | '/config/$list'
     | '/lists/$list/confirm-delete'
     | '/lists/$list/style'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/login'
+    | '/request-access'
+    | '/set-password'
+    | '/sign-ups'
     | '/style'
     | '/lists/$list'
+    | '/auth/confirm'
     | '/config/$list'
     | '/lists/$list/confirm-delete'
     | '/lists/$list/style'
@@ -123,9 +179,14 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/_app/_home'
+    | '/_auth/forgot-password'
     | '/_auth/login'
+    | '/_auth/request-access'
+    | '/_auth/set-password'
+    | '/_app/_home/sign-ups'
     | '/_app/_home/style'
     | '/_app/lists/$list'
+    | '/_auth/auth/confirm'
     | '/_app/_home/'
     | '/_app/_home/config/$list'
     | '/_app/lists/$list/confirm-delete'
@@ -160,11 +221,32 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof routesHomeHomeRouteImport
       parentRoute: typeof routesAppLayoutRoute
     }
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof routesAuthForgotPasswordRouteImport
+      parentRoute: typeof routesAuthLayoutRoute
+    }
     '/_auth/login': {
       id: '/_auth/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof routesAuthLoginDotdevRouteImport
+      preLoaderRoute: typeof routesAuthLoginRouteImport
+      parentRoute: typeof routesAuthLayoutRoute
+    }
+    '/_auth/request-access': {
+      id: '/_auth/request-access'
+      path: '/request-access'
+      fullPath: '/request-access'
+      preLoaderRoute: typeof routesAuthRequestAccessRouteImport
+      parentRoute: typeof routesAuthLayoutRoute
+    }
+    '/_auth/set-password': {
+      id: '/_auth/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof routesAuthSetPasswordRouteImport
       parentRoute: typeof routesAuthLayoutRoute
     }
     '/_app/_home/': {
@@ -172,6 +254,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof routesHomeIndexRouteImport
+      parentRoute: typeof routesHomeHomeRoute
+    }
+    '/_app/_home/sign-ups': {
+      id: '/_app/_home/sign-ups'
+      path: '/sign-ups'
+      fullPath: '/sign-ups'
+      preLoaderRoute: typeof routesHomeSignUpsRouteImport
       parentRoute: typeof routesHomeHomeRoute
     }
     '/_app/_home/style': {
@@ -187,6 +276,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/lists/$list'
       preLoaderRoute: typeof routesListListRouteImport
       parentRoute: typeof routesAppLayoutRoute
+    }
+    '/_auth/auth/confirm': {
+      id: '/_auth/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof routesAuthConfirmRouteImport
+      parentRoute: typeof routesAuthLayoutRoute
     }
     '/_app/_home/config/$list': {
       id: '/_app/_home/config/$list'
@@ -213,12 +309,14 @@ declare module '@tanstack/solid-router' {
 }
 
 interface routesHomeHomeRouteChildren {
+  routesHomeSignUpsRoute: typeof routesHomeSignUpsRoute
   routesHomeStyleRoute: typeof routesHomeStyleRoute
   routesHomeIndexRoute: typeof routesHomeIndexRoute
   routesListConfigRoute: typeof routesListConfigRoute
 }
 
 const routesHomeHomeRouteChildren: routesHomeHomeRouteChildren = {
+  routesHomeSignUpsRoute: routesHomeSignUpsRoute,
   routesHomeStyleRoute: routesHomeStyleRoute,
   routesHomeIndexRoute: routesHomeIndexRoute,
   routesListConfigRoute: routesListConfigRoute,
@@ -257,11 +355,19 @@ const routesAppLayoutRouteWithChildren = routesAppLayoutRoute._addFileChildren(
 )
 
 interface routesAuthLayoutRouteChildren {
-  routesAuthLoginDotdevRoute: typeof routesAuthLoginDotdevRoute
+  routesAuthForgotPasswordRoute: typeof routesAuthForgotPasswordRoute
+  routesAuthLoginRoute: typeof routesAuthLoginRoute
+  routesAuthRequestAccessRoute: typeof routesAuthRequestAccessRoute
+  routesAuthSetPasswordRoute: typeof routesAuthSetPasswordRoute
+  routesAuthConfirmRoute: typeof routesAuthConfirmRoute
 }
 
 const routesAuthLayoutRouteChildren: routesAuthLayoutRouteChildren = {
-  routesAuthLoginDotdevRoute: routesAuthLoginDotdevRoute,
+  routesAuthForgotPasswordRoute: routesAuthForgotPasswordRoute,
+  routesAuthLoginRoute: routesAuthLoginRoute,
+  routesAuthRequestAccessRoute: routesAuthRequestAccessRoute,
+  routesAuthSetPasswordRoute: routesAuthSetPasswordRoute,
+  routesAuthConfirmRoute: routesAuthConfirmRoute,
 }
 
 const routesAuthLayoutRouteWithChildren =

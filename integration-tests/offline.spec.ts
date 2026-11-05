@@ -128,9 +128,7 @@ test("navigating back to a visited list while the network is down shows the cach
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("cancelling the network error modal goes back to the previous page", async ({
+test("cancelling the network error modal goes back to the previous page", async ({
   page,
   context,
   ctx,

@@ -38,7 +38,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 
 ## Migration to TanStack Start + Solid
 
-In progress, on the `spike/tanstack-solid` branch, to learn both. The list page (with its palette picker and Style link), the layouts, the dev login, home, and the dialogs and styles (list config, delete, the style dialogs, app styles and the colour-scheme toggle) are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
+In progress, on the `spike/tanstack-solid` branch, to learn both. The list page (with its palette picker and Style link), the layouts, home (with its sign-ups dialog), the auth pages (sign-in, forgot and set password, request access, and the email-link confirm route), and the dialogs and styles (list config, delete, the style dialogs, app styles and the colour-scheme toggle) are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
 
 Decisions so far:
 
@@ -62,6 +62,8 @@ Decisions so far:
   - Attributes are written as named: `stroke-width`, not `strokeWidth`; `aria-hidden="true"`, since a bare boolean renders empty.
   - Writes are batched: a signal read straight after its setter returns the old value until the batch flushes.
   - `For` passes each item as a plain value (only the index is an accessor).
+- **One login route:** React Router's `routes.ts` swapped in `login.dev.tsx` in mock and preview builds. TanStack's virtual route config is loaded by the router plugin, outside Vite's `import.meta.env`, so [login.tsx](src/routes/auth/login.tsx) is the only login page and its dev quick-login list is a mode-gated constant (empty, and tree-shaken, in other builds).
+- **Validation that spans fields lives in the schema:** set-password's "Passwords do not match" is a `v.forward(v.partialCheck(…))` on `zSetPassword`, so Formisch shows it before submitting and the server function's validator still enforces it. React Router's action checked it by hand.
 - **Editing `src/routes.ts` needs a dev server restart:** the router plugin loads the virtual route config once per process and keeps rewriting `routeTree.gen.ts` from that copy. Touching `vite.config.ts` doesn't reload it.
 - **Lint:** oxlint's `no-unassigned-vars` is off, because it can't see Solid's compiler assigning `ref={el}` variables.
 
@@ -72,10 +74,15 @@ Decisions so far:
 Routes are declared in [src/routes.ts](src/routes.ts) (TanStack Router's virtual route config), and [src/routeTree.gen.ts](src/routeTree.gen.ts) is generated from it on every dev or build run:
 
 ```
-/login                                → src/routes/auth/login.dev.tsx
+/login                                → src/routes/auth/login.tsx
+/forgot-password                      → src/routes/auth/forgot-password.tsx
+/set-password                         → src/routes/auth/set-password.tsx
+/request-access                       → src/routes/auth/request-access.tsx
+/auth/confirm                         → src/routes/auth/confirm.ts (server route, no page)
 / (home)                              → src/routes/home/home.tsx (layout) + index.tsx
 /style                                → src/routes/home/style.tsx (dialog over home)
 /config/$list                         → src/routes/list/config.tsx (dialog over home)
+/sign-ups                             → src/routes/home/sign-ups.tsx (dialog over home)
 /lists/$list                          → src/routes/list/list.tsx
 /lists/$list/style                    → src/routes/list/style.tsx (dialog over the list)
 /lists/$list/confirm-delete           → src/routes/delete.tsx
@@ -84,7 +91,7 @@ Routes are declared in [src/routes.ts](src/routes.ts) (TanStack Router's virtual
 **Route Hierarchy:**
 
 - Root Layout: [src/root.tsx](src/root.tsx) - The document shell (`shellComponent`) and main container (max-width: 60ch). The auth and app layouts add notifications; pages render their own header with breadcrumbs
-- Flat routing structure, with dialogs (style, config) nested one level under the page they open over
+- Flat routing structure, with dialogs (style, config, sign-ups) nested one level under the page they open over
 - Dynamic route parameter `$list` maps to list slugs in the database
 
 **Data Loading:**
@@ -298,7 +305,7 @@ This is deliberately separate from the service worker's `offline.html` fallback 
 
 ### Authentication (Supabase)
 
-The `/auth/confirm` route handles all Supabase email verification links. It exchanges the OTP token, then redirects:
+The `/auth/confirm` route ([confirm.ts](src/routes/auth/confirm.ts)) handles all Supabase email verification links. It's a server route (a `GET` handler, no page), like React Router's resource route: it exchanges the OTP token, which sets the session cookies on its response, then redirects. A missing or invalid token answers 400.
 
 - `type=recovery` or `type=invite` → `/set-password` (user sets a password)
 - All other types (e.g. `signup`) → `/`

@@ -19,7 +19,7 @@ import { consumeStandaloneLaunch } from "~/lib/standalone-launch.browser";
 import { toast } from "~/lib/toast";
 import { withStaleVersionRetry } from "~/lib/version-guard.browser";
 import { signOut } from "../auth/logout.functions";
-import { Lists } from "./components";
+import { Lists, PendingSignUps } from "./components";
 import { createList, getLaunchTarget, reorderLists, setDefaultList } from "./home.functions";
 import * as styles from "./home.css";
 import { type ListItem, zCreate } from "./home.schema";
@@ -32,7 +32,6 @@ import {
   replayQueue,
 } from "./offline";
 
-// Not yet ported (see legacy/README.md): the sign-ups count (stage 4).
 export const Route = createFileRoute("/_app/_home")({
   // An installed app opens `/?launch` (the manifest's start_url): send it to
   // the starred list, or plain home. Dropping the param means a later
@@ -213,6 +212,9 @@ function Home() {
     <>
       <PageHeader
         actions={[
+          // Left out, not hidden, at zero: the header sizes itself by its
+          // number of actions.
+          ...(data().waitlistCount > 0 ? [<PendingSignUps count={data().waitlistCount} />] : []),
           <Button onClick={handleSignOut}>
             <PowerIcon />
             <ActionLabel>Sign out</ActionLabel>
@@ -270,7 +272,7 @@ function Home() {
           </div>
         </div>
       </Actions>
-      {/* The style and config dialogs (child routes). */}
+      {/* The style, config and sign-ups dialogs (child routes). */}
       <Outlet />
     </>
   );

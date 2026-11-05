@@ -1,11 +1,21 @@
 import { createMemo, For, Show } from "solid-js";
 import { Link } from "~/components/link/link";
+import { ActionLabel } from "~/components/page-header/page-header";
 import type { StartDragOptions } from "~/components/reorderable/create-drag-list";
 import { createReorderable } from "~/components/reorderable/create-reorderable";
 import { DragGrip } from "~/components/reorderable/drag-grip";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 import * as styles from "./home.css";
 import type { ListItem } from "./home.schema";
+
+/** Home's link to the sign-ups dialog. */
+export function PendingSignUps(props: { count: number }) {
+  return (
+    <Link to="/sign-ups">
+      {props.count} <ActionLabel>pending</ActionLabel>
+    </Link>
+  );
+}
 
 function StarButton(props: { name: string; isDefault: boolean; onToggle: () => void }) {
   return (

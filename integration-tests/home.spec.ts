@@ -429,9 +429,7 @@ test("installed app opens the starred list on launch even without start_url (iOS
   await expect(page).toHaveURL("/");
 });
 
-// Not yet ported to Solid. Stage 4: the baseline shows home's sign-ups count ("1 pending"), which also sets the header's height (see legacy/README.md).
-
-test.fixme("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+test("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await expectPageSnapshot(page, "home");
 });

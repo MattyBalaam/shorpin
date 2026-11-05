@@ -1,18 +1,14 @@
 import { test, expect } from "./fixtures";
-import { expectPageSnapshot, login } from "./helpers";
+import { expectPageSnapshot, login, serverFnRequests } from "./helpers";
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
+test("admin sees pending sign-ups count on home page", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // The seed adds 1 waitlist entry, so the home page should show "1 pending"
   await expect(page.getByRole("link", { name: /pending/ })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("admin can view sign-ups modal", async ({ page, ctx }) => {
+test("admin can view sign-ups modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -22,9 +18,7 @@ test.fixme("admin can view sign-ups modal", async ({ page, ctx }) => {
   await expect(page.getByText(ctx.waitlistEmail)).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("admin can handle sign-ups", async ({ page, ctx }) => {
+test("admin can handle sign-ups", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -42,22 +36,19 @@ test.fixme("admin can handle sign-ups", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: /pending/ })).toBeHidden();
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
+test("client-side navigation to a route with no offline handling of its own falls back to a friendly message when the server is unreachable", async ({
   page,
   ctx,
 }) => {
   await login(page, ctx.ownerEmail);
 
-  // /sign-ups has no clientLoader and no route-level ErrorBoundary (unlike
-  // home/list), so it's a convenient stand-in for any route that falls
-  // through to root.tsx's boundary. Aborting just this request (rather than
-  // going fully offline) reproduces the app's own server being unreachable
-  // while the browser otherwise has a connection — root's ErrorBoundary
-  // should still catch the resulting fetch failure with a friendly, retryable
-  // message rather than a raw error dump.
-  await page.route(/\/sign-ups\.data(\?|$)/, (route) => route.abort());
+  // /sign-ups has no offline fallback (unlike home and the list), so it
+  // stands in for any route whose loader error reaches root's error
+  // component. Aborting just its request (rather than going fully offline)
+  // reproduces the app's own server being unreachable while the browser is
+  // otherwise connected: root should still show a friendly, retryable
+  // message rather than a raw error.
+  await page.route(serverFnRequests("getSignUps"), (route) => route.abort());
 
   await page.getByRole("link", { name: /pending/ }).click();
 
@@ -65,9 +56,7 @@ test.fixme("client-side navigation to a route with no offline handling of its ow
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("client-side navigation to a route with no offline handling of its own shows an offline message when the browser itself has no connection", async ({
+test("client-side navigation to a route with no offline handling of its own shows an offline message when the browser itself has no connection", async ({
   page,
   context,
   ctx,
@@ -78,9 +67,9 @@ test.fixme("client-side navigation to a route with no offline handling of its ow
   // ErrorState's two branches: navigator.onLine false takes priority over
   // the generic "server unreachable" wording. A real (non-SPA) navigation
   // would instead hit the service worker's offline.html fallback — clicking
-  // the in-app link here keeps this on React Router's client-side data path,
-  // which the service worker never touches (see README's "Error boundaries &
-  // network-down UX").
+  // the in-app link here keeps this on the router's client-side data path
+  // (a server function call), which the service worker never touches (see
+  // README's "Error boundaries & network-down UX").
   await context.setOffline(true);
 
   await page.getByRole("link", { name: /pending/ }).click();
@@ -89,9 +78,7 @@ test.fixme("client-side navigation to a route with no offline handling of its ow
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 4, sign-ups and the remaining auth pages (see legacy/README.md).
-
-test.fixme("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+test("sign-ups modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/sign-ups");
   // The seeded sign-up date is fixed; masked in case of timezone differences.

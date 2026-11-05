@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { useServerFn } from "@tanstack/solid-start";
 import { createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/button/button";
+import { Link } from "~/components/link/link";
 import { toast } from "~/lib/toast";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
@@ -15,7 +16,9 @@ export const Route = createFileRoute("/_auth/login")({
   component: Login,
 });
 
-// Quick-login shortcuts for the mock server's seeded users.
+// Quick-login shortcuts for the mock server's seeded users. React Router
+// swapped in a separate login.dev route in these modes; here the shortcuts
+// are a constant that's empty, and dropped, in other builds.
 const DEV_USERS =
   import.meta.env.MODE === "mock" || import.meta.env.MODE === "preview"
     ? ([
@@ -52,7 +55,7 @@ function Login() {
 
   return (
     <>
-      <h1>Sign in (Dev Mode)</h1>
+      <h1>{DEV_USERS.length > 0 ? "Sign in (Dev Mode)" : "Sign in"}</h1>
       <Form of={form} class={styles.form} onSubmit={submit}>
         <Show when={form.errors}>
           {(errors) => <For each={errors()}>{(error) => <p>{error}</p>}</For>}
@@ -74,6 +77,10 @@ function Login() {
           Sign in
         </Button>
       </Form>
+      <div class={styles.links}>
+        <Link to="/forgot-password">Forgot password?</Link>
+        <Link to="/request-access">Request access</Link>
+      </div>
 
       <Show when={DEV_USERS.length > 0}>
         <div class={devStyles.devSection}>

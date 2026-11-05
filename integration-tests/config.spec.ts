@@ -46,9 +46,7 @@ test("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await expect(page).toHaveURL("/");
 });
 
-// Not yet ported to Solid. Stage 4: home, behind the dialog, shows its sign-ups count ("1 pending"), which also sets the header's height (see legacy/README.md).
-
-test.fixme("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+test("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.goto("/config/shopping");
   await expectPageSnapshot(page, "list-config");
