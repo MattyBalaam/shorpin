@@ -4,7 +4,7 @@ import {
   HeadContent,
   Outlet,
   Scripts,
-  useLocation,
+  useRouterState,
   useMatches,
 } from "@tanstack/solid-router";
 import { createIsomorphicFn } from "@tanstack/solid-start";
@@ -107,16 +107,16 @@ function RootDocument(props: { children?: Element }) {
 }
 
 function App() {
-  const location = useLocation();
+  // The location once its loaders have resolved and its matches are on
+  // screen: `useLocation` moves as soon as a navigation starts.
+  const resolvedPath = useRouterState({ select: (state) => state.resolvedLocation?.pathname });
 
   // Tests wait on this before interacting (integration-tests/helpers.ts):
-  // it's only written once the client is running this route.
-  createEffect(
-    () => location().pathname,
-    (pathname) => {
-      document.documentElement.dataset.hydratedPath = pathname;
-    },
-  );
+  // it's only written once the client is running this route and has
+  // rendered it.
+  createEffect(resolvedPath, (pathname) => {
+    if (pathname !== undefined) document.documentElement.dataset.hydratedPath = pathname;
+  });
 
   onSettled(function trackKeyboardViewport() {
     // TEMPORARY: iOS Safari doesn't support `interactive-widget=resizes-content`

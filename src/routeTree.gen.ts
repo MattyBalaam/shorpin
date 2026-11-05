@@ -8,147 +8,152 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./root";
-import { Route as routesAppLayoutRouteImport } from "./routes/app/layout";
-import { Route as routesAuthLayoutRouteImport } from "./routes/auth/layout";
-import { Route as routesHomeHomeRouteImport } from "./routes/home/home";
-import { Route as routesAuthLoginDotdevRouteImport } from "./routes/auth/login.dev";
-import { Route as routesListListRouteImport } from "./routes/list/list";
+import { Route as rootRouteImport } from './root'
+import { Route as routesAppLayoutRouteImport } from './routes/app/layout'
+import { Route as routesAuthLayoutRouteImport } from './routes/auth/layout'
+import { Route as routesHomeHomeRouteImport } from './routes/home/home'
+import { Route as routesAuthLoginDotdevRouteImport } from './routes/auth/login.dev'
+import { Route as routesListListRouteImport } from './routes/list/list'
 
 const routesAppLayoutRoute = routesAppLayoutRouteImport.update({
-  id: "/_app",
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const routesAuthLayoutRoute = routesAuthLayoutRouteImport.update({
-  id: "/_auth",
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const routesHomeHomeRoute = routesHomeHomeRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => routesAppLayoutRoute,
-} as any);
+} as any)
 const routesAuthLoginDotdevRoute = routesAuthLoginDotdevRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => routesAuthLayoutRoute,
-} as any);
+} as any)
 const routesListListRoute = routesListListRouteImport.update({
-  id: "/lists/$list",
-  path: "/lists/$list",
+  id: '/lists/$list',
+  path: '/lists/$list',
   getParentRoute: () => routesAppLayoutRoute,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof routesHomeHomeRoute;
-  "/login": typeof routesAuthLoginDotdevRoute;
-  "/lists/$list": typeof routesListListRoute;
+  '/': typeof routesHomeHomeRoute
+  '/login': typeof routesAuthLoginDotdevRoute
+  '/lists/$list': typeof routesListListRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof routesHomeHomeRoute;
-  "/login": typeof routesAuthLoginDotdevRoute;
-  "/lists/$list": typeof routesListListRoute;
+  '/': typeof routesHomeHomeRoute
+  '/login': typeof routesAuthLoginDotdevRoute
+  '/lists/$list': typeof routesListListRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/_app": typeof routesAppLayoutRouteWithChildren;
-  "/_auth": typeof routesAuthLayoutRouteWithChildren;
-  "/_app/": typeof routesHomeHomeRoute;
-  "/_auth/login": typeof routesAuthLoginDotdevRoute;
-  "/_app/lists/$list": typeof routesListListRoute;
+  __root__: typeof rootRouteImport
+  '/_app': typeof routesAppLayoutRouteWithChildren
+  '/_auth': typeof routesAuthLayoutRouteWithChildren
+  '/_app/': typeof routesHomeHomeRoute
+  '/_auth/login': typeof routesAuthLoginDotdevRoute
+  '/_app/lists/$list': typeof routesListListRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/login" | "/lists/$list";
-  fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/login" | "/lists/$list";
-  id: "__root__" | "/_app" | "/_auth" | "/_app/" | "/_auth/login" | "/_app/lists/$list";
-  fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/login' | '/lists/$list'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/login' | '/lists/$list'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_auth'
+    | '/_app/'
+    | '/_auth/login'
+    | '/_app/lists/$list'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  routesAppLayoutRoute: typeof routesAppLayoutRouteWithChildren;
-  routesAuthLayoutRoute: typeof routesAuthLayoutRouteWithChildren;
+  routesAppLayoutRoute: typeof routesAppLayoutRouteWithChildren
+  routesAuthLayoutRoute: typeof routesAuthLayoutRouteWithChildren
 }
 
-declare module "@tanstack/solid-router" {
+declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    "/_app": {
-      id: "/_app";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof routesAppLayoutRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_auth": {
-      id: "/_auth";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof routesAuthLayoutRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app/": {
-      id: "/_app/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof routesHomeHomeRouteImport;
-      parentRoute: typeof routesAppLayoutRoute;
-    };
-    "/_auth/login": {
-      id: "/_auth/login";
-      path: "/login";
-      fullPath: "/login";
-      preLoaderRoute: typeof routesAuthLoginDotdevRouteImport;
-      parentRoute: typeof routesAuthLayoutRoute;
-    };
-    "/_app/lists/$list": {
-      id: "/_app/lists/$list";
-      path: "/lists/$list";
-      fullPath: "/lists/$list";
-      preLoaderRoute: typeof routesListListRouteImport;
-      parentRoute: typeof routesAppLayoutRoute;
-    };
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof routesAppLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof routesAuthLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof routesHomeHomeRouteImport
+      parentRoute: typeof routesAppLayoutRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof routesAuthLoginDotdevRouteImport
+      parentRoute: typeof routesAuthLayoutRoute
+    }
+    '/_app/lists/$list': {
+      id: '/_app/lists/$list'
+      path: '/lists/$list'
+      fullPath: '/lists/$list'
+      preLoaderRoute: typeof routesListListRouteImport
+      parentRoute: typeof routesAppLayoutRoute
+    }
   }
 }
 
 interface routesAppLayoutRouteChildren {
-  routesHomeHomeRoute: typeof routesHomeHomeRoute;
-  routesListListRoute: typeof routesListListRoute;
+  routesHomeHomeRoute: typeof routesHomeHomeRoute
+  routesListListRoute: typeof routesListListRoute
 }
 
 const routesAppLayoutRouteChildren: routesAppLayoutRouteChildren = {
   routesHomeHomeRoute: routesHomeHomeRoute,
   routesListListRoute: routesListListRoute,
-};
+}
 
 const routesAppLayoutRouteWithChildren = routesAppLayoutRoute._addFileChildren(
   routesAppLayoutRouteChildren,
-);
+)
 
 interface routesAuthLayoutRouteChildren {
-  routesAuthLoginDotdevRoute: typeof routesAuthLoginDotdevRoute;
+  routesAuthLoginDotdevRoute: typeof routesAuthLoginDotdevRoute
 }
 
 const routesAuthLayoutRouteChildren: routesAuthLayoutRouteChildren = {
   routesAuthLoginDotdevRoute: routesAuthLoginDotdevRoute,
-};
+}
 
-const routesAuthLayoutRouteWithChildren = routesAuthLayoutRoute._addFileChildren(
-  routesAuthLayoutRouteChildren,
-);
+const routesAuthLayoutRouteWithChildren =
+  routesAuthLayoutRoute._addFileChildren(routesAuthLayoutRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   routesAppLayoutRoute: routesAppLayoutRouteWithChildren,
   routesAuthLayoutRoute: routesAuthLayoutRouteWithChildren,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/solid-start";
-declare module "@tanstack/solid-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/solid-start'
+declare module '@tanstack/solid-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

@@ -107,9 +107,7 @@ test.fixme("an offline edit still queues successfully even when Background Sync 
   await expect(page.getByText("Sync Tag Test (pending", { exact: false })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
+test("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
   page,
   ctx,
 }) => {

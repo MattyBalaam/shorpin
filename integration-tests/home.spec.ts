@@ -1,10 +1,7 @@
-import type { Response } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { expectPageSnapshot, login } from "./helpers";
+import { expectPageSnapshot, isServerFnCall, login } from "./helpers";
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner can create a new list", async ({ page, ctx }) => {
+test("owner can create a new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByLabel("New list").fill("Groceries");
@@ -18,8 +15,7 @@ test.fixme("owner can create a new list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
+// Not yet ported to Solid. Stage 2, dialogs and styles: it goes through config and delete (see legacy/README.md).
 test.fixme("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
@@ -39,9 +35,7 @@ test.fixme("owner can reuse the name of a deleted list", async ({ page, ctx }) =
   await page.waitForURL("/lists/owner-empty-1");
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner can create a list whose slug belongs to a list they can't see", async ({
+test("owner can create a list whose slug belongs to a list they can't see", async ({
   page,
   ctx,
 }) => {
@@ -54,9 +48,7 @@ test.fixme("owner can create a list whose slug belongs to a list they can't see"
   await page.waitForURL(/\/lists\/collab-shopping-[0-9a-f]{6}$/);
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner can create a list while offline, synced on reconnect", async ({
+test("owner can create a list while offline, synced on reconnect", async ({
   page,
   ctx,
   context,
@@ -80,15 +72,7 @@ test.fixme("owner can create a list while offline, synced on reconnect", async (
   });
   await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
 
-  const syncSubmitted = page.waitForResponse(
-    // The offline-queued replay is a raw fetch to the plain route path
-    // (entry.route, captured from clientAction's request.url — RR's own
-    // .data protocol is only used for JS-driven submissions that reach
-    // serverAction(), not for the logical request clientAction sees), so
-    // match on path rather than a .data suffix.
-    (response) =>
-      new URL(response.url()).pathname === "/" && response.request().method() === "POST",
-  );
+  const syncSubmitted = page.waitForResponse(isServerFnCall("createList"));
 
   await context.setOffline(false);
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
@@ -102,9 +86,7 @@ test.fixme("owner can create a list while offline, synced on reconnect", async (
   await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("a stale-session redirect during reconnect sync doesn't drop a queued list, and it flushes once retried", async ({
+test("a stale-session redirect during reconnect sync doesn't drop a queued list, and it flushes once retried", async ({
   page,
   ctx,
   context,
@@ -118,40 +100,18 @@ test.fixme("a stale-session redirect during reconnect sync doesn't drop a queued
     timeout: 10000,
   });
 
-  // Home's replay is a raw fetch() to the plain route (see the previous
-  // test's comment on entry.route), not RR's .data protocol, so the real
-  // middleware redirect for a stale session comes back as a genuine 302
-  // with a Location header — fetch() would silently follow that and
-  // resolve "successfully" against /login without isSuccessfulReplay's
-  // redirect: "manual" check (app/lib/mutation-replay.ts).
-  let redirectedPostSeen = false;
-  const isRootPath = (url: URL) => url.pathname === "/";
-  const redirectToLogin: Parameters<typeof page.route>[1] = async (route) => {
-    if (route.request().method() === "POST") {
-      redirectedPostSeen = true;
-      await route.fulfill({ status: 302, headers: { location: "/login" } });
-      return;
-    }
-    await route.continue();
-  };
-  await page.route(isRootPath, redirectToLogin);
+  // A stale session: with the auth cookies gone, the server's auth check
+  // redirects the replay to /login, as for any expired session.
+  await context.clearCookies();
 
   await context.setOffline(false);
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
-  await expect.poll(() => redirectedPostSeen).toBe(true);
+  await page.waitForURL("/login");
 
-  // Redirected-away, not delivered: the pending row must survive rather
-  // than silently vanishing or falsely resolving into a real list link.
-  // fetch() following a redirect never navigates the page itself, so this
-  // assertion (unlike list.tsx's) needs no waitForURL.
-  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
-
-  await page.unroute(isRootPath, redirectToLogin);
-
-  // No further online/offline transition occurs here — only the mount-time
-  // retry (not just onOnline) can pick this queued entry back up.
-  await page.reload();
+  // Redirected away, not delivered: the queued list survives, and the
+  // mount-time retry (no further online/offline transition happens here)
+  // delivers it once the user is back.
+  await login(page, ctx.ownerEmail);
   await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
 });
 
@@ -162,9 +122,7 @@ test("owner sees their two lists", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Owner Empty" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner can reorder lists from home", async ({ page, ctx }) => {
+test("owner can reorder lists from home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const getListOrder = async () =>
@@ -205,9 +163,7 @@ test.fixme("owner can reorder lists from home", async ({ page, ctx }) => {
   }).toPass();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner can reorder lists while offline, synced on reconnect", async ({
+test("owner can reorder lists while offline, synced on reconnect", async ({
   page,
   ctx,
   context,
@@ -251,15 +207,7 @@ test.fixme("owner can reorder lists while offline, synced on reconnect", async (
   // margin the non-offline reorder test above already waits out).
   await page.waitForTimeout(200);
 
-  const syncSubmitted = page.waitForResponse(
-    // The offline-queued replay is a raw fetch to the plain route path
-    // (entry.route, captured from clientAction's request.url — RR's own
-    // .data protocol is only used for JS-driven submissions that reach
-    // serverAction(), not for the logical request clientAction sees), so
-    // match on path rather than a .data suffix.
-    (response) =>
-      new URL(response.url()).pathname === "/" && response.request().method() === "POST",
-  );
+  const syncSubmitted = page.waitForResponse(isServerFnCall("reorderLists"));
 
   await context.setOffline(false);
   await expect(page.getByText("Back online - syncing changes")).toBeVisible();
@@ -272,9 +220,7 @@ test.fixme("owner can reorder lists while offline, synced on reconnect", async (
   }).toPass();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
+test("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   const firstList = () => page.locator('li a[href^="/lists/"]').first();
@@ -298,9 +244,7 @@ test.fixme("reordering does not snap back immediately after drop", async ({ page
   await expect(firstList()).toHaveText("Owner Empty");
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("owner sees admin link for both their lists", async ({ page, ctx }) => {
+test("owner sees admin link for both their lists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
@@ -314,9 +258,7 @@ test("collaborator sees their lists plus the shared list", async ({ page, ctx })
   await expect(page.getByRole("link", { name: "Shopping", exact: true })).toBeVisible(); // shared from owner
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("collaborator sees admin only for their own lists, not the shared one", async ({
+test("collaborator sees admin only for their own lists, not the shared one", async ({
   page,
   ctx,
 }) => {
@@ -326,17 +268,13 @@ test.fixme("collaborator sees admin only for their own lists, not the shared one
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("user adds new list", async ({ page, ctx }) => {
+test("user adds new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await expect(page.getByRole("link", { name: "Configure" })).toHaveCount(2);
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("shows an error message when list creation fails", async ({ page, ctx }) => {
+test("shows an error message when list creation fails", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByLabel("New list").fill("__fail__");
@@ -417,17 +355,13 @@ test("unread count is scoped to user - user A's views don't affect user B", asyn
   await expect(shoppingRow.getByText("30 unread")).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("starred list opens on app launch, and un-starring falls back to home", async ({
+test("starred list opens on app launch, and un-starring falls back to home", async ({
   page,
   ctx,
 }) => {
   // Only the star's own action response carries Set-Cookie — not e.g. the
   // /perf beacon, which is also a POST.
-  const isStarSubmission = (response: Response) =>
-    new URL(response.url()).pathname.startsWith("/_.data") &&
-    response.request().method() === "POST";
+  const isStarSubmission = isServerFnCall("setDefaultList");
 
   await login(page, ctx.ownerEmail);
 
@@ -465,9 +399,7 @@ test.fixme("starred list opens on app launch, and un-starring falls back to home
   await expect(page).toHaveURL("/");
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("installed app opens the starred list on launch even without start_url (iOS)", async ({
+test("installed app opens the starred list on launch even without start_url (iOS)", async ({
   page,
   ctx,
 }) => {
@@ -479,11 +411,7 @@ test.fixme("installed app opens the starred list on launch even without start_ur
 
   await login(page, ctx.ownerEmail);
 
-  const starred = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname.startsWith("/_.data") &&
-      response.request().method() === "POST",
-  );
+  const starred = page.waitForResponse(isServerFnCall("setDefaultList"));
   await page.getByRole("button", { name: "Open Shopping on launch" }).click();
   await starred;
 

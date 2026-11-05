@@ -6,21 +6,6 @@ export const zCreate = v.object({
   "new-list": v.pipe(v.string(), v.minLength(1, "List name is required")),
 });
 
-export const REORDER_LISTS_INTENT = "reorder-lists";
-
-export const zReorderLists = v.object({
-  intent: v.literal(REORDER_LISTS_INTENT),
-  "list-order": v.array(v.pipe(v.string(), v.uuid())),
-});
-
-export const SET_DEFAULT_LIST_INTENT = "set-default-list";
-
-export const zSetDefaultList = v.object({
-  intent: v.literal(SET_DEFAULT_LIST_INTENT),
-  // Empty string clears the default.
-  "list-id": v.union([v.literal(""), v.pipe(v.string(), v.uuid())]),
-});
-
 export type ListItem = Pick<ListItemDB, "id" | "name" | "slug" | "user_id"> & {
   unreadCount: number;
   totalCount: number;

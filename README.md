@@ -38,7 +38,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 
 ## Migration to TanStack Start + Solid
 
-In progress, on the `spike/tanstack-solid` branch, to learn both. The list page, the layouts, the dev login and a minimal home are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
+In progress, on the `spike/tanstack-solid` branch, to learn both. The list page, the layouts, the dev login and home are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
 
 Decisions so far:
 
@@ -49,6 +49,8 @@ Decisions so far:
 - **Isomorphic loaders replace `clientLoader`:** a TanStack Router loader runs on the server for the first page load, then in the browser on client navigations. The list's loader falls back to its IndexedDB snapshot there, and an effect caches what the server sent (which `clientLoader.hydrate` used to do).
 - **`.client.ts` imports are mocked on the server** (`importProtection.behavior: "mock"` in [vite.config.ts](vite.config.ts)), matching React Router's rule that such modules are empty there. Calling a mocked export still throws.
 - **Readable server function ids** (`list.functions--mutateList…`) through `generateFunctionId`, so DevTools and tests can tell requests apart. Specs match requests through helpers in [integration-tests/helpers.ts](integration-tests/helpers.ts) rather than the framework's wire format.
+- **No single-flight mutations:** by default, Solid's server function client sends `X-Single-Flight` with every POST. The server then re-runs the current page's loaders in the same request, and the router applies their data as fresh loader data. That resets pages that keep local state in writable derived signals. The re-run also misses cookies the mutation set (a star reverted), and the list page would count it as a visit, which records a view and clears unread markers too soon. [router.tsx](src/router.tsx) removes the header in `prepareRequest`. Pages apply their own results, and call `router.invalidate()` when they want fresh data.
+- **Tests wait for a rendered route:** `data-hydrated-path` follows the router's resolved location, not `useLocation`, which changes as soon as a navigation starts. After signing in, `login()` also waits for home's view transition and the notification panel to finish animating. Until the view transition ends, pointer input lands on its snapshot.
 - **No Conform:** the list page holds its state in two signals (confirmed server items, and what's on screen) and saves through one server function, one save at a time. See [List Mutations](#list-mutations-adddelete).
 - **Solid 2 gotchas met so far:**
   - Reading a JSX prop builds its elements: read it once (`children()`), or keep data as data and build JSX in the template, or hydration can't match the server's HTML.

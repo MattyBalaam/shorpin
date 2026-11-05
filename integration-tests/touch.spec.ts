@@ -165,9 +165,7 @@ test("vertical touch drag reorders list items without scrolling the page", async
   await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Eggs", "Milk"]);
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("vertical touch drag reorders lists on home", async ({ page, ctx }) => {
+test("vertical touch drag reorders lists on home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await expect.poll(() => listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
 
@@ -200,9 +198,7 @@ test("a vertical touch drag without a long-press doesn't reorder", async ({ page
   expect(await itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
 });
 
-// Not yet ported to Solid. Stage 1, home: create, reorder and star lists, and the config link (see legacy/README.md).
-
-test.fixme("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
+test("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
   page,
   ctx,
 }) => {

@@ -51,25 +51,55 @@ export async function login(page: Page, email: string) {
   await page.getByLabel("Password").fill("any-password"); // mock ignores the password
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("/");
-  // Home has then shown (and spent) the "Welcome back!" flash, so it can't
-  // open the notification panel on whatever page the test goes to next.
   await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached();
-}
-
-// The list page's requests, named by its server functions (readable ids:
-// see generateFunctionId in vite.config.ts). These keep specs off the
-// framework's wire format: React Router's were `/lists/<slug>.data`.
-// Each spec touches one list, so the function name is enough.
-
-/** Loading the list (GET) or saving it (POST). */
-export const listRequests = /\/_serverFn\/[^?]*--(getList|mutateList)_/;
-
-/** True for the response to a save of the list. */
-export function isListSave(response: { url(): string; request(): { method(): string } }) {
-  return (
-    /\/_serverFn\/[^?]*--mutateList_/.test(response.url()) && response.request().method() === "POST"
+  // Sign-in navigates client-side, so home arrives through a view
+  // transition, and "Welcome back!" opens the notification panel, whose
+  // height transition pushes the lists down. Until both finish, pointer
+  // input lands on the transition's snapshot and positions are moving.
+  const panel = page.locator('section[aria-label="Notifications"][data-open]');
+  await expect(panel).toBeAttached();
+  await page.evaluate(
+    (panelElement) =>
+      Promise.allSettled(
+        document
+          .getAnimations()
+          .filter(
+            ({ effect }) =>
+              effect instanceof KeyframeEffect &&
+              (effect.target === panelElement ||
+                effect.pseudoElement?.startsWith("::view-transition")),
+          )
+          .map(({ finished }) => finished),
+      ),
+    await panel.elementHandle(),
   );
 }
+
+// Requests named by the server function they call (readable ids: see
+// generateFunctionId in vite.config.ts). These keep specs off the
+// framework's wire format: React Router's were `/lists/<slug>.data`, `/_.data`
+// and plain POSTs to the page. A spec touches one list, so the function name
+// is enough.
+
+type ResponseLike = { url(): string; request(): { method(): string } };
+
+/** Matches requests to any of the named server functions. */
+export function serverFnRequests(...names: string[]) {
+  return new RegExp(`/_serverFn/[^?]*--(${names.join("|")})_`);
+}
+
+/** True for the response to a POST call of the named server function. */
+export function isServerFnCall(name: string) {
+  const pattern = serverFnRequests(name);
+  return (response: ResponseLike) =>
+    pattern.test(response.url()) && response.request().method() === "POST";
+}
+
+/** Loading the list (GET) or saving it (POST). */
+export const listRequests = serverFnRequests("getList", "mutateList");
+
+/** True for the response to a save of the list. */
+export const isListSave = isServerFnCall("mutateList");
 
 /**
  * Intercepts the first GET matching `urlPattern` and holds it until the
