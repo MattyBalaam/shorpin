@@ -18,6 +18,7 @@ export const inner = style({
   // short list down.
   alignContent: "start",
   overflow: "auto",
+  overscrollBehaviorY: "none",
   // The containing block for absolutely positioned content (e.g. visually
   // hidden labels), which the scroller otherwise doesn't clip: rows scrolled
   // out of view would give the page itself scrollable overflow.
