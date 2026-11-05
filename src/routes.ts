@@ -4,6 +4,12 @@ import { index, layout, rootRoute, route } from "@tanstack/virtual-file-routes";
 // routes.ts. Paths are relative to src/ (routesDirectory in vite.config.ts).
 // Routes still to port from React Router are listed in legacy/README.md.
 export const routes = rootRoute("root.tsx", [
+  // Server routes (no page), outside the layouts so no layout's beforeLoad
+  // runs for them: health for the Dockerfile, version for CI and
+  // version-guard, perf for performance.client.ts's beacons.
+  route("/health", "routes/health.ts"),
+  route("/version", "routes/version.ts"),
+  route("/perf", "routes/perf.ts"),
   layout("auth", "routes/auth/layout.tsx", [
     route("/login", "routes/auth/login.tsx"),
     route("/forgot-password", "routes/auth/forgot-password.tsx"),
@@ -27,5 +33,8 @@ export const routes = rootRoute("root.tsx", [
     ]),
     route("/lists/$list", "routes/list/list.tsx", [route("/style", "routes/list/style.tsx")]),
     route("/lists/$list/confirm-delete", "routes/delete.tsx"),
+    // Manual testing aid: 404s outside the mock and preview builds (see the
+    // route), since this config can't read the mode.
+    route("/dev/notifications", "routes/dev/notifications.tsx"),
   ]),
 ]);

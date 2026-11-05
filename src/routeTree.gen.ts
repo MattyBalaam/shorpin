@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './root'
 import { Route as routesAppLayoutRouteImport } from './routes/app/layout'
 import { Route as routesAuthLayoutRouteImport } from './routes/auth/layout'
+import { Route as routesHealthRouteImport } from './routes/health'
+import { Route as routesPerfRouteImport } from './routes/perf'
+import { Route as routesVersionRouteImport } from './routes/version'
 import { Route as routesHomeHomeRouteImport } from './routes/home/home'
 import { Route as routesAuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as routesAuthLoginRouteImport } from './routes/auth/login'
@@ -19,6 +22,7 @@ import { Route as routesAuthSetPasswordRouteImport } from './routes/auth/set-pas
 import { Route as routesHomeIndexRouteImport } from './routes/home/index'
 import { Route as routesHomeSignUpsRouteImport } from './routes/home/sign-ups'
 import { Route as routesHomeStyleRouteImport } from './routes/home/style'
+import { Route as routesDevNotificationsRouteImport } from './routes/dev/notifications'
 import { Route as routesListListRouteImport } from './routes/list/list'
 import { Route as routesAuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as routesListConfigRouteImport } from './routes/list/config'
@@ -31,6 +35,21 @@ const routesAppLayoutRoute = routesAppLayoutRouteImport.update({
 } as any)
 const routesAuthLayoutRoute = routesAuthLayoutRouteImport.update({
   id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const routesHealthRoute = routesHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const routesPerfRoute = routesPerfRouteImport.update({
+  id: '/perf',
+  path: '/perf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const routesVersionRoute = routesVersionRouteImport.update({
+  id: '/version',
+  path: '/version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const routesHomeHomeRoute = routesHomeHomeRouteImport.update({
@@ -73,6 +92,11 @@ const routesHomeStyleRoute = routesHomeStyleRouteImport.update({
   path: '/style',
   getParentRoute: () => routesHomeHomeRoute,
 } as any)
+const routesDevNotificationsRoute = routesDevNotificationsRouteImport.update({
+  id: '/dev/notifications',
+  path: '/dev/notifications',
+  getParentRoute: () => routesAppLayoutRoute,
+} as any)
 const routesListListRoute = routesListListRouteImport.update({
   id: '/lists/$list',
   path: '/lists/$list',
@@ -101,12 +125,16 @@ const routesListStyleRoute = routesListStyleRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof routesHomeIndexRoute
+  '/health': typeof routesHealthRoute
+  '/perf': typeof routesPerfRoute
+  '/version': typeof routesVersionRoute
   '/forgot-password': typeof routesAuthForgotPasswordRoute
   '/login': typeof routesAuthLoginRoute
   '/request-access': typeof routesAuthRequestAccessRoute
   '/set-password': typeof routesAuthSetPasswordRoute
   '/sign-ups': typeof routesHomeSignUpsRoute
   '/style': typeof routesHomeStyleRoute
+  '/dev/notifications': typeof routesDevNotificationsRoute
   '/lists/$list': typeof routesListListRouteWithChildren
   '/auth/confirm': typeof routesAuthConfirmRoute
   '/config/$list': typeof routesListConfigRoute
@@ -115,12 +143,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof routesHomeIndexRoute
+  '/health': typeof routesHealthRoute
+  '/perf': typeof routesPerfRoute
+  '/version': typeof routesVersionRoute
   '/forgot-password': typeof routesAuthForgotPasswordRoute
   '/login': typeof routesAuthLoginRoute
   '/request-access': typeof routesAuthRequestAccessRoute
   '/set-password': typeof routesAuthSetPasswordRoute
   '/sign-ups': typeof routesHomeSignUpsRoute
   '/style': typeof routesHomeStyleRoute
+  '/dev/notifications': typeof routesDevNotificationsRoute
   '/lists/$list': typeof routesListListRouteWithChildren
   '/auth/confirm': typeof routesAuthConfirmRoute
   '/config/$list': typeof routesListConfigRoute
@@ -131,6 +163,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof routesAppLayoutRouteWithChildren
   '/_auth': typeof routesAuthLayoutRouteWithChildren
+  '/health': typeof routesHealthRoute
+  '/perf': typeof routesPerfRoute
+  '/version': typeof routesVersionRoute
   '/_app/_home': typeof routesHomeHomeRouteWithChildren
   '/_auth/forgot-password': typeof routesAuthForgotPasswordRoute
   '/_auth/login': typeof routesAuthLoginRoute
@@ -138,6 +173,7 @@ export interface FileRoutesById {
   '/_auth/set-password': typeof routesAuthSetPasswordRoute
   '/_app/_home/sign-ups': typeof routesHomeSignUpsRoute
   '/_app/_home/style': typeof routesHomeStyleRoute
+  '/_app/dev/notifications': typeof routesDevNotificationsRoute
   '/_app/lists/$list': typeof routesListListRouteWithChildren
   '/_auth/auth/confirm': typeof routesAuthConfirmRoute
   '/_app/_home/': typeof routesHomeIndexRoute
@@ -149,12 +185,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/health'
+    | '/perf'
+    | '/version'
     | '/forgot-password'
     | '/login'
     | '/request-access'
     | '/set-password'
     | '/sign-ups'
     | '/style'
+    | '/dev/notifications'
     | '/lists/$list'
     | '/auth/confirm'
     | '/config/$list'
@@ -163,12 +203,16 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/health'
+    | '/perf'
+    | '/version'
     | '/forgot-password'
     | '/login'
     | '/request-access'
     | '/set-password'
     | '/sign-ups'
     | '/style'
+    | '/dev/notifications'
     | '/lists/$list'
     | '/auth/confirm'
     | '/config/$list'
@@ -178,6 +222,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/health'
+    | '/perf'
+    | '/version'
     | '/_app/_home'
     | '/_auth/forgot-password'
     | '/_auth/login'
@@ -185,6 +232,7 @@ export interface FileRouteTypes {
     | '/_auth/set-password'
     | '/_app/_home/sign-ups'
     | '/_app/_home/style'
+    | '/_app/dev/notifications'
     | '/_app/lists/$list'
     | '/_auth/auth/confirm'
     | '/_app/_home/'
@@ -196,6 +244,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   routesAppLayoutRoute: typeof routesAppLayoutRouteWithChildren
   routesAuthLayoutRoute: typeof routesAuthLayoutRouteWithChildren
+  routesHealthRoute: typeof routesHealthRoute
+  routesPerfRoute: typeof routesPerfRoute
+  routesVersionRoute: typeof routesVersionRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -212,6 +263,27 @@ declare module '@tanstack/solid-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof routesAuthLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof routesHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perf': {
+      id: '/perf'
+      path: '/perf'
+      fullPath: '/perf'
+      preLoaderRoute: typeof routesPerfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/version': {
+      id: '/version'
+      path: '/version'
+      fullPath: '/version'
+      preLoaderRoute: typeof routesVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/_home': {
@@ -269,6 +341,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/style'
       preLoaderRoute: typeof routesHomeStyleRouteImport
       parentRoute: typeof routesHomeHomeRoute
+    }
+    '/_app/dev/notifications': {
+      id: '/_app/dev/notifications'
+      path: '/dev/notifications'
+      fullPath: '/dev/notifications'
+      preLoaderRoute: typeof routesDevNotificationsRouteImport
+      parentRoute: typeof routesAppLayoutRoute
     }
     '/_app/lists/$list': {
       id: '/_app/lists/$list'
@@ -340,12 +419,14 @@ const routesListListRouteWithChildren = routesListListRoute._addFileChildren(
 
 interface routesAppLayoutRouteChildren {
   routesHomeHomeRoute: typeof routesHomeHomeRouteWithChildren
+  routesDevNotificationsRoute: typeof routesDevNotificationsRoute
   routesListListRoute: typeof routesListListRouteWithChildren
   routesDeleteRoute: typeof routesDeleteRoute
 }
 
 const routesAppLayoutRouteChildren: routesAppLayoutRouteChildren = {
   routesHomeHomeRoute: routesHomeHomeRouteWithChildren,
+  routesDevNotificationsRoute: routesDevNotificationsRoute,
   routesListListRoute: routesListListRouteWithChildren,
   routesDeleteRoute: routesDeleteRoute,
 }
@@ -376,6 +457,9 @@ const routesAuthLayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   routesAppLayoutRoute: routesAppLayoutRouteWithChildren,
   routesAuthLayoutRoute: routesAuthLayoutRouteWithChildren,
+  routesHealthRoute: routesHealthRoute,
+  routesPerfRoute: routesPerfRoute,
+  routesVersionRoute: routesVersionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

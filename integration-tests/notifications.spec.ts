@@ -1,12 +1,10 @@
 import { expect, test } from "./fixtures";
-import { login } from "./helpers";
+import { isListSave, login } from "./helpers";
 
 // Otherwise "Offline support ready" can join the queue and shift the counts.
 test.use({ serviceWorkers: "block" });
 
-// Not yet ported to Solid. Stage 5, the dev notifications page (see legacy/README.md).
-
-test.fixme("a success notification clears itself", async ({ page, ctx }) => {
+test("a success notification clears itself", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.waitForURL("/login");
@@ -16,9 +14,7 @@ test.fixme("a success notification clears itself", async ({ page, ctx }) => {
   await expect(panel).toHaveJSProperty("offsetHeight", 0, { timeout: 10_000 });
 });
 
-// Not yet ported to Solid. Stage 5, the dev notifications page (see legacy/README.md).
-
-test.fixme("shows the newest notification with a count, and clears one or all", async ({
+test("shows the newest notification with a count, and clears one or all", async ({
   page,
   ctx,
   context,
@@ -37,10 +33,7 @@ test.fixme("shows the newest notification with a count, and clears one or all", 
 
   // Lets the reconnect sync land, so it isn't aborted mid-request.
   async function reconnect() {
-    const syncSubmitted = page.waitForResponse(
-      (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-    );
+    const syncSubmitted = page.waitForResponse(isListSave);
     await context.setOffline(false);
     await syncSubmitted;
   }

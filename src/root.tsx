@@ -4,6 +4,7 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  useRouter,
   useRouterState,
 } from "@tanstack/solid-router";
 import { isServer } from "@solidjs/web";
@@ -16,6 +17,7 @@ import { ErrorState } from "~/components/error-state/error-state";
 import { Spinner } from "~/components/spinner/spinner";
 import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/lib/app-style";
 import { getAccountAppStyle } from "~/lib/app-style.functions";
+import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import "~/styles/reset.css";
 import "~/styles/typography.css";
@@ -114,6 +116,44 @@ function App() {
   // rendered it.
   createEffect(resolvedPath, (pathname) => {
     if (pathname !== undefined) document.documentElement.dataset.hydratedPath = pathname;
+  });
+
+  const router = useRouter();
+
+  // Web vitals and client navigation times, beaconed to /perf. A
+  // navigation is timed from the router starting it to its loaders
+  // resolving. Events without an href change are router.invalidate()
+  // re-running the same location, not navigations.
+  onSettled(function trackPerformance() {
+    initWebVitalsTracking();
+
+    let pending: { start: number; fromPathname: string; toPathname: string } | null = null;
+
+    const stopStart = router.subscribe("onBeforeNavigate", (event) => {
+      if (!event.fromLocation || !event.hrefChanged) return;
+      pending = {
+        start: performance.now(),
+        fromPathname: event.fromLocation.pathname,
+        toPathname: event.toLocation.pathname,
+      };
+    });
+
+    const stopEnd = router.subscribe("onResolved", (event) => {
+      const started = pending;
+      // A navigation superseded by a newer one resolves as the newer one.
+      if (!started || event.toLocation.pathname !== started.toPathname) return;
+      pending = null;
+      reportRouteNavigationMetric({
+        pathname: started.toPathname,
+        durationMs: performance.now() - started.start,
+        fromPathname: started.fromPathname,
+      });
+    });
+
+    return () => {
+      stopStart();
+      stopEnd();
+    };
   });
 
   onSettled(function trackKeyboardViewport() {

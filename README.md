@@ -38,7 +38,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 
 ## Migration to TanStack Start + Solid
 
-In progress, on the `spike/tanstack-solid` branch, to learn both. The list page (with its palette picker and Style link), the layouts, home (with its sign-ups dialog), the auth pages (sign-in, forgot and set password, request access, and the email-link confirm route), and the dialogs and styles (list config, delete, the style dialogs, app styles and the colour-scheme toggle) are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
+In progress, on the `spike/tanstack-solid` branch, to learn both. The list page (with its palette picker and Style link), the layouts, home (with its sign-ups dialog), the auth pages (sign-in, forgot and set password, request access, and the email-link confirm route), the dialogs and styles (list config, delete, the style dialogs, app styles and the colour-scheme toggle), the dev notifications page, and the health, version and perf server routes are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
 
 Decisions so far:
 
@@ -86,6 +86,10 @@ Routes are declared in [src/routes.ts](src/routes.ts) (TanStack Router's virtual
 /lists/$list                          → src/routes/list/list.tsx
 /lists/$list/style                    → src/routes/list/style.tsx (dialog over the list)
 /lists/$list/confirm-delete           → src/routes/delete.tsx
+/dev/notifications                    → src/routes/dev/notifications.tsx (mock and preview builds; 404 otherwise)
+/health                               → src/routes/health.ts (server route, no page)
+/version                              → src/routes/version.ts (server route, no page)
+/perf                                 → src/routes/perf.ts (server route, no page)
 ```
 
 **Route Hierarchy:**
@@ -437,14 +441,14 @@ missing.
 The app includes lightweight client-side telemetry to help diagnose slow pages and route transitions:
 
 - Web vitals tracked in the browser: `TTFB`, `FCP`, `LCP`, `CLS`, `INP`
-- Route transition timing tracked in `app/root.tsx` using React Router navigation state
+- Route transition timing tracked in `src/root.tsx` from the router's `onBeforeNavigate` to `onResolved` events (events without an href change are `router.invalidate()`, so they're skipped)
 - Metrics are sent to `POST /perf` via `navigator.sendBeacon` with a `fetch(..., { keepalive: true })` fallback
 - Server-side processing currently logs only slow metrics to reduce noise
 
 Implementation files:
 
-- Client metrics collection: `app/lib/performance.client.ts`
-- Metric ingestion route: `app/routes/perf.ts`
+- Client metrics collection: `src/lib/performance.client.ts`
+- Metric ingestion route: `src/routes/perf.ts` (a server route: `server.handlers.POST`)
 
 ### Deferred Sentry (client)
 
