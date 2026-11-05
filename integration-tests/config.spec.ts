@@ -1,9 +1,7 @@
 import { expect, test } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme("owner can open config modal for their list", async ({ page, ctx }) => {
+test("owner can open config modal for their list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page.getByRole("link", { name: "Configure" }).first().click();
@@ -12,9 +10,7 @@ test.fixme("owner can open config modal for their list", async ({ page, ctx }) =
   await expect(page.getByRole("heading", { name: /Admin/ })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme("owner sees collaborator checkboxes in config modal", async ({ page, ctx }) => {
+test("owner sees collaborator checkboxes in config modal", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Shopping list (collab is already a member)
@@ -29,9 +25,7 @@ test.fixme("owner sees collaborator checkboxes in config modal", async ({ page, 
   await expect(page.getByText(ctx.collabEmail)).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme("owner can add a collaborator to a list", async ({ page, ctx }) => {
+test("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open config for Owner Empty list (no current members)
@@ -52,7 +46,7 @@ test.fixme("owner can add a collaborator to a list", async ({ page, ctx }) => {
   await expect(page).toHaveURL("/");
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+// Not yet ported to Solid. Stage 4: home, behind the dialog, shows its sign-ups count ("1 pending"), which also sets the header's height (see legacy/README.md).
 
 test.fixme("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);

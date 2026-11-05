@@ -8,7 +8,16 @@ export const routes = rootRoute("root.tsx", [
   // Sign-out has no page of its own: it's the signOut server function in
   // routes/auth/logout.ts, called from home's Sign out button.
   layout("app", "routes/app/layout.tsx", [
-    index("routes/home/home.tsx"),
-    route("/lists/$list", "routes/list/list.tsx"),
+    // Dialogs are child routes, so each has its own URL and renders over
+    // the page behind, in that page's <Outlet />. Home is a pathless layout
+    // with an empty index: a `/` route with children would itself be
+    // pathless, leaving nothing to match `/`.
+    layout("home", "routes/home/home.tsx", [
+      index("routes/home/index.tsx"),
+      route("/style", "routes/home/style.tsx"),
+      route("/config/$list", "routes/list/config.tsx"),
+    ]),
+    route("/lists/$list", "routes/list/list.tsx", [route("/style", "routes/list/style.tsx")]),
+    route("/lists/$list/confirm-delete", "routes/delete.tsx"),
   ]),
 ]);

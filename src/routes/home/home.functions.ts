@@ -6,6 +6,7 @@ import {
   defaultListCookieOptions,
   parseDefaultListId,
 } from "~/lib/default-list";
+import { readProfileAppStyle, setAppStyleCookie } from "~/lib/app-style.server";
 import { resolveSlug, slugify } from "~/lib/slugify";
 import { authMiddleware } from "~/lib/supabase.middleware";
 import { type ListItem, zCreate } from "./home.schema";
@@ -25,7 +26,7 @@ function setDefaultListCookie(listId: string | null) {
 export const getHome = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context: { supabase, user } }) => {
-    const [listsResult, viewsResult, waitlistResult] = await Promise.all([
+    const [listsResult, viewsResult, waitlistResult, accountAppStyle] = await Promise.all([
       supabase
         .from("lists")
         .select("id, name, slug, user_id, updated_at, list_items(updated_at, state)")
@@ -34,7 +35,13 @@ export const getHome = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false }),
       supabase.from("list_views").select("list_id, viewed_at").eq("user_id", user.id),
       supabase.from("waitlist").select("*", { count: "exact", head: true }),
+      // The style cookie only caches the account's choice: home always
+      // reads the profile, so a style saved on another device reaches this
+      // one's cookie (see use-app-style.ts).
+      readProfileAppStyle(supabase, user.id),
     ]);
+
+    if (accountAppStyle) setAppStyleCookie(accountAppStyle);
 
     if (listsResult.error) throw listsResult.error;
     if (viewsResult.error) throw viewsResult.error;
@@ -55,6 +62,8 @@ export const getHome = createServerFn({ method: "GET" })
       lists,
       defaultListId: parseDefaultListId(getCookie(DEFAULT_LIST_COOKIE)),
       waitlistCount: waitlistResult.count ?? 0,
+      /** Null when it couldn't be read: the cookie's value stands. */
+      accountAppStyle,
     };
   });
 

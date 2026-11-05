@@ -1,9 +1,7 @@
 import { expect, test } from "./fixtures";
 import { login } from "./helpers";
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme("the colour scheme toggle pins light or dark, and keeps after a reload", async ({
+test("the colour scheme toggle pins light or dark, and keeps after a reload", async ({
   page,
   ctx,
 }) => {

@@ -13,7 +13,12 @@ import { Route as routesAppLayoutRouteImport } from './routes/app/layout'
 import { Route as routesAuthLayoutRouteImport } from './routes/auth/layout'
 import { Route as routesHomeHomeRouteImport } from './routes/home/home'
 import { Route as routesAuthLoginDotdevRouteImport } from './routes/auth/login.dev'
+import { Route as routesHomeIndexRouteImport } from './routes/home/index'
+import { Route as routesHomeStyleRouteImport } from './routes/home/style'
 import { Route as routesListListRouteImport } from './routes/list/list'
+import { Route as routesListConfigRouteImport } from './routes/list/config'
+import { Route as routesDeleteRouteImport } from './routes/delete'
+import { Route as routesListStyleRouteImport } from './routes/list/style'
 
 const routesAppLayoutRoute = routesAppLayoutRouteImport.update({
   id: '/_app',
@@ -24,8 +29,7 @@ const routesAuthLayoutRoute = routesAuthLayoutRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const routesHomeHomeRoute = routesHomeHomeRouteImport.update({
-  id: '/',
-  path: '/',
+  id: '/_home',
   getParentRoute: () => routesAppLayoutRoute,
 } as any)
 const routesAuthLoginDotdevRoute = routesAuthLoginDotdevRouteImport.update({
@@ -33,42 +37,99 @@ const routesAuthLoginDotdevRoute = routesAuthLoginDotdevRouteImport.update({
   path: '/login',
   getParentRoute: () => routesAuthLayoutRoute,
 } as any)
+const routesHomeIndexRoute = routesHomeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => routesHomeHomeRoute,
+} as any)
+const routesHomeStyleRoute = routesHomeStyleRouteImport.update({
+  id: '/style',
+  path: '/style',
+  getParentRoute: () => routesHomeHomeRoute,
+} as any)
 const routesListListRoute = routesListListRouteImport.update({
   id: '/lists/$list',
   path: '/lists/$list',
   getParentRoute: () => routesAppLayoutRoute,
 } as any)
+const routesListConfigRoute = routesListConfigRouteImport.update({
+  id: '/config/$list',
+  path: '/config/$list',
+  getParentRoute: () => routesHomeHomeRoute,
+} as any)
+const routesDeleteRoute = routesDeleteRouteImport.update({
+  id: '/lists/$list/confirm-delete',
+  path: '/lists/$list/confirm-delete',
+  getParentRoute: () => routesAppLayoutRoute,
+} as any)
+const routesListStyleRoute = routesListStyleRouteImport.update({
+  id: '/style',
+  path: '/style',
+  getParentRoute: () => routesListListRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof routesHomeHomeRoute
+  '/': typeof routesHomeIndexRoute
   '/login': typeof routesAuthLoginDotdevRoute
-  '/lists/$list': typeof routesListListRoute
+  '/style': typeof routesHomeStyleRoute
+  '/lists/$list': typeof routesListListRouteWithChildren
+  '/config/$list': typeof routesListConfigRoute
+  '/lists/$list/confirm-delete': typeof routesDeleteRoute
+  '/lists/$list/style': typeof routesListStyleRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof routesHomeHomeRoute
+  '/': typeof routesHomeIndexRoute
   '/login': typeof routesAuthLoginDotdevRoute
-  '/lists/$list': typeof routesListListRoute
+  '/style': typeof routesHomeStyleRoute
+  '/lists/$list': typeof routesListListRouteWithChildren
+  '/config/$list': typeof routesListConfigRoute
+  '/lists/$list/confirm-delete': typeof routesDeleteRoute
+  '/lists/$list/style': typeof routesListStyleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof routesAppLayoutRouteWithChildren
   '/_auth': typeof routesAuthLayoutRouteWithChildren
-  '/_app/': typeof routesHomeHomeRoute
+  '/_app/_home': typeof routesHomeHomeRouteWithChildren
   '/_auth/login': typeof routesAuthLoginDotdevRoute
-  '/_app/lists/$list': typeof routesListListRoute
+  '/_app/_home/style': typeof routesHomeStyleRoute
+  '/_app/lists/$list': typeof routesListListRouteWithChildren
+  '/_app/_home/': typeof routesHomeIndexRoute
+  '/_app/_home/config/$list': typeof routesListConfigRoute
+  '/_app/lists/$list/confirm-delete': typeof routesDeleteRoute
+  '/_app/lists/$list/style': typeof routesListStyleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/lists/$list'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/style'
+    | '/lists/$list'
+    | '/config/$list'
+    | '/lists/$list/confirm-delete'
+    | '/lists/$list/style'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/lists/$list'
+  to:
+    | '/'
+    | '/login'
+    | '/style'
+    | '/lists/$list'
+    | '/config/$list'
+    | '/lists/$list/confirm-delete'
+    | '/lists/$list/style'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
-    | '/_app/'
+    | '/_app/_home'
     | '/_auth/login'
+    | '/_app/_home/style'
     | '/_app/lists/$list'
+    | '/_app/_home/'
+    | '/_app/_home/config/$list'
+    | '/_app/lists/$list/confirm-delete'
+    | '/_app/lists/$list/style'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -92,9 +153,9 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof routesAuthLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/': {
-      id: '/_app/'
-      path: '/'
+    '/_app/_home': {
+      id: '/_app/_home'
+      path: ''
       fullPath: '/'
       preLoaderRoute: typeof routesHomeHomeRouteImport
       parentRoute: typeof routesAppLayoutRoute
@@ -106,6 +167,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof routesAuthLoginDotdevRouteImport
       parentRoute: typeof routesAuthLayoutRoute
     }
+    '/_app/_home/': {
+      id: '/_app/_home/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof routesHomeIndexRouteImport
+      parentRoute: typeof routesHomeHomeRoute
+    }
+    '/_app/_home/style': {
+      id: '/_app/_home/style'
+      path: '/style'
+      fullPath: '/style'
+      preLoaderRoute: typeof routesHomeStyleRouteImport
+      parentRoute: typeof routesHomeHomeRoute
+    }
     '/_app/lists/$list': {
       id: '/_app/lists/$list'
       path: '/lists/$list'
@@ -113,17 +188,68 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof routesListListRouteImport
       parentRoute: typeof routesAppLayoutRoute
     }
+    '/_app/_home/config/$list': {
+      id: '/_app/_home/config/$list'
+      path: '/config/$list'
+      fullPath: '/config/$list'
+      preLoaderRoute: typeof routesListConfigRouteImport
+      parentRoute: typeof routesHomeHomeRoute
+    }
+    '/_app/lists/$list/confirm-delete': {
+      id: '/_app/lists/$list/confirm-delete'
+      path: '/lists/$list/confirm-delete'
+      fullPath: '/lists/$list/confirm-delete'
+      preLoaderRoute: typeof routesDeleteRouteImport
+      parentRoute: typeof routesAppLayoutRoute
+    }
+    '/_app/lists/$list/style': {
+      id: '/_app/lists/$list/style'
+      path: '/style'
+      fullPath: '/lists/$list/style'
+      preLoaderRoute: typeof routesListStyleRouteImport
+      parentRoute: typeof routesListListRoute
+    }
   }
 }
 
+interface routesHomeHomeRouteChildren {
+  routesHomeStyleRoute: typeof routesHomeStyleRoute
+  routesHomeIndexRoute: typeof routesHomeIndexRoute
+  routesListConfigRoute: typeof routesListConfigRoute
+}
+
+const routesHomeHomeRouteChildren: routesHomeHomeRouteChildren = {
+  routesHomeStyleRoute: routesHomeStyleRoute,
+  routesHomeIndexRoute: routesHomeIndexRoute,
+  routesListConfigRoute: routesListConfigRoute,
+}
+
+const routesHomeHomeRouteWithChildren = routesHomeHomeRoute._addFileChildren(
+  routesHomeHomeRouteChildren,
+)
+
+interface routesListListRouteChildren {
+  routesListStyleRoute: typeof routesListStyleRoute
+}
+
+const routesListListRouteChildren: routesListListRouteChildren = {
+  routesListStyleRoute: routesListStyleRoute,
+}
+
+const routesListListRouteWithChildren = routesListListRoute._addFileChildren(
+  routesListListRouteChildren,
+)
+
 interface routesAppLayoutRouteChildren {
-  routesHomeHomeRoute: typeof routesHomeHomeRoute
-  routesListListRoute: typeof routesListListRoute
+  routesHomeHomeRoute: typeof routesHomeHomeRouteWithChildren
+  routesListListRoute: typeof routesListListRouteWithChildren
+  routesDeleteRoute: typeof routesDeleteRoute
 }
 
 const routesAppLayoutRouteChildren: routesAppLayoutRouteChildren = {
-  routesHomeHomeRoute: routesHomeHomeRoute,
-  routesListListRoute: routesListListRoute,
+  routesHomeHomeRoute: routesHomeHomeRouteWithChildren,
+  routesListListRoute: routesListListRouteWithChildren,
+  routesDeleteRoute: routesDeleteRoute,
 }
 
 const routesAppLayoutRouteWithChildren = routesAppLayoutRoute._addFileChildren(

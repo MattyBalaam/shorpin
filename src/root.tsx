@@ -5,14 +5,17 @@ import {
   Outlet,
   Scripts,
   useRouterState,
-  useMatches,
 } from "@tanstack/solid-router";
+import { isServer } from "@solidjs/web";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeader } from "@tanstack/solid-start/server";
 import { createEffect, type Element, Loading, onSettled } from "solid-js";
+import { useEffectiveAppStyle } from "~/components/app-style/use-app-style";
+import { useColorScheme } from "~/components/color-scheme/color-scheme";
 import { ErrorState } from "~/components/error-state/error-state";
 import { Spinner } from "~/components/spinner/spinner";
-import { APP_STYLE_ATTRIBUTE, isAppStyle, parseAppStyle } from "~/lib/app-style";
+import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/lib/app-style";
+import { getAccountAppStyle } from "~/lib/app-style.functions";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import "~/styles/reset.css";
 import "~/styles/typography.css";
@@ -29,15 +32,25 @@ const readCookieHeader = createIsomorphicFn()
   .client(() => document.cookie);
 
 export const Route = createRootRoute({
-  loader: () => {
+  loader: async () => {
     const cookieHeader = readCookieHeader();
-    // Not yet ported: home re-reading the account's style from its profile
-    // (see legacy/README.md). The cookie alone is enough for the spike.
+    // The cookie caches the account's style (see use-app-style.ts). Without
+    // one (signed out, or the first request after signing in) the server
+    // asks the profile, which also sets the cookie. In the browser the
+    // cookie is all there is: home's loader brings the profile's value.
+    const cached = readAppStyleCookie(cookieHeader);
+    const appStyle = cached ?? (isServer ? await getAccountAppStyle() : null);
     return {
       colorScheme: parseColorScheme(cookieHeader),
-      appStyle: parseAppStyle(cookieHeader),
+      appStyle: appStyle ?? DEFAULT_APP_STYLE,
     };
   },
+  // A match that stays on screen only reloads when it's invalidated, so
+  // without this the root would keep the style it read when the app
+  // started (or last invalidated) through e.g. a sign-out, which expires
+  // the cookie. In the browser it only reads document.cookie, so re-reading
+  // on every navigation costs nothing.
+  shouldReload: true,
   head: () => ({
     meta: [
       { charset: "utf-8" },
@@ -66,24 +79,9 @@ export const Route = createRootRoute({
   ),
 });
 
-/** A list's own style override, else the account's (see app-style.ts). */
-function useEffectiveAppStyle() {
-  const matches = useMatches();
-  const rootData = Route.useLoaderData();
-  return () => {
-    for (const { loaderData } of [...matches()].reverse()) {
-      if (loaderData && typeof loaderData === "object" && "appStyleOverride" in loaderData) {
-        const { appStyleOverride } = loaderData;
-        if (isAppStyle(appStyleOverride)) return appStyleOverride;
-      }
-    }
-    return rootData().appStyle;
-  };
-}
-
 function RootDocument(props: { children?: Element }) {
-  const rootData = Route.useLoaderData();
   const appStyle = useEffectiveAppStyle();
+  const colorScheme = useColorScheme();
 
   return (
     <html
@@ -91,7 +89,7 @@ function RootDocument(props: { children?: Element }) {
       class={themeClass}
       {...{
         [APP_STYLE_ATTRIBUTE]: appStyle(),
-        [COLOR_SCHEME_ATTRIBUTE]: rootData().colorScheme,
+        [COLOR_SCHEME_ATTRIBUTE]: colorScheme(),
       }}
     >
       <head>

@@ -1,10 +1,12 @@
 import { createForm, Field, Form, reset, setErrors } from "@formisch/solid/v2";
 import { isServer } from "@solidjs/web";
-import { createFileRoute, isRedirect, redirect, useRouter } from "@tanstack/solid-router";
+import { createFileRoute, isRedirect, Outlet, redirect, useRouter } from "@tanstack/solid-router";
 import { createEffect, createSignal, For, onSettled, Show } from "solid-js";
 import { Actions } from "~/components/actions/actions";
 import { Button } from "~/components/button/button";
-import { PowerIcon } from "~/components/icon/icons";
+import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
+import { BrushIcon, PowerIcon } from "~/components/icon/icons";
+import { Link } from "~/components/link/link";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
@@ -30,9 +32,8 @@ import {
   replayQueue,
 } from "./offline";
 
-// Not yet ported (see legacy/README.md): the sign-ups count (stage 4) and the
-// style and colour-scheme controls (stage 2).
-export const Route = createFileRoute("/_app/")({
+// Not yet ported (see legacy/README.md): the sign-ups count (stage 4).
+export const Route = createFileRoute("/_app/_home")({
   // An installed app opens `/?launch` (the manifest's start_url): send it to
   // the starred list, or plain home. Dropping the param means a later
   // refetch of home can't re-trigger it.
@@ -260,8 +261,17 @@ function Home() {
               </Button>
             </div>
           </Form>
+          <div class={styles.appearance}>
+            <Link variant="outline" to="/style">
+              <BrushIcon />
+              Style
+            </Link>
+            <ColorSchemeToggle />
+          </div>
         </div>
       </Actions>
+      {/* The style and config dialogs (child routes). */}
+      <Outlet />
     </>
   );
 }

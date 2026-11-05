@@ -1,9 +1,7 @@
 import { test, expect } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme("owner can delete a list", async ({ page, ctx }) => {
+test("owner can delete a list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   // Open admin config for Owner Empty
@@ -31,14 +29,8 @@ test.fixme("owner can delete a list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Owner Empty" })).not.toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
-
-test.fixme(
-  "confirm delete page matches its snapshot",
-  { tag: "@visual" },
-  async ({ page, ctx }) => {
-    await login(page, ctx.ownerEmail);
-    await page.goto("/lists/shopping/confirm-delete");
-    await expectPageSnapshot(page, "confirm-delete");
-  },
-);
+test("confirm delete page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto("/lists/shopping/confirm-delete");
+  await expectPageSnapshot(page, "confirm-delete");
+});

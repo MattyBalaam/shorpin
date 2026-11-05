@@ -33,6 +33,8 @@ function fromSnapshot(snapshot: HomeSnapshot<ListItem>): HomeLoaderData {
     lists: snapshot.lists,
     defaultListId: readDefaultListId(document.cookie),
     waitlistCount: snapshot.waitlistCount,
+    // Not cached: offline, the style cookie is the latest word.
+    accountAppStyle: null,
     fromCache: true,
   };
 }

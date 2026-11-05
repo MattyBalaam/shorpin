@@ -15,8 +15,7 @@ test("owner can create a new list", async ({ page, ctx }) => {
   await expect(page.getByRole("link", { name: "Groceries" })).toBeVisible();
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: it goes through config and delete (see legacy/README.md).
-test.fixme("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
+test("owner can reuse the name of a deleted list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
 
   await page
@@ -430,7 +429,7 @@ test("installed app opens the starred list on launch even without start_url (iOS
   await expect(page).toHaveURL("/");
 });
 
-// Not yet ported to Solid. Stage 2, dialogs and styles: config, delete, style dialogs, app styles and colour scheme (see legacy/README.md).
+// Not yet ported to Solid. Stage 4: the baseline shows home's sign-ups count ("1 pending"), which also sets the header's height (see legacy/README.md).
 
 test.fixme("home page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);

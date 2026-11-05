@@ -1,5 +1,5 @@
 import { isServer } from "@solidjs/web";
-import { createFileRoute, isRedirect, useRouter } from "@tanstack/solid-router";
+import { createFileRoute, isRedirect, Outlet, useRouter } from "@tanstack/solid-router";
 import { createEffect, createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
 import type * as v from "valibot";
 import { Actions } from "~/components/actions/actions";
@@ -575,6 +575,9 @@ function ListPage() {
           </div>
         </Actions>
       </form>
+
+      {/* The style dialog (routes/list/style.tsx), outside the list form. */}
+      <Outlet />
     </Theme>
   );
 }
