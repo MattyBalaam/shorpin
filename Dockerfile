@@ -23,8 +23,12 @@ ARG VITE_GIT_HASH
 ARG VITE_GIT_DATE
 ARG VITE_PR_NUMBER
 ARG VITE_BRANCH
+# Source map upload (vite.config.ts). The token is a BuildKit secret, not a
+# build arg, so it isn't recorded in the image's history. Without it the
+# build skips the upload.
+ARG SENTRY_ORG
 
-RUN pnpm build
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN pnpm build
 
 # ---- Runtime stage ----
 # Nitro's .output is self-contained: the server bundle, the static files,

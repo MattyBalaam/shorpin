@@ -1,5 +1,6 @@
 import { copyFile } from "node:fs/promises";
 import path from "node:path";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import solid from "@solidjs/vite-plugin";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
@@ -33,6 +34,34 @@ function serviceWorker(options: Partial<VitePWAOptions>): Plugin[] {
   ];
 }
 
+/**
+ * Uploads the client bundle's source maps to Sentry, so production stack
+ * traces are readable. Only with SENTRY_AUTH_TOKEN (the Docker build gets it
+ * as a BuildKit secret); without it, nothing is added. Client only: the
+ * server bundle isn't minified. The maps are built hidden (no
+ * sourceMappingURL) and deleted after the upload, so they're never served.
+ */
+const uploadSourceMaps = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+function sentrySourceMaps(): Plugin[] {
+  if (!uploadSourceMaps) return [];
+  return sentryVitePlugin({
+    org: process.env.SENTRY_ORG,
+    project: "shorpin",
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    // Matches the events to this build (also injected into the bundle).
+    release: { name: process.env.VITE_GIT_HASH },
+    // Named explicitly: `deleteSourcemapsAfterUpload` alone deletes nothing
+    // here (plugin 11.11). The client builds into .output/public before
+    // Nitro builds its static file table, so the deleted maps aren't in it.
+    sourcemaps: { filesToDeleteAfterUpload: [".output/public/**/*.map"] },
+    telemetry: false,
+  }).map((plugin) => ({
+    ...(plugin as Plugin),
+    applyToEnvironment: (environment) => environment.name === "client",
+  }));
+}
+
 export default defineConfig(({ mode }) => ({
   resolve: {
     tsconfigPaths: true,
@@ -50,6 +79,9 @@ export default defineConfig(({ mode }) => ({
     // (Firefox 146), so both pass through untouched.
     cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
   },
+  ...(uploadSourceMaps && {
+    environments: { client: { build: { sourcemap: "hidden" as const } } },
+  }),
   define: {
     "import.meta.env.VITE_GIT_HASH": JSON.stringify(process.env.VITE_GIT_HASH ?? "unknown"),
     "import.meta.env.VITE_GIT_DATE": JSON.stringify(process.env.VITE_GIT_DATE ?? "unknown"),
@@ -130,6 +162,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: false, // registered in root.tsx, in builds only
       devOptions: { enabled: false }, // no worker under `pnpm dev`
     }),
+    ...sentrySourceMaps(),
     // `pnpm build:analyse`: the client bundle's treemap, in dist/stats.html.
     ...(mode === "analyse"
       ? [

@@ -53,6 +53,7 @@
     "@axe-core/playwright": "^4.14.0",
     "@msw/data": "1.1.8",
     "@playwright/test": "1.64.1",
+    "@sentry/vite-plugin": "11.11.0",
     "@solidjs/vite-plugin": "3.0.0-next.56",
     "@tanstack/virtual-file-routes": "1.162.0",
     "@types/node": "24.19.2",

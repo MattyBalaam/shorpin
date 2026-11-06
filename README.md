@@ -507,6 +507,8 @@ plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
 The image runs `.output/server/index.mjs` (Nitro's Node server, port 3000) with `--import ./.output/server/instrument.server.mjs` for Sentry. `VITE_SENTRY_DSN` is needed both as a build argument (the client bundle) and as a runtime variable (the server).
 
+**Source maps** go to Sentry from the build ([vite.config.ts](vite.config.ts) `sentrySourceMaps()`), so production stack traces are readable. It needs the `SENTRY_AUTH_TOKEN` repo secret (a Sentry auth token that can upload source maps) and the `SENTRY_ORG` repo variable. CI passes the token to the Docker build as a BuildKit secret (`sentry_auth_token`), so it isn't recorded in the image's history. Without the token the build skips the upload. Only the client bundle is uploaded, since the server bundle isn't minified. Its maps are built `hidden`, with no `sourceMappingURL`, and deleted after the upload, so `.output/public` never serves them. The plugin's own delete option deletes nothing here, so `filesToDeleteAfterUpload` names the maps. A failed upload logs an error but doesn't fail the build.
+
 ### Origin checks
 
 Start's CSRF middleware (`createCsrfMiddleware`, opt-in) runs on every request in [src/start.ts](src/start.ts) and answers a non-GET request with `403` unless it's same-origin. It replaces React Router's origin check (`allowedActionOrigins`).

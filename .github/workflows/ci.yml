@@ -339,6 +339,10 @@ jobs:
             VITE_GIT_DATE=${{ github.event.head_commit.timestamp }}
             VITE_PR_NUMBER=${{ env.VITE_PR_NUMBER }}
             VITE_BRANCH=${{ github.ref_name }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+          # Uploads the client source maps to Sentry; skipped while unset.
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Trigger Coolify deploy
         run: |
