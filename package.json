@@ -28,6 +28,7 @@
     "test": "vitest",
     "test:e2e": "playwright test --config playwright.supabase.config.ts",
     "test:integration": "node scripts/test-integration.mjs",
+    "bench": "node --env-file-if-exists=.env.staging.local --env-file-if-exists=.env.prod.local scripts/bench/compare.ts",
     "test:visual": "node scripts/test-integration.mjs --project iphone-pro-max --project laptop",
     "test:visual:update": "node scripts/test-integration.mjs --project iphone-pro-max --project laptop --update-snapshots",
     "keepalive:supabase": "node scripts/supabase-keepalive.mjs",
