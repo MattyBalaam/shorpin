@@ -459,3 +459,28 @@ _external_ scheme and host, not the proxy's internal `http://…`.
 safety net. The durable fix is a custom server that trusts the proxy headers so
 `request.url` is correct for every host (including preview deployments) without
 an allow-list entry — see the follow-up PR that replaces `react-router-serve`.
+
+### Staging
+
+`https://staging.shorpin.matthewbalaam.co.uk` runs any branch, deployed by hand
+from Actions → "Deploy staging" (or `gh workflow run deploy-staging.yml -f ref=<branch>`).
+[deploy-staging.yml](.github/workflows/deploy-staging.yml) builds the branch
+with its own Dockerfile, pushes `ghcr.io/mattybalaam/shorpin:staging`, and
+triggers the staging app's Coolify webhook. It then waits for `/version` to
+report the branch's commit.
+
+- **Its own origin, not a path under prod:** IndexedDB, Cache Storage, the
+  service worker and cookies are per origin, so a subdomain keeps staging's
+  offline data, caches and session apart from prod's. Both apps use the same
+  IndexedDB database and cache names, so a path would mix them.
+- **The e2e Supabase project, not prod.** The workflow pushes the branch's
+  migrations there first, as PR runs do. Its data is throwaway: the e2e suite
+  resets it, so sign in with an account in that project.
+- **No Sentry:** the build has no `VITE_SENTRY_DSN`, so staging errors don't
+  land in prod's project.
+- **Origin checks:** `allowedActionOrigins` (above) lists the staging host. A
+  branch on TanStack Start needs it in its CSRF middleware's allowed origins
+  instead.
+- **Setup:** the `STAGING_URL` variable and `COOLIFY_STAGING_WEBHOOK_URL`
+  secret (the workflow reuses `COOLIFY_TOKEN`), and a Coolify app for the
+  `:staging` image.
