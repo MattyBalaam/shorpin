@@ -7,18 +7,21 @@ import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/s
 // Sec-Fetch-Site, which must be same-origin. Clients without it fall back to
 // Origin (or Referer), compared with request.url's origin. Behind Coolify's
 // proxy that's the container's plain-HTTP address (srvx doesn't trust
-// X-Forwarded-* unless told to), so the public origin is allowed by name, as
-// `allowedActionOrigins` did. A request with none of the three headers isn't
+// X-Forwarded-* unless told to), so the public and staging origins are
+// allowed by name, as `allowedActionOrigins` did. A request with none of the three headers isn't
 // from a browser (every one we target sends Sec-Fetch-Site), so it can't be
 // a forged one: scripts and health checks pass.
-const publicOrigin = "https://shorpin.matthewbalaam.co.uk";
+const publicOrigins = new Set([
+  "https://shorpin.matthewbalaam.co.uk",
+  "https://staging.shorpin.matthewbalaam.co.uk",
+]);
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 const rejectCrossSiteMutations = createCsrfMiddleware({
   filter: ({ request }) => !safeMethods.has(request.method),
   allowRequestsWithoutOriginCheck: true,
   origin: (origin, { request }) =>
-    origin === publicOrigin || origin === new URL(request.url).origin,
+    publicOrigins.has(origin) || origin === new URL(request.url).origin,
 });
 
 // Server errors to Sentry, which instrument.server.mjs set up before the

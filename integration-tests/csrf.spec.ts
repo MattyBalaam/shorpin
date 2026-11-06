@@ -15,6 +15,11 @@ test.describe("a POST to /perf", () => {
     ["from a sibling subdomain is refused", { "sec-fetch-site": "same-site" }, 403],
     ["with a foreign Origin is refused", { origin: "https://evil.example" }, 403],
     ["with the public Origin passes (behind the proxy)", { origin: publicOrigin }, 204],
+    [
+      "with the staging Origin passes",
+      { origin: "https://staging.shorpin.matthewbalaam.co.uk" },
+      204,
+    ],
     ["with a foreign Referer is refused", { referer: "https://evil.example/page" }, 403],
     ["with no browser headers passes (scripts)", {}, 204],
   ];
