@@ -45,7 +45,11 @@ const edge = style({
   height: 0,
   pointerEvents: "none",
   opacity: 0,
-  boxShadow: "0 0 0.75rem 0.375rem color-mix(in oklch, currentColor 30%, transparent)",
+  // Always a darker shade: the text colour (which this used for both) is
+  // light in dark mode, so it lightened the content there. light-dark()
+  // rather than a media query, so a pinned colour scheme applies.
+  boxShadow:
+    "0 0 0.75rem 0.375rem light-dark(color-mix(in oklch, currentColor 30%, transparent), oklch(0 0 0 / 50%))",
   transition: "opacity 150ms",
 });
 
