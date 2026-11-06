@@ -509,4 +509,10 @@ The image runs `.output/server/index.mjs` (Nitro's Node server, port 3000) with 
 
 ### Origin checks
 
-React Router 8.3.1 rejected a POST to a UI route unless its `Origin` matched `request.url`'s, which behind the proxy needed `allowedActionOrigins` in `react-router.config.ts`. Start has no such check by default: mutations are server function calls, and Start's CSRF middleware (`createCsrfMiddleware`) is opt-in. It isn't enabled yet. The deploy smoke test in [ci.yml](.github/workflows/ci.yml) still POSTs to `/login` looking for React Router's `400`, so it can no longer fail.
+Start's CSRF middleware (`createCsrfMiddleware`, opt-in) runs on every request in [src/start.ts](src/start.ts) and answers a non-GET request with `403` unless it's same-origin. It replaces React Router's origin check (`allowedActionOrigins`).
+
+- **Browsers** are judged by `Sec-Fetch-Site`, which must be `same-origin`. A sibling subdomain (`same-site`) is refused too. Page loads and other GETs aren't checked, so links from other sites still work.
+- **Clients without `Sec-Fetch-Site`** fall back to `Origin`, then `Referer`. Behind the proxy, `request.url` is the container's plain-HTTP address (srvx ignores `X-Forwarded-*` unless trust-proxy is on), so the public origin is allowed by name in `start.ts`. Change it there if the domain changes.
+- **Requests with none of those headers pass.** Browsers always send at least one on a POST, so such a request can't be forged by a page. This lets scripts and health checks through.
+
+[csrf.spec.ts](integration-tests/csrf.spec.ts) covers it. The deploy smoke test in [ci.yml](.github/workflows/ci.yml) POSTs to `/perf` twice: with the public `Origin` (must pass behind the proxy) and with `Sec-Fetch-Site: cross-site` (must get `403`).

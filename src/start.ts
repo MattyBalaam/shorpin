@@ -1,6 +1,25 @@
 import { captureException } from "@sentry/node";
 import { isNotFound, isRedirect } from "@tanstack/solid-router";
-import { createMiddleware, createStart } from "@tanstack/solid-start";
+import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/solid-start";
+
+// Rejects cross-site mutations (server function POSTs, /perf) with a 403.
+// Replaces React Router's origin check. Browsers are judged by
+// Sec-Fetch-Site, which must be same-origin. Clients without it fall back to
+// Origin (or Referer), compared with request.url's origin. Behind Coolify's
+// proxy that's the container's plain-HTTP address (srvx doesn't trust
+// X-Forwarded-* unless told to), so the public origin is allowed by name, as
+// `allowedActionOrigins` did. A request with none of the three headers isn't
+// from a browser (every one we target sends Sec-Fetch-Site), so it can't be
+// a forged one: scripts and health checks pass.
+const publicOrigin = "https://shorpin.matthewbalaam.co.uk";
+const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+
+const rejectCrossSiteMutations = createCsrfMiddleware({
+  filter: ({ request }) => !safeMethods.has(request.method),
+  allowRequestsWithoutOriginCheck: true,
+  origin: (origin, { request }) =>
+    origin === publicOrigin || origin === new URL(request.url).origin,
+});
 
 // Server errors to Sentry, which instrument.server.mjs set up before the
 // server started. Start turns a thrown error into a response (a page's
@@ -43,6 +62,7 @@ let previewMocks: Promise<void> | undefined;
 const requestMiddleware =
   import.meta.env.MODE === "preview"
     ? [
+        rejectCrossSiteMutations,
         createMiddleware().server(async ({ next }) => {
           previewMocks ??= import("~/lib/preview-mocks.server").then((mocks) =>
             mocks.startPreviewMocks(),
@@ -52,7 +72,7 @@ const requestMiddleware =
         }),
         reportRequestErrors,
       ]
-    : [reportRequestErrors];
+    : [rejectCrossSiteMutations, reportRequestErrors];
 
 export const startInstance = createStart(() => ({
   requestMiddleware,

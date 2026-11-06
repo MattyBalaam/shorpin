@@ -356,12 +356,19 @@ jobs:
           done
           [ "$deployed" = "${{ github.sha }}" ] || { echo "::error::still on $deployed, expected ${{ github.sha }}"; exit 1; }
 
-          status=$(curl -s -o /tmp/body.txt -w '%{http_code}' -X POST https://shorpin.matthewbalaam.co.uk/login \
-            -H "Origin: https://shorpin.matthewbalaam.co.uk" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            --data-urlencode "email=smoketest@example.com" \
-            --data-urlencode "password=smoke-test")
-          if [ "$status" = "400" ] && grep -q "Bad Request" /tmp/body.txt; then
-            echo "::error::action-origin check is rejecting real requests (proxy/Origin misconfig)"
+          # The CSRF middleware (src/start.ts): a request with the public
+          # Origin must pass behind the proxy, and a cross-site one must not.
+          perf() {
+            curl -s -o /dev/null -w '%{http_code}' -X POST https://shorpin.matthewbalaam.co.uk/perf \
+              -H "Content-Type: application/json" --data '{}' "$@"
+          }
+          status=$(perf -H "Origin: https://shorpin.matthewbalaam.co.uk")
+          if [ "$status" != "204" ]; then
+            echo "::error::CSRF check answered $status to the public Origin (proxy/Origin misconfig)"
+            exit 1
+          fi
+          status=$(perf -H "Sec-Fetch-Site: cross-site")
+          if [ "$status" != "403" ]; then
+            echo "::error::CSRF check answered $status to a cross-site POST, expected 403"
             exit 1
           fi
