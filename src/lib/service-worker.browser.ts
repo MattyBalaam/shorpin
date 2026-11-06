@@ -1,3 +1,7 @@
+// Browser-only (`*.browser.ts`): each export is wrapped in createClientOnlyFn,
+// so the server build stubs it and drops this module's browser code. Keep the
+// top level free of browser APIs (see "Client-only modules" in README.md).
+import { createClientOnlyFn } from "@tanstack/solid-start";
 import { SKIP_WAITING } from "./service-worker-messages";
 
 // Update flow: a redeployed sw.js installs in the background and then waits
@@ -23,7 +27,9 @@ function waitForInstalled(worker: ServiceWorker) {
 }
 
 /** Activates a waiting worker, resolving once it controls this page. */
-export function activateWaitingWorker(registration: ServiceWorkerRegistration) {
+export const activateWaitingWorker = createClientOnlyFn(function activateWaitingWorker(
+  registration: ServiceWorkerRegistration,
+) {
   const { waiting } = registration;
   if (!waiting) return Promise.resolve();
 
@@ -39,21 +45,23 @@ export function activateWaitingWorker(registration: ServiceWorkerRegistration) {
     );
     waiting.postMessage({ type: SKIP_WAITING });
   });
-}
+});
 
 /** Checks for a new build now and, if there is one, activates it at once. */
-export async function applyUpdateNow(registration: ServiceWorkerRegistration) {
+export const applyUpdateNow = createClientOnlyFn(async function applyUpdateNow(
+  registration: ServiceWorkerRegistration,
+) {
   await registration.update();
   if (registration.installing) await waitForInstalled(registration.installing);
   await activateWaitingWorker(registration);
-}
+});
 
 /**
  * Calls `onUpdateReady` whenever a newer build's worker is waiting behind the
  * one controlling this page, checking for new builds hourly and when the app
  * returns to the foreground.
  */
-export function watchForUpdates(
+export const watchForUpdates = createClientOnlyFn(function watchForUpdates(
   registration: ServiceWorkerRegistration,
   onUpdateReady: () => void,
   signal: AbortSignal,
@@ -95,4 +103,4 @@ export function watchForUpdates(
     },
     { signal },
   );
-}
+});

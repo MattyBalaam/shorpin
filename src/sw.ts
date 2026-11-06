@@ -80,7 +80,7 @@ registerRoute(
 // one rather than taking over pages still running the previous build's JS.
 // The page posts SKIP_WAITING once the user accepts its reload prompt, or
 // when version-guard.browser.ts needs the new build to retry a failed
-// mutation (see src/lib/service-worker.client.ts). A first-ever install has
+// mutation (see src/lib/service-worker.browser.ts). A first-ever install has
 // nothing to wait behind, so it activates immediately.
 self.addEventListener("message", (event) => {
   if (event.data?.type === SKIP_WAITING) void self.skipWaiting();

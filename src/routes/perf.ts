@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 
-// Where performance.client.ts beacons web vitals and route timings. A
+// Where performance.browser.ts beacons web vitals and route timings. A
 // server route (no page), like auth/confirm.ts: it logs slow metrics and
 // always answers 204, so a bad payload never shows up as a client error.
 

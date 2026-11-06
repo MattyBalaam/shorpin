@@ -1,3 +1,8 @@
+// Browser-only (`*.browser.ts`): each export is wrapped in createClientOnlyFn,
+// so the server build stubs it and drops this module's browser code. Keep the
+// top level free of browser APIs (see "Client-only modules" in README.md).
+import { createClientOnlyFn } from "@tanstack/solid-start";
+
 type Rating = "good" | "needs-improvement" | "poor";
 
 type PerfMetricPayload = {
@@ -87,8 +92,8 @@ function onPageHidden(callback: () => void) {
   window.addEventListener("pagehide", callback, { once: true });
 }
 
-export function initWebVitalsTracking() {
-  if (!isPerfTelemetryEnabled || didInitWebVitals || typeof window === "undefined") {
+export const initWebVitalsTracking = createClientOnlyFn(function initWebVitalsTracking() {
+  if (!isPerfTelemetryEnabled || didInitWebVitals) {
     return;
   }
   didInitWebVitals = true;
@@ -195,24 +200,30 @@ export function initWebVitalsTracking() {
       }
     });
   }
-}
+});
 
-export function reportRouteNavigationMetric(payload: {
-  pathname: string;
-  durationMs: number;
-  fromPathname: string;
-}) {
-  const routeRating: Rating =
-    payload.durationMs <= 600 ? "good" : payload.durationMs <= 1200 ? "needs-improvement" : "poor";
+export const reportRouteNavigationMetric = createClientOnlyFn(
+  function reportRouteNavigationMetric(payload: {
+    pathname: string;
+    durationMs: number;
+    fromPathname: string;
+  }) {
+    const routeRating: Rating =
+      payload.durationMs <= 600
+        ? "good"
+        : payload.durationMs <= 1200
+          ? "needs-improvement"
+          : "poor";
 
-  sendMetric({
-    kind: "route-navigation",
-    name: "route-change",
-    value: payload.durationMs,
-    unit: "ms",
-    pathname: payload.pathname,
-    rating: routeRating,
-    ts: Date.now(),
-    details: { fromPathname: payload.fromPathname },
-  });
-}
+    sendMetric({
+      kind: "route-navigation",
+      name: "route-change",
+      value: payload.durationMs,
+      unit: "ms",
+      pathname: payload.pathname,
+      rating: routeRating,
+      ts: Date.now(),
+      details: { fromPathname: payload.fromPathname },
+    });
+  },
+);

@@ -5,7 +5,7 @@ import { index, layout, rootRoute, route } from "@tanstack/virtual-file-routes";
 export const routes = rootRoute("root.tsx", [
   // Server routes (no page), outside the layouts so no layout's beforeLoad
   // runs for them: health for the Dockerfile, version for CI and
-  // version-guard, perf for performance.client.ts's beacons.
+  // version-guard, perf for performance.browser.ts's beacons.
   route("/health", "routes/health.ts"),
   route("/version", "routes/version.ts"),
   route("/perf", "routes/perf.ts"),

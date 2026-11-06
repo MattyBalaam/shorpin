@@ -11,7 +11,7 @@ import { createClientOnlyFn } from "@tanstack/solid-start";
 // if they differ, forces the service worker to take over the new build
 // before a single silent retry of the failed action.
 
-import { applyUpdateNow } from "./service-worker.client";
+import { applyUpdateNow } from "./service-worker.browser";
 
 const BUILD_HASH = import.meta.env.VITE_GIT_HASH ?? "unknown";
 

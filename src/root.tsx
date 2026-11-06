@@ -19,8 +19,8 @@ import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/li
 import { getAccountAppStyle } from "~/lib/app-style.functions";
 import { initMonitoring, reportError } from "~/lib/monitoring.browser";
 import { isNetworkOrServerError } from "~/lib/network-error";
-import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
-import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
+import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.browser";
+import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.browser";
 import { toast } from "~/lib/toast";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import "~/styles/reset.css";
