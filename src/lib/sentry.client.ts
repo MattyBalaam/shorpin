@@ -1,12 +1,12 @@
-// Only ever loaded via dynamic import from monitoring.client.ts. Named imports
-// (rather than `await import("@sentry/react-router")`) keep tree-shaking
+// Only ever loaded via dynamic import from monitoring.browser.ts. Named
+// imports (rather than `await import("@sentry/browser")`) keep tree-shaking
 // working, so unused integrations like feedback stay out of the chunk.
 import {
+  browserTracingIntegration,
   captureException,
   init,
-  reactRouterTracingIntegration,
   replayIntegration,
-} from "@sentry/react-router";
+} from "@sentry/browser";
 
 export { captureException };
 
@@ -15,7 +15,11 @@ export function initSentry() {
     dsn: import.meta.env.VITE_SENTRY_DSN,
 
     integrations: [
-      reactRouterTracingIntegration(),
+      // Spans are named by URL (/lists/milk), not by route: Sentry's
+      // TanStack Router integration (@sentry/solid) targets Solid 1 and
+      // router 1. Fine at this traffic; parametrise in beforeStartSpan if
+      // the transaction list gets noisy.
+      browserTracingIntegration(),
       replayIntegration({
         maskAllText: false,
         blockAllMedia: false,

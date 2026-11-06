@@ -14,6 +14,11 @@ function tenantOf(email: string) {
 }
 
 export const handlers = [
+  // /health's background check (`select(…, { head: true })`). It runs
+  // without a session; PostgREST answers that with RLS's empty result, not
+  // an error.
+  http.head("*/rest/v1/lists", () => new HttpResponse(null, { status: 200 })),
+
   http.get("*/rest/v1/lists", async ({ request }) => {
     await delay();
     const url = new URL(request.url);

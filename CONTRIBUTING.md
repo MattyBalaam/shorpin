@@ -22,13 +22,12 @@ type Variant = string;
 For coupled props, use a discriminated union so invalid combinations are impossible at compile time:
 
 ```ts
-// Good — type and autoComplete are enforced together
+// Good — type and autocomplete are enforced together
 type AuthFieldProps = {
-  meta: FieldMetadata<string>;
   label: string;
 } & (
-  | { type: "email"; autoComplete: "email" }
-  | { type: "password"; autoComplete: "current-password" | "new-password" }
+  | { type: "email"; autocomplete: "email" }
+  | { type: "password"; autocomplete: "current-password" | "new-password" }
 );
 ```
 
@@ -77,23 +76,36 @@ export function parseResult(input: string): Result<User, ValidationError> {
 }
 ```
 
-## React Router Patterns
+## TanStack Start Patterns
 
 ### Type-safe routing
 
-Always use React Router's `href()` function for route paths instead of string literals. This provides compile-time safety when routes are renamed or restructured.
+Route paths are typed from the route tree ([src/routes.ts](src/routes.ts)). Pass the route's path pattern and its `params` rather than building a URL, so a renamed or restructured route fails to compile:
 
-```ts
-import { href, redirect } from "react-router";
+```tsx
+import { Link, redirect } from "@tanstack/solid-router";
 
 // Good
-throw redirect(href("/login"));
-throw redirect(href("/lists/:list", { list: slug }));
+throw redirect({ to: "/login" });
+<Link to="/lists/$list" params={{ list: slug }}>
+  …
+</Link>;
 
 // Avoid
-throw redirect("/login");
-throw redirect(`/lists/${slug}`);
+throw redirect({ href: "/login" });
+<a href={`/lists/${slug}`}>…</a>;
 ```
+
+### Server functions
+
+A route's data and mutations live in a `*.functions.ts` module beside it, as `createServerFn` calls. Server-only helpers go in `*.server.ts`.
+
+- Every server function that reads or writes a user's data uses `authMiddleware` ([supabase.middleware.ts](src/lib/supabase.middleware.ts)). A server function is its own endpoint, so it can't rely on the page that calls it being protected.
+- Return expected failures as data (`{ ok: false, error }`) and let the page show the toast. Throw only for real errors, which reach the route's error boundary and Sentry.
+
+### Browser-only code
+
+Name a module that only works in the browser `*.browser.ts`, and wrap each export in `createClientOnlyFn` where it's defined. Keep its top level free of browser APIs, since it still runs on the server. A module that needs the browser at its top level stays `*.client.ts` and is imported lazily (see "Client-only modules" in [README.md](README.md#migration-to-tanstack-start--solid)).
 
 ## UI Patterns
 
@@ -115,82 +127,50 @@ function recreate() {
 <button disabled={state !== "idle"} onClick={recreate}>
 ```
 
-## React Patterns
+## Solid Patterns
 
-### useEffectEvent
+See the Solid 2 gotchas in [README.md](README.md#migration-to-tanstack-start--solid) too.
 
-Use `useEffectEvent` to read the latest props or state inside a `useEffect` without making them reactive dependencies. This replaces the manual ref-sync pattern:
+### Props
 
-```tsx
-// Good
-const handleOffline = useEffectEvent(() => onOffline?.());
+Don't destructure props: a component runs once, and destructuring reads each prop at that moment, losing later updates. Read them as `props.value` where they're used.
 
-useEffect(
-  function syncOnlineCallbacks() {
-    if (!isOnline) handleOffline();
-  },
-  [isOnline],
-);
+Reading a JSX prop (`props.children`, or a prop that holds elements) builds its elements each time. Read it once with `children(() => props.children)`, or keep the prop as data and build the JSX in the template, or hydration won't match the server's HTML.
 
-// Avoid — manual ref boilerplate
-const onOfflineRef = useRef(onOffline);
-onOfflineRef.current = onOffline;
+### onSettled
 
-useEffect(
-  function syncOnlineCallbacks() {
-    if (!isOnline) onOfflineRef.current?.();
-  },
-  [isOnline],
-);
-```
-
-### useEffect
-
-Always use named functions in useEffect callbacks to describe intent:
+Use `onSettled` for setup that needs the browser (listeners, observers, service worker registration). It runs once the component is on screen, and only in the browser. Name the function to describe its intent, and return a cleanup function or nothing. It throws on any other return value, including a Promise:
 
 ```tsx
 // Good
-useEffect(
-  function subscribeToSSE() {
-    // ...
-  },
-  [deps],
-);
-
-// Avoid
-useEffect(() => {
+onSettled(function trackKeyboardViewport() {
   // ...
-}, [deps]);
+  return () => controller.abort();
+});
+
+// Avoid: anonymous, and returns the Promise from scrollIntoView
+onSettled(() => element.scrollIntoView());
 ```
 
-### use()
+### createEffect
 
-Read context with `use(Context)` rather than `useContext`.
-
-For non-critical loader data, return the promise unawaited and read it with `use()` in a child wrapped in `<Suspense>`, so the page renders without waiting for it (see `sign-ups.tsx`, `list/config.tsx`, `home/components.tsx`):
+Effects take two functions: the first reads the reactive values (tracked), and the second acts on them (untracked). Keep side effects in the second, and return its cleanup from there:
 
 ```tsx
-// loader — wrap Supabase queries in an async function: the query builder is
-// only a thenable, which React Router doesn't serialize as a promise
-const signUps = (async () => {
-  const { data, error } = await supabase.from("waitlist").select("…");
-  if (error) throw error;
-  return data ?? [];
-})();
-return { signUps };
-
-// component
-function SignUpsList({ signUpsPromise }) {
-  const signUps = use(signUpsPromise);
-  // ...
-}
-
-<Suspense fallback={null}>
-  <SignUpsList signUpsPromise={loaderData.signUps} />
-</Suspense>;
+createEffect(
+  () => data().listId,
+  (listId) => {
+    const unsubscribe = subscribe(listId);
+    return unsubscribe;
+  },
+);
 ```
 
-On offline-capable routes, IndexedDB can't store promises, so the `clientLoader` must await streamed values before caching them and serve cached data back as `Promise.resolve(...)` (see `home/client-cache.ts`). Don't use `use()` for side effects (subscriptions, service worker registration). Those belong in effects.
+Don't use an effect to copy one signal into another. Derive it with a function or `createMemo`, or use a writable derived signal (`createSignal(() => source())`) when the page also writes to it (see the list page's items).
+
+### Context
+
+Provide a context by rendering it (`<OnlineContext value={isOnline}>`) and read it with `useContext`.
 
 ## Testing
 
@@ -244,14 +224,14 @@ When an element has visible text and you need to augment it for screen readers, 
 
 ```tsx
 // Good — text remains in the DOM for accessibility tools
-<span className={styles.unreadBadge}>
-  {unreadCount}
+<span class={styles.unreadBadge}>
+  {unreadCount()}
   <VisuallyHidden> unread</VisuallyHidden>
 </span>
 
 // Avoid — aria-label is harder to maintain and debug
-<span className={styles.unreadBadge} aria-label={`${unreadCount} unread`}>
-  {unreadCount}
+<span class={styles.unreadBadge} aria-label={`${unreadCount()} unread`}>
+  {unreadCount()}
 </span>
 ```
 
@@ -262,7 +242,7 @@ Use `aria-label` only when there's no visible text to augment (e.g., icon-only b
 Use `AbortController` for event listener cleanup instead of manual `removeEventListener`:
 
 ```tsx
-useEffect(function trackOnlineStatus() {
+onSettled(function trackOnlineStatus() {
   const controller = new AbortController();
   const { signal } = controller;
 
@@ -270,5 +250,5 @@ useEffect(function trackOnlineStatus() {
   window.addEventListener("offline", () => setIsOnline(false), { signal });
 
   return () => controller.abort();
-}, []);
+});
 ```

@@ -2,7 +2,6 @@ import { index, layout, rootRoute, route } from "@tanstack/virtual-file-routes";
 
 // TanStack Router's virtual route config: the same shape as React Router's
 // routes.ts. Paths are relative to src/ (routesDirectory in vite.config.ts).
-// Routes still to port from React Router are listed in legacy/README.md.
 export const routes = rootRoute("root.tsx", [
   // Server routes (no page), outside the layouts so no layout's beforeLoad
   // runs for them: health for the Dockerfile, version for CI and

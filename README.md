@@ -2,7 +2,7 @@ A todo style app built with TanStack Start and Solid, server-rendered. Originall
 
 This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
-- **Framework**: TanStack Start 2 (RC) with Solid 2 (RC), server-rendered — migrating from React Router v8 + React, see [Migration](#migration-to-tanstack-start--solid)
+- **Framework**: TanStack Start 2 (RC) with Solid 2 (RC), server-rendered — migrated from React Router v8 + React, see [Migration](#migration-to-tanstack-start--solid)
 - **Language**: TypeScript
 - **Styling**: Vanilla Extract CSS-in-JS
 - **Build Tool**: Vite, with Nitro building the Node server
@@ -11,7 +11,7 @@ This is partly for me and my friends to use (product need), but also for me to g
 
 ## Docs
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
+- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, TanStack Start, Solid, and testing conventions
 - [integration-tests/README.md](integration-tests/README.md) — running integration tests, architecture, CI
 - [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
@@ -20,14 +20,14 @@ This is partly for me and my friends to use (product need), but also for me to g
 
 Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
 
-| File                                                    | Mode      | Used by                                         | Notes                                                                                                                   |
-| ------------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
-| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
-| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
-| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
+| File                                                  | Mode      | Used by                                         | Notes                                                                                                                   |
+| ----------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `.env.mock`                                           | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
+| `.env.preview`                                        | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
+| `.env.e2e.local` (copy from `.env.e2e.local.example`) | `e2e`     | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
+| `.env` (copy from `.env.example`)                     | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
 
-`.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.test.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
+`.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.e2e.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
 
 ## Development Workflow
 
@@ -38,9 +38,9 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 
 ## Migration to TanStack Start + Solid
 
-In progress, on the `spike/tanstack-solid` branch, to learn both. The list page (with its palette picker and Style link), the layouts, home (with its sign-ups dialog), the auth pages (sign-in, forgot and set password, request access, and the email-link confirm route), the dialogs and styles (list config, delete, the style dialogs, app styles and the colour-scheme toggle), the dev notifications page, the health, version and perf server routes, and the service worker are ported. Code still to port stays unchanged in [legacy/](legacy/), excluded from the build and checks, with what's left listed in [legacy/README.md](legacy/README.md). Specs for those features are `test.fixme`, each naming the stage that brings it back. Some sections below still describe the React version; each is rewritten as its feature is ported.
+Done, on the `spike/tanstack-solid` branch, to learn both. Every page, server route, the service worker and Sentry are ported, and `legacy/` is gone. Some sections below may still describe the React version.
 
-Decisions so far:
+Decisions:
 
 - **Latest of everything, including pre-releases:** Solid 2 RC, `@tanstack/solid-start` 2 RC, `@solidjs/vite-plugin` 3 (next), and Formisch's Solid 2 build (`@formisch/solid/v2`; the package's main entry still targets Solid 1).
 - **Route config, not file-based routing:** [src/routes.ts](src/routes.ts) is TanStack Router's virtual route config, the same shape as React Router's `routes.ts`. Route modules sit beside their helpers (`data.ts`, `*.css.ts`), which file-based routing would treat as routes.
@@ -67,6 +67,9 @@ Decisions so far:
 - **Editing `src/routes.ts` needs a dev server restart:** the router plugin loads the virtual route config once per process and keeps rewriting `routeTree.gen.ts` from that copy. Touching `vite.config.ts` doesn't reload it.
 - **The service worker is built inside Nitro's build:** `vite-plugin-pwa`'s own build step runs in every Vite environment's `closeBundle`. Here that's client, ssr and nitro: the first two run before Nitro copies `public/` (with `offline.html`) into `.output/public`, and the last runs after Nitro has baked its table of static files into the server, which then 404s `sw.js`. [vite.config.ts](vite.config.ts) drops that step and builds the worker once, from Nitro's `vite:compile:before` hook. That table also fixes each file's `Content-Length` and `ETag` at build time, which matters to `offline.spec.ts`'s redeploy test (see the comment there).
 - **No Background Sync backstop:** the React worker replayed queued home entries by POSTing their form fields to `/`. Start's server functions have their own serialized payload, and rebuilding it in the worker would couple it to that format, as the `.data` protocol would have. Background Sync never ran on Safari/iOS anyway; home and list drain their queues on the `online` event and on mount.
+- **The e2e mode is `e2e`, not `test`:** `@solidjs/vite-plugin` treats `--mode test` as a Vitest run and builds Solid's browser runtime into the server, which then 500s on every page ("Attempting to use server context in non-server build"). So the Supabase project's credentials live in `.env.e2e.local`, read by `pnpm dev:e2e`, `pnpm build:e2e` and `pnpm test:e2e`.
+- **Sentry without a framework SDK:** Sentry has no SDK for Solid 2 or TanStack Start on Solid (`@sentry/solid` targets Solid 1 and router 1). The client uses `@sentry/browser` (see [Deferred Sentry](#deferred-sentry-client)); the server uses `@sentry/node`, loaded by `node --import` from `instrument.server.mjs`, and a request and a server function middleware in [src/start.ts](src/start.ts) report errors, since Start turns thrown errors into responses. Redirects and `notFound()` aren't reported.
+- **A self-contained `.output`:** Nitro bundles the server's dependencies, except `@sentry/node` and the profiler, which it traces into `.output/server/node_modules` (`traceDeps` in [vite.config.ts](vite.config.ts)) so that `instrument.server.mjs`, copied in beside them, shares one copy of Sentry with the app. The Docker image copies `.output` and nothing else.
 - **Lint:** oxlint's `no-unassigned-vars` is off, because it can't see Solid's compiler assigning `ref={el}` variables.
 
 ## Architecture
@@ -454,15 +457,15 @@ Implementation files:
 
 ### Deferred Sentry (client)
 
-The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
+The client Sentry SDK (`@sentry/browser`, ~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports it statically:
 
-- `app/lib/monitoring.client.ts` is the only entry point. `initMonitoring()` runs after `hydrateRoot` and dynamic-imports `app/lib/sentry.client.ts` once the browser is idle (`requestIdleCallback`, 3s timeout).
-- Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root `ErrorBoundary`) queues too; the queue is flushed into Sentry once it initialises.
-- `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/react-router")` directly — the namespace import pulls in every integration.
-- There's deliberately no `manualChunks` rule for `@sentry/`: it dragged `react` into the Sentry chunk, which made the entry import it eagerly.
+- [monitoring.browser.ts](src/lib/monitoring.browser.ts) is the only entry point. `initMonitoring()` runs when [root.tsx](src/root.tsx) loads in the browser, before hydration, and dynamic-imports [sentry.client.ts](src/lib/sentry.client.ts) once the browser is idle (`requestIdleCallback`, 3s timeout).
+- Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root error component) queues too; the queue is flushed into Sentry once it initialises.
+- `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/browser")` directly — the namespace import pulls in every integration.
 - The chunk is precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
+- Navigation spans are named by URL (`/lists/milk`), not by route: Sentry's TanStack Router integration is in `@sentry/solid`, which targets Solid 1.
 
-Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
+Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`instrument.server.mjs`, [src/start.ts](src/start.ts)) is unaffected.
 
 ### Page header
 
@@ -486,14 +489,8 @@ Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts
 the container with a Traefik reverse proxy that terminates TLS and forwards
 plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
-### Forwarded-proto / action origin validation
+The image runs `.output/server/index.mjs` (Nitro's Node server, port 3000) with `--import ./.output/server/instrument.server.mjs` for Sentry. `VITE_SENTRY_DSN` is needed both as a build argument (the client bundle) and as a runtime variable (the server).
 
-React Router 8.3.1 added an action-origin CSRF check: a POST to a UI route is
-rejected (sanitised `400`) unless its `Origin` header matches the origin of
-`request.url`. The server must therefore reconstruct `request.url` with the
-_external_ scheme and host, not the proxy's internal `http://…`.
+### Origin checks
 
-`react-router.config.ts` sets `allowedActionOrigins` to the public host(s) as a
-safety net. The durable fix is a custom server that trusts the proxy headers so
-`request.url` is correct for every host (including preview deployments) without
-an allow-list entry — see the follow-up PR that replaces `react-router-serve`.
+React Router 8.3.1 rejected a POST to a UI route unless its `Origin` matched `request.url`'s, which behind the proxy needed `allowedActionOrigins` in `react-router.config.ts`. Start has no such check by default: mutations are server function calls, and Start's CSRF middleware (`createCsrfMiddleware`) is opt-in. It isn't enabled yet. The deploy smoke test in [ci.yml](.github/workflows/ci.yml) still POSTs to `/login` looking for React Router's `400`, so it can no longer fail.

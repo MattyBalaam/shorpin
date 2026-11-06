@@ -1,7 +1,6 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
-  // Not yet ported from React Router (see legacy/README.md).
-  "exclude": ["node_modules", "legacy", ".output", "dist"],
+  "exclude": ["node_modules", ".output", "dist"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2024"],
     "types": ["node", "vite/client", "msw/vite/client"],

@@ -80,7 +80,7 @@ add_specs() {
 
 for f in "${STAGED[@]}"; do
   case "$f" in
-    *.css.ts | *.d.ts | *.md | *.toml | *.yaml | *.yml | .claude/* | .githooks/* | legacy/*) ;;
+    *.css.ts | *.d.ts | *.md | *.toml | *.yaml | *.yml | .claude/* | .githooks/*) ;;
     src/routes/home/*) add_specs home.spec.ts offline.spec.ts ;;
     src/components/app-style/* | src/lib/app-style.ts) add_specs app-style.spec.ts home.spec.ts ;;
     src/components/color-scheme/* | src/lib/color-scheme.ts) add_specs color-scheme.spec.ts ;;

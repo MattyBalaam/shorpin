@@ -89,7 +89,7 @@ These projects run only `@visual` tests, and `desktop`/`touch` skip them. `pnpm 
 - **Service workers are blocked** in these projects, because the "Offline support ready" notification appears at a timing-dependent point.
 - **Masks** paint over content that changes between runs. Currently that's only the sign-up dates.
 - **`--repeat-each`** gives every repeat its own uuid, so screenshots showing emails won't match on repeats. Check stability with separate runs instead.
-- Left out: `/logout` (action only), `/auth/confirm` (always redirects), `/sentry-example-page` (depends on reaching Sentry), and resource routes.
+- Left out: `/logout` (action only), `/auth/confirm` (always redirects), and server routes.
 
 ### Service worker (`offline.spec.ts`)
 

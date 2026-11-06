@@ -17,6 +17,8 @@ import { ErrorState } from "~/components/error-state/error-state";
 import { Spinner } from "~/components/spinner/spinner";
 import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/lib/app-style";
 import { getAccountAppStyle } from "~/lib/app-style.functions";
+import { initMonitoring, reportError } from "~/lib/monitoring.browser";
+import { isNetworkOrServerError } from "~/lib/network-error";
 import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
 import { toast } from "~/lib/toast";
@@ -34,6 +36,10 @@ import { themeClass } from "./styles/theme.css";
 const readCookieHeader = createIsomorphicFn()
   .server(() => getRequestHeader("Cookie") ?? "")
   .client(() => document.cookie);
+
+// Before hydration, so errors thrown while hydrating are queued for Sentry.
+// The server's are reported by src/start.ts.
+if (!isServer) void initMonitoring();
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -76,12 +82,25 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootDocument,
   component: App,
-  errorComponent: (props) => (
+  errorComponent: RootError,
+});
+
+function RootError(props: { error: unknown; reset?: () => void }) {
+  // A dead server or no connection isn't a bug worth reporting; the
+  // message says which it was.
+  createEffect(
+    () => props.error,
+    (error) => {
+      if (error instanceof Error && !isNetworkOrServerError(error)) reportError(error);
+    },
+  );
+
+  return (
     <main class={styles.main}>
       <ErrorState error={props.error} reset={props.reset} />
     </main>
-  ),
-});
+  );
+}
 
 function RootDocument(props: { children?: Element }) {
   const appStyle = useEffectiveAppStyle();

@@ -1,3 +1,4 @@
+import { copyFile } from "node:fs/promises";
 import path from "node:path";
 import solid from "@solidjs/vite-plugin";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
@@ -57,7 +58,22 @@ export default defineConfig({
   plugins: [
     vanillaExtractPlugin(),
     // Builds .output/server/index.mjs, a standalone Node server (`pnpm start`).
-    nitro({ preset: "node-server" }),
+    // Self-contained: .output is all the Docker image copies.
+    nitro({
+      preset: "node-server",
+      // Copied into .output/server/node_modules rather than bundled:
+      // instrument.server.mjs runs before the server (`node --import`), and
+      // must share one copy of Sentry with src/start.ts. `*` traces the
+      // whole package, so the profiler's native binaries come too.
+      traceDeps: ["@sentry/node", "@sentry/profiling-node", "@sentry/node-cpu-profiler*"],
+      hooks: {
+        compiled: (nitro) =>
+          copyFile(
+            "instrument.server.mjs",
+            `${nitro.options.output.serverDir}/instrument.server.mjs`,
+          ),
+      },
+    }),
     tanstackStart({
       srcDirectory: "src",
       // `*.client.ts` modules (IndexedDB, realtime…) are imported by route

@@ -1,5 +1,5 @@
 node_modules
-build
+.output
 .git
 .github
 playwright-report

@@ -1,12 +1,12 @@
 import { loadEnvFile } from "node:process";
 import { defineConfig } from "@playwright/test";
 
-// .env.test.local holds the e2e Supabase project's credentials (see
-// .env.test.local.example) and is loaded first so it wins over the
+// .env.e2e.local holds the e2e Supabase project's credentials (see
+// .env.e2e.local.example) and is loaded first so it wins over the
 // default .env. Node's loadEnvFile keeps the first value seen for a given
-// key, so .env only fills in anything .env.test.local doesn't set (e.g.
+// key, so .env only fills in anything .env.e2e.local doesn't set (e.g.
 // SESSION_SECRET). Neither file exists in CI — vars come from secrets.
-for (const envFile of [".env.test.local", ".env"]) {
+for (const envFile of [".env.e2e.local", ".env"]) {
   try {
     loadEnvFile(envFile);
   } catch {
@@ -29,7 +29,10 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm react-router build && pnpm react-router-serve ./build/server/index.js`,
+    // The e2e mode reads .env.e2e.local. (Not `test`: Solid's Vite plugin
+    // takes that mode for Vitest and builds the browser runtime into the
+    // server, which then 500s on every page.)
+    command: `pnpm build:e2e && node .output/server/index.mjs`,
     url: `http://localhost:${appPort}`,
     env: {
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? "",

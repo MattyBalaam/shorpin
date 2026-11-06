@@ -27,19 +27,19 @@ ARG VITE_BRANCH
 RUN pnpm build
 
 # ---- Runtime stage ----
+# Nitro's .output is self-contained: the server bundle, the static files,
+# and the few packages it keeps outside the bundle (Sentry, traced into
+# .output/server/node_modules). No install needed.
 FROM node:24-alpine
 
-RUN corepack enable
 RUN apk add --no-cache wget
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+COPY --from=builder /app/.output ./.output
 
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/instrument.server.mjs ./instrument.server.mjs
-
+ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+# Same as `pnpm start`: Sentry's instrumentation loads before the server.
+CMD ["node", "--import", "./.output/server/instrument.server.mjs", ".output/server/index.mjs"]

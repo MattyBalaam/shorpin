@@ -2,9 +2,12 @@ import {
   AuthApiError,
   AuthRetryableFetchError,
   AuthSessionMissingError,
-  type AuthError,
 } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+
+// Start's request helpers only load inside its Vite plugin, and these tests
+// don't touch a request.
+vi.mock("@tanstack/solid-start/server", () => ({}));
 
 // supabase.server reads these at import time.
 vi.stubEnv("VITE_SUPABASE_URL", "http://localhost:9001");
@@ -39,32 +42,5 @@ describe("isTransientAuthError", () => {
 
   test("treats a missing error as not transient", () => {
     expect(mod.isTransientAuthError(null)).toBe(false);
-  });
-});
-
-describe("requireUser", () => {
-  const clientReturning = (error: AuthError) =>
-    ({
-      auth: { getUser: async () => ({ data: { user: null }, error }) },
-    }) as unknown as Parameters<typeof mod.requireUser>[0];
-
-  async function thrownBy(error: AuthError) {
-    try {
-      await mod.requireUser(clientReturning(error));
-    } catch (thrown) {
-      return thrown as Response;
-    }
-    throw new Error("requireUser did not throw");
-  }
-
-  test("serves 503, not a login redirect, when auth is unreachable", async () => {
-    const response = await thrownBy(networkDown);
-    expect(response.status).toBe(503);
-  });
-
-  test("redirects to login when the session is definitively gone", async () => {
-    const response = await thrownBy(sessionGone);
-    expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe("/login");
   });
 });

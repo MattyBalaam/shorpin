@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "ignorePatterns": ["legacy/**", "src/routeTree.gen.ts", ".output/**"],
+  "ignorePatterns": ["src/routeTree.gen.ts", ".output/**"],
   "rules": {
     "typescript/no-non-null-assertion": "error",
     // Solid's compiler assigns `let el!: HTMLElement` from `ref={el}`, which
