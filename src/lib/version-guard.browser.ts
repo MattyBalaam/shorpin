@@ -7,7 +7,7 @@ import { createClientOnlyFn } from "@tanstack/solid-start";
 // action-origin misconfig, like PR #94) so mutations from an already-open
 // tab fail against the redeployed server. Compares the hash baked into this
 // bundle at build time (see Dockerfile's VITE_GIT_HASH build arg, surfaced
-// server-side by app/routes/version.ts) against a live /version check, and
+// server-side by src/routes/version.ts) against a live /version check, and
 // if they differ, forces the service worker to take over the new build
 // before a single silent retry of the failed action.
 

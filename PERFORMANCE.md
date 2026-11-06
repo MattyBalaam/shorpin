@@ -2,6 +2,8 @@
 
 The app is functional and fast in most areas, but a few targeted fixes would make it feel genuinely snappy. This document records the current state, what's already well-optimised, and a prioritised action list.
 
+Rechecked after the move to TanStack Start + Solid: the React-only items (React Compiler, a `shouldRevalidate` console log) and the old JWT expiry heuristic no longer apply, and the waitlist index has shipped.
+
 ---
 
 ## Already well-optimised
@@ -9,13 +11,13 @@ The app is functional and fast in most areas, but a few targeted fixes would mak
 These are working well — don't change them.
 
 - **No N+1 queries** — list items fetched with nested expansion in a single Supabase call (`list_items(*)`)
-- **No animation library** — drag/reorder/swipe use a ~2 KB gzipped pointer-events + WAAPI hook (`app/components/reorderable/use-drag-list.ts`) in place of Motion (~48 KB gzipped)
-- **Supabase Realtime dynamically imported** — only loaded when the list route mounts (`list.tsx`)
-- **System fonts only** — no web font fetch; Google Fonts import is intentionally commented out in `root.tsx`
+- **No animation library** — drag/reorder/swipe use a small pointer-events + WAAPI controller (`src/components/reorderable/create-drag-list.ts`) in place of Motion (~48 KB gzipped)
+- **Supabase Realtime dynamically imported** — only loaded when the list route mounts (`loadRealtime` in `src/routes/list/list.tsx`)
+- **System fonts only** — no web font fetch
 - **Vanilla Extract** — zero runtime CSS overhead; all styles compiled at build time
-- **`clientLoader` offline cache** — sophisticated offline-first caching in `app/routes/list/list.tsx` with smart `shouldRevalidate`
-- **Minimal client state** — only 2 React contexts (`OnlineContext`, `ThemeContext`); form state managed by Conform, not React state
-- **RLS indexes** — `lists` and `list_items` tables have indexes on `slug`, `state`, `list_id`, and `sort_order`
+- **Offline-first loaders** — home and list's isomorphic loaders fall back to IndexedDB in the browser, before or instead of a network request
+- **Fine-grained reactivity, minimal client state** — Solid updates only the DOM that reads a changed signal, so there's no re-render cost to memoise away; one context (`OnlineContext`)
+- **Indexes** — `lists` and `list_items` have indexes on `slug`, `state`, `list_id` and `sort_order`; `waitlist` has `waitlist_created_at_idx` for the sign-ups page's `ORDER BY created_at DESC`
 
 ---
 
@@ -25,25 +27,25 @@ These are working well — don't change them.
 
 #### 1. Add HTTP Cache-Control headers
 
-**File:** `app/entry.server.tsx`
+**File:** `src/start.ts` (a request middleware)
 
 No `Cache-Control`, `ETag`, or `stale-while-revalidate` headers are set on any SSR response. Every navigation — including back-button — hits the server fresh.
 
-**Fix:** Add `private, max-age=0, stale-while-revalidate=30` to authenticated responses in `entry.server.tsx`. Static assets already get content-hash URLs from Vite, so those are fine as-is.
+**Fix:** Add `private, max-age=0, stale-while-revalidate=30` to authenticated page responses. Static assets already get content-hash URLs from Vite, so those are fine as-is.
 
 **Impact:** Repeat visits and back-navigations served from the browser's revalidation cache instead of a fresh server round-trip.
 
 ---
 
-#### 2. Proactive JWT refresh to avoid mid-request token re-check
+#### 2. Every server function call waits on Supabase auth
 
-**File:** `app/lib/supabase.middleware.ts:73`
+**File:** `src/lib/supabase.middleware.ts`
 
-When the JWT expiry heuristic (`secs <= 0`) fires, `supabase.auth.getSession()` is called synchronously in the request path — adding a full Supabase auth RTT (~50–200ms) to the response time. The middleware already instruments this path (lines 50, 67, 91) so the latency is measurable.
+`authMiddleware` calls `supabase.auth.getUser()`, which asks the Supabase auth server to validate the token on every server function call: one auth round-trip (~20–100ms) before the function's own queries start.
 
-**Fix:** Refresh proactively when the token is within 60 seconds of expiry (change `secs <= 0` to `secs <= 60`). The refresh will happen on a request where it's still valid, keeping the hot path free.
+**Fix:** `supabase.auth.getClaims()` verifies the JWT locally when the project uses asymmetric signing keys (it falls back to a network call otherwise), and still refreshes an expiring session. Check the project's JWT signing keys first. The middleware's `user` context would become the claims (`sub`, `email`, …) rather than a full `User`, so check what server functions read from it. RLS still enforces access on every query either way.
 
-**Impact:** Eliminates a 50–200ms spike on every request where the token has just expired.
+**Impact:** Removes one auth round-trip from every page load and mutation.
 
 ---
 
@@ -51,89 +53,22 @@ When the JWT expiry heuristic (`secs <= 0`) fires, `supabase.auth.getSession()` 
 
 #### 3. Config route: ownership check creates a sequential waterfall
 
-**File:** `app/routes/list/config.server.ts:14–44`
+**File:** `src/routes/list/config.functions.ts` (`getListConfig`)
 
-The ownership check (lines 14–27) must resolve before the `Promise.all` fetching users and members starts. That's two sequential Supabase round-trips on every config page load.
+`findOwnedList` must resolve before the `Promise.all` fetching profiles and members starts. That's two sequential Supabase round-trips on every config dialog load.
 
 **Fix (option A — preferred):** Move the ownership check into RLS (the pattern already used on other tables) so all three fetches can be parallelised in a single `Promise.all`.
 
-**Fix (option B — simpler):** Start the user/member fetches immediately alongside the ownership check, then gate the response on both:
+**Fix (option B — simpler):** Start the profile/member fetches alongside the ownership check, then gate the response on it. The members query needs the list's id, so either look members up by the list's slug through a join, or accept that only the profiles query moves into the `Promise.all`.
 
-```ts
-const [ownerCheck, users, members] = await Promise.all([
-  supabase.from("lists").select("id").eq("id", listId).eq("user_id", userId).single(),
-  supabase.from("profiles").select("id, email").neq("id", userId),
-  supabase.from("list_members").select("user_id").eq("list_id", listId),
-]);
-if (ownerCheck.error) throw redirect("/app");
-```
-
-**Impact:** Saves ~1 Supabase RTT (~20–50ms) on every config page load.
-
----
-
-#### 4. `waitlist` table has no index on `created_at`
-
-**File:** `supabase/migrations/` — new migration needed
-
-`sign-ups.server.ts:12` runs `ORDER BY created_at DESC` on the `waitlist` table with no supporting index. This is a full table scan today; it degrades as the waitlist grows.
-
-**Fix:**
-
-```sql
-CREATE INDEX waitlist_created_at_idx ON waitlist (created_at DESC);
-```
-
-**Impact:** Prevents future degradation. Free to fix now.
-
----
-
-### 🟢 Low impact / polish
-
-#### 5. Enable React Compiler
-
-**Files:** `vite.config.ts`, `package.json`
-
-The `itemsKey` computation in `app/routes/list/list.tsx:242` rebuilds a string on every render and is a `useEffect` dependency, causing spurious effect re-runs. The manual fix is `useMemo`, but the better fix is React Compiler — it handles this entire class of problem automatically.
-
-The codebase is an ideal candidate:
-
-- React 19.2 ✅
-- Zero existing `useMemo` / `useCallback` / `React.memo` — nothing to unwind ✅
-- No Compiler rule violations: hooks at top-level, no prop/state mutations ✅
-
-**Integration:** `@react-router/dev/vite` accepts babel plugin options. Install `babel-plugin-react-compiler` as a dev dependency and configure it:
-
-```ts
-// vite.config.ts
-reactRouter({
-  babel: {
-    plugins: [["babel-plugin-react-compiler", {}]],
-  },
-});
-```
-
-**Impact:** Automatic memoization across all components and hooks, now and as the codebase grows.
-
----
-
-#### 6. Remove production console log in `shouldRevalidate`
-
-**File:** `app/routes/list/list.tsx:64`
-
-A `console.log` fires on every navigation event in production. Minor noise but easy to remove.
-
-**Fix:** Delete the line or wrap it: `if (import.meta.env.DEV) console.log(...)`.
+**Impact:** Saves ~1 Supabase RTT (~20–50ms) on every config dialog load.
 
 ---
 
 ## How to verify each fix
 
-| Fix                          | Verification method                                                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Cache-Control headers        | Browser DevTools → Network tab → response headers on page navigations                                               |
-| JWT refresh buffer           | Middleware timing logs at `supabase.middleware.ts:50,67,91`; check the slow path stops firing                       |
-| Config route parallelisation | Add timing logs around loader; compare before/after RTT count in Supabase dashboard                                 |
-| Waitlist index               | `EXPLAIN ANALYZE SELECT ... ORDER BY created_at DESC FROM waitlist` in Supabase SQL editor — should show index scan |
-| React Compiler               | React DevTools Profiler — renders should show memoized components; `itemsKey` effect should not fire spuriously     |
-| Console log removal          | Check browser console during navigation in production build                                                         |
+| Fix                          | Verification method                                                                     |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| Cache-Control headers        | Browser DevTools → Network tab → response headers on page navigations                   |
+| Local JWT verification       | Supabase dashboard auth request count, or timing a server function before and after     |
+| Config route parallelisation | Add timing logs around `getListConfig`; compare before/after RTT count in the dashboard |

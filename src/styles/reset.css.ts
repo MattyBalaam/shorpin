@@ -51,7 +51,7 @@ globalStyle("html, body", {
 // Only ever a single scheme, never `light dark`: light-dark() colours (see
 // palette.ts's toAdaptiveCss) track it, and nothing else should change
 // rendering as a side effect. "system" follows the OS; the device's own
-// choice (see app/lib/color-scheme.ts) pins it, and its attribute selector
+// choice (see src/lib/color-scheme.ts) pins it, and its attribute selector
 // outranks the bare `html` one.
 globalStyle("html", {
   "@layer": {

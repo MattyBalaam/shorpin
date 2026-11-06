@@ -24,7 +24,7 @@ export const [themeClass, vars] = createTheme({
   },
   palette: {
     // Defaults for home and any list without its own palette: an "ocean
-    // sunset" pair from the palette generator (app/lib/palette.ts), adapted
+    // sunset" pair from the palette generator (src/lib/palette.ts), adapted
     // for dark mode the same way list palettes are. Primary's hex (#0fc1e5)
     // is in root.tsx's theme-color, the manifest and offline.html.
     primary: toAdaptiveCss(`oklch(0.749 0.133 ${DEFAULT_HUE})`),
@@ -74,7 +74,7 @@ export const [themeClass, vars] = createTheme({
     semibold: "600",
     bold: "700",
   },
-  // Everything an app style (see app/lib/app-style.ts) can change. Defaults
+  // Everything an app style (see src/lib/app-style.ts) can change. Defaults
   // are Classic; app-styles.css.ts reassigns the whole group per style.
   // Colours stay in `palette` so per-list themes still apply.
   style: classicStyle,

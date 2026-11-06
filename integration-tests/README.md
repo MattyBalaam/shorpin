@@ -62,7 +62,7 @@ Each worker's seed contains:
 await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached({ timeout: 300 });
 ```
 
-If this fails it means React has not taken over the page within 300ms of navigation — likely a slow-hydration regression — and the test fails with a clear Playwright assertion message rather than a confusing URL mismatch later.
+If this fails it means Solid has not hydrated the page within 300ms of navigation — likely a slow-hydration regression — and the test fails with a clear Playwright assertion message rather than a confusing URL mismatch later.
 
 ### Debug logging
 

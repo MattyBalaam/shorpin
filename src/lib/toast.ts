@@ -1,5 +1,5 @@
 // Notifications shown in the panel under the header (see
-// app/components/notifications). A plain external store: anything can call
+// src/components/notifications). A plain external store: anything can call
 // `toast.*` — loaders' flash messages, client actions, effects — and
 // <Notifications> reads it with useSyncExternalStore.
 //
