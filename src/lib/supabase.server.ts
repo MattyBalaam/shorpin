@@ -1,3 +1,4 @@
+import { logger } from "@sentry/node";
 import { createServerClient } from "@supabase/ssr";
 import { type AuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { getCookies, setCookie } from "@tanstack/solid-start/server";
@@ -42,11 +43,19 @@ export function isTransientAuthError(error: AuthError | null | undefined): boole
   return isAuthRetryableFetchError(error) || error.status === 429 || (error.status ?? 0) >= 500;
 }
 
+function logAuthEvent(message: string, error: AuthError | null | undefined) {
+  const details = { code: error?.code, status: error?.status, message: error?.message };
+  console.warn(message, details);
+  // The server SDK doesn't capture console output, so send it as a log too.
+  logger.warn(message, details);
+}
+
 /** Every forced logout goes through here so production records why. */
 export function logAuthRedirect(reason: string, error?: AuthError | null) {
-  console.warn(`auth: redirect to login (${reason})`, {
-    code: error?.code,
-    status: error?.status,
-    message: error?.message,
-  });
+  logAuthEvent(`auth: redirect to login (${reason})`, error);
+}
+
+/** A transient auth failure answered with a 503 instead of a logout. */
+export function logAuthUnavailable(error: AuthError | null | undefined) {
+  logAuthEvent("auth: transient failure, serving 503", error);
 }

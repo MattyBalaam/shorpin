@@ -4,7 +4,12 @@ import { createMiddleware } from "@tanstack/solid-start";
 import { setResponseStatus } from "@tanstack/solid-start/server";
 import type { Database, Tables } from "./database.types";
 import { SERVICE_UNAVAILABLE } from "./network-error";
-import { createSupabaseClient, isTransientAuthError, logAuthRedirect } from "./supabase.server";
+import {
+  createSupabaseClient,
+  isTransientAuthError,
+  logAuthRedirect,
+  logAuthUnavailable,
+} from "./supabase.server";
 
 export type SupaBaseContext = SupabaseClient<Database>;
 
@@ -36,6 +41,7 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
     // A network blip on token refresh must not look like a logout: the
     // client treats a 5xx as "fall back to cached data" instead.
     if (isTransientAuthError(error)) {
+      logAuthUnavailable(error);
       setResponseStatus(503);
       throw new Error(SERVICE_UNAVAILABLE);
     }
