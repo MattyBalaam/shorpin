@@ -36,7 +36,25 @@ const reportServerFunctionErrors = createMiddleware({ type: "function" }).server
   },
 );
 
+// Preview builds mock Supabase in-process (see preview-mocks.server.ts),
+// started by the first request. Other builds drop this branch.
+let previewMocks: Promise<void> | undefined;
+
+const requestMiddleware =
+  import.meta.env.MODE === "preview"
+    ? [
+        createMiddleware().server(async ({ next }) => {
+          previewMocks ??= import("~/lib/preview-mocks.server").then((mocks) =>
+            mocks.startPreviewMocks(),
+          );
+          await previewMocks;
+          return next();
+        }),
+        reportRequestErrors,
+      ]
+    : [reportRequestErrors];
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [reportRequestErrors],
+  requestMiddleware,
   functionMiddleware: [reportServerFunctionErrors],
 }));

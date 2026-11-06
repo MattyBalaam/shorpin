@@ -37,24 +37,11 @@ Test isolation is handled through:
 
 The mock server handles `SIGTERM` and `SIGINT` gracefully, closing its HTTP listener before exiting. This ensures Playwright's webServer teardown (and Ctrl+C in local dev) does not leave orphaned processes holding the port.
 
-### Netlify deploy previews (`pnpm build:preview`)
+### Preview builds (`pnpm build:preview`)
 
-MSW runs server-side inside the Netlify Function via `entry.server.tsx`, using the network that the `msw/vite` plugin (registered in `vite.config.ts`) exposes as `virtual:msw`:
+A preview build runs MSW inside the app's own server, so it needs neither Supabase nor the mock server. Originally for Netlify deploy previews; now also the quickest way to try a production build locally. A request middleware in [src/start.ts](../src/start.ts), present only in preview mode, starts [preview-mocks.server.ts](../src/lib/preview-mocks.server.ts) on the first request: `setupServer(...handlers)` from `msw/node`, then the same seed as the mock server. State lives in memory until the server restarts.
 
-```ts
-if (import.meta.env.MODE === "preview") {
-  const { network } = await import("virtual:msw");
-  const { handlers } = await import("../mocks/handlers");
-  // ...
-  network.configure({ handlers, onUnhandledFrame: "bypass" });
-  await network.enable();
-  await seed();
-}
-```
-
-The function intercepts all Supabase calls before they hit the network, so no real Supabase project is needed for a deploy preview. State lives in memory for the lifetime of the warm function instance.
-
-`msw` must stay external to the SSR bundle (only `@msw/data` is in `ssr.noExternal`): its `@mswjs/interceptors` dependency reads an `llhttp.wasm` file relative to its own module, which fails once inlined into `build/server`. The plugin only emits `mockServiceWorker.js` for client bundles that import `virtual:msw`, and none do, so no worker ships to the browser.
+`msw` is traced into `.output/server/node_modules` rather than bundled (`traceDeps` in [vite.config.ts](../vite.config.ts), preview mode only): its `@mswjs/interceptors` dependency reads an `llhttp.wasm` file relative to its own module, which fails once inlined.
 
 `mocks/server.ts` runs under plain Node (not Vite), so it keeps using `setupServer` from `msw/node`. Handlers import from the v3 entrypoints: `msw/http` for `http`/`HttpResponse` and `msw/utils/<name>` for utilities like `delay`.
 

@@ -21,3 +21,4 @@ supabase/.temp/
 
 # TanStack Start / Nitro build output
 .output/
+dist/

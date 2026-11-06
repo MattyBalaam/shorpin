@@ -4,7 +4,8 @@ import solid from "@solidjs/vite-plugin";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import { nitro } from "nitro/vite";
-import { defineConfig, type Plugin } from "vite";
+import { visualizer } from "rollup-plugin-visualizer";
+import { defineConfig, perEnvironmentPlugin, type Plugin } from "vite";
 import { VitePWA, type VitePWAOptions } from "vite-plugin-pwa";
 
 /**
@@ -32,7 +33,7 @@ function serviceWorker(options: Partial<VitePWAOptions>): Plugin[] {
   ];
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   resolve: {
     tsconfigPaths: true,
   },
@@ -65,7 +66,15 @@ export default defineConfig({
       // instrument.server.mjs runs before the server (`node --import`), and
       // must share one copy of Sentry with src/start.ts. `*` traces the
       // whole package, so the profiler's native binaries come too.
-      traceDeps: ["@sentry/node", "@sentry/profiling-node", "@sentry/node-cpu-profiler*"],
+      traceDeps: [
+        "@sentry/node",
+        "@sentry/profiling-node",
+        "@sentry/node-cpu-profiler*",
+        // Preview builds run MSW in the server (src/lib/preview-mocks.server.ts).
+        // Bundled, its interceptors can't find the llhttp.wasm they read
+        // from beside their own module.
+        ...(mode === "preview" ? ["msw*"] : []),
+      ],
       hooks: {
         compiled: (nitro) =>
           copyFile(
@@ -121,5 +130,20 @@ export default defineConfig({
       injectRegister: false, // registered in root.tsx, in builds only
       devOptions: { enabled: false }, // no worker under `pnpm dev`
     }),
+    // `pnpm build:analyse`: the client bundle's treemap, in dist/stats.html.
+    ...(mode === "analyse"
+      ? [
+          perEnvironmentPlugin("shorpin:visualizer", (environment) =>
+            environment.name === "client"
+              ? visualizer({
+                  open: true,
+                  filename: "dist/stats.html",
+                  gzipSize: true,
+                  brotliSize: true,
+                })
+              : false,
+          ),
+        ]
+      : []),
   ],
-});
+}));

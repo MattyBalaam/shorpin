@@ -36,6 +36,22 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 - The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
 - CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
 
+## Testing a Production Build Locally
+
+Each build serves from `.output/` on port 3000 with `pnpm start` (`PORT` overrides it):
+
+| Command                                               | Backend                                                                                            |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm build:preview && pnpm start`                    | MSW inside the server, seeded like `pnpm dev`. No mock server or Supabase needed.                  |
+| `pnpm exec vite build --mode mock`, then `pnpm start` | The mock server (`node --experimental-strip-types mocks/server.ts`), as the integration tests use. |
+| `pnpm build:e2e && pnpm start`                        | Your test Supabase project (`.env.e2e.local`).                                                     |
+| `pnpm build && pnpm start`                            | The project in `.env` (production).                                                                |
+
+The preview and mock builds include the dev quick-login and `/dev/notifications`.
+
+- **On a phone:** `pnpm preview:https` builds against the test project and serves it at `https://<lan-ip>:3443` through `local-ssl-proxy`, since the service worker needs HTTPS off `localhost`. It reads a certificate from `.certs/lan.pem` and `.certs/lan-key.pem` (gitignored), e.g. `mkcert -cert-file .certs/lan.pem -key-file .certs/lan-key.pem <lan-ip> localhost`. `pnpm serve:https` serves an existing build the same way.
+- **Bundle size:** `pnpm build:analyse` opens a treemap of the client bundle (`dist/stats.html`).
+
 ## Migration to TanStack Start + Solid
 
 Done, on the `spike/tanstack-solid` branch, to learn both. Every page, server route, the service worker and Sentry are ported, and `legacy/` is gone. Some sections below may still describe the React version.
