@@ -18,7 +18,6 @@ import { getToast, toastMiddleware } from "remix-toast/middleware";
 import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
 import { toast } from "~/lib/toast";
 import { reportError } from "~/lib/monitoring.client";
-import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.client";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { supabaseContext, supabaseMiddleware } from "~/lib/supabase.middleware";
 import {
@@ -43,6 +42,16 @@ import { Link } from "./components/link/link";
 import { Spinner } from "./components/spinner/spinner";
 import * as styles from "./root.css";
 import { themeClass } from "./styles/theme.css";
+
+// Web vitals and navigation timing, beaconed to /perf. Loaded after
+// hydration rather than with the root route: nothing is reported until the
+// page is running anyway, and its observers are buffered, so entries from
+// before it loads aren't lost.
+let performanceModule: Promise<typeof import("~/lib/performance.client")> | undefined;
+function loadPerformance() {
+  performanceModule ??= import("~/lib/performance.client");
+  return performanceModule;
+}
 
 export const middleware = [toastMiddleware(), supabaseMiddleware];
 
@@ -164,7 +173,7 @@ export default function App() {
   } | null>(null);
 
   useEffect(function bootstrapPerformanceTracking() {
-    initWebVitalsTracking();
+    void loadPerformance().then(({ initWebVitalsTracking }) => initWebVitalsTracking());
   }, []);
 
   useEffect(
@@ -190,11 +199,14 @@ export default function App() {
       pendingNavigation.current = null;
 
       if (pathname === pending.toPathname) {
-        reportRouteNavigationMetric({
-          pathname,
-          durationMs: performance.now() - pending.start,
-          fromPathname: pending.fromPathname,
-        });
+        const durationMs = performance.now() - pending.start;
+        void loadPerformance().then(({ reportRouteNavigationMetric }) =>
+          reportRouteNavigationMetric({
+            pathname,
+            durationMs,
+            fromPathname: pending.fromPathname,
+          }),
+        );
       }
     },
     [navigation.state, navigation.location?.pathname, pathname],
