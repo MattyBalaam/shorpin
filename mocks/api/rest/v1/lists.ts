@@ -1,12 +1,7 @@
 import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { lists, listItems, listMembers, listViews, users } from "../../../db.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 // Per-test users are `<role>-<uuid>@test.com`; the uuid identifies the tenant.
 function tenantOf(email: string) {

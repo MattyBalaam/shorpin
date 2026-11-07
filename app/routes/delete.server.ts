@@ -2,13 +2,12 @@ import { href } from "react-router";
 import type { Route } from "./+types/delete";
 import { redirectWithError, redirectWithSuccess } from "remix-toast";
 import { supabaseContext } from "~/lib/supabase.middleware";
+import { currentUserId } from "~/lib/supabase.server";
 
 export async function loader({ params: { list }, request, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await currentUserId(supabase);
 
   const { data } = await supabase
     .from("lists")
@@ -21,7 +20,7 @@ export async function loader({ params: { list }, request, context }: Route.Loade
     throw new Response("List not found", { status: 404 });
   }
 
-  if (data.user_id !== user?.id) {
+  if (data.user_id !== userId) {
     throw redirectWithError(href("/"), "Only the list owner can delete this list.");
   }
 
@@ -34,9 +33,7 @@ export async function loader({ params: { list }, request, context }: Route.Loade
 export async function action({ params: { list }, context }: Route.ActionArgs) {
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await currentUserId(supabase);
 
   const { data } = await supabase
     .from("lists")
@@ -45,7 +42,7 @@ export async function action({ params: { list }, context }: Route.ActionArgs) {
     .eq("state", "active")
     .maybeSingle();
 
-  if (!data || data.user_id !== user?.id) {
+  if (!data || data.user_id !== userId) {
     throw redirectWithError(href("/"), "Only the list owner can delete this list.");
   }
 

@@ -2,14 +2,10 @@ import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { waitlist } from "../../../db.ts";
 import { inSameScope } from "../../../scope.ts";
-
-function emailFromRequest(request: Request): string {
-  const auth = request.headers.get("Authorization") ?? "";
-  return auth.replace("Bearer ", "");
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 function entriesFor(request: Request) {
-  const requester = emailFromRequest(request);
+  const requester = emailFromRequest(request) ?? "";
   return waitlist.findMany((q) => q.where({ email: (e) => inSameScope(e, requester) }));
 }
 
