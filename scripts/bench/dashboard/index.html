@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shorpin performance</title>
+    <!-- Charts history.json, appended daily by .github/workflows/bench.yml
+         (scripts/bench/history.ts). Plain SVG, no dependencies. -->
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f9f9f7;
+        --surface: #fcfcfb;
+        --ink: #0b0b0b;
+        --ink-2: #52514e;
+        --muted: #898781;
+        --grid: #e1e0d9;
+        --axis: #c3c2b7;
+        --ring: rgba(11, 11, 11, 0.1);
+        --prod: #2a78d6;
+        --staging: #eb6834;
+        --better: #006300;
+        --worse: #b42318;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          color-scheme: dark;
+          --page: #0d0d0d;
+          --surface: #1a1a19;
+          --ink: #f0efec;
+          --ink-2: #c3c2b7;
+          --muted: #898781;
+          --grid: #2c2c2a;
+          --axis: #383835;
+          --ring: rgba(255, 255, 255, 0.1);
+          --prod: #3987e5;
+          --staging: #d95926;
+          --better: #0ca30c;
+          --worse: #f97066;
+        }
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --ink: #f0efec;
+        --ink-2: #c3c2b7;
+        --muted: #898781;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --ring: rgba(255, 255, 255, 0.1);
+        --prod: #3987e5;
+        --staging: #d95926;
+        --better: #0ca30c;
+        --worse: #f97066;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 32px 0 12px;
+      }
+      p {
+        margin: 0;
+        color: var(--ink-2);
+      }
+      code {
+        font-size: 12px;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 24px;
+        align-items: center;
+        margin: 20px 0 4px;
+        position: sticky;
+        top: 0;
+        padding: 10px 0;
+        background: var(--page);
+        z-index: 2;
+      }
+      .legend {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .key {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ink-2);
+      }
+      .key::before {
+        content: "";
+        width: 16px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--c);
+      }
+      .range {
+        display: inline-flex;
+        border: 1px solid var(--ring);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-left: auto;
+      }
+      .range button {
+        font: inherit;
+        color: var(--ink-2);
+        background: var(--surface);
+        border: 0;
+        padding: 4px 12px;
+        cursor: pointer;
+      }
+      .range button[aria-pressed="true"] {
+        color: var(--ink);
+        font-weight: 600;
+        background: var(--grid);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--ring);
+        border-radius: 10px;
+        padding: 12px 12px 6px;
+        position: relative;
+        min-width: 0;
+      }
+      .card:focus-visible {
+        outline: 2px solid var(--prod);
+        outline-offset: 2px;
+      }
+      .card h3 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .latest {
+        font-size: 12px;
+        color: var(--ink-2);
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+        min-height: 18px;
+      }
+      .better {
+        color: var(--better);
+      }
+      .worse {
+        color: var(--worse);
+      }
+      svg {
+        display: block;
+        width: 100%;
+        height: 140px;
+        overflow: visible;
+        touch-action: pan-y;
+      }
+      svg text {
+        fill: var(--muted);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tip {
+        position: absolute;
+        pointer-events: none;
+        background: var(--surface);
+        border: 1px solid var(--ring);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        white-space: nowrap;
+        z-index: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .tip .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tip .row::before {
+        content: "";
+        width: 12px;
+        height: 2px;
+        background: var(--c);
+      }
+      .tip strong {
+        color: var(--ink);
+      }
+      .tip span {
+        color: var(--ink-2);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--ring);
+        border-radius: 10px;
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      th,
+      td {
+        text-align: right;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--grid);
+        white-space: nowrap;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+      }
+      th {
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+      .note {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .empty {
+        padding: 48px 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Shorpin performance</h1>
+      <p id="subtitle">Loading…</p>
+      <div class="bar">
+        <div class="legend" aria-label="Series">
+          <span class="key" style="--c: var(--prod)">Prod · React Router</span>
+          <span class="key" style="--c: var(--staging)">Staging · Solid + Start</span>
+        </div>
+        <div class="range" role="group" aria-label="Time range">
+          <button type="button" data-days="30" aria-pressed="true">30 days</button>
+          <button type="button" data-days="90" aria-pressed="false">90 days</button>
+          <button type="button" data-days="0" aria-pressed="false">All</button>
+        </div>
+      </div>
+      <p class="note">
+        Medians of each day's runs under phone-like throttling (4x CPU, 150ms RTT, 1.6 Mbps), cold
+        cache. Lower is better. Ticks under a chart mark a new deploy on that site. TTFB and saves
+        also compare the two Supabase projects.
+      </p>
+      <div id="charts"></div>
+      <h2>Latest run</h2>
+      <div class="table-wrap"><table id="latest"></table></div>
+    </main>
+    <script>
+      const SITES = [
+        { key: "prod", label: "Prod", color: "--prod" },
+        { key: "staging", label: "Staging", color: "--staging" },
+      ];
+      const W = 300;
+      const H = 140;
+      const PAD = { top: 10, right: 8, bottom: 22, left: 38 };
+      const NS = "http://www.w3.org/2000/svg";
+      let history = { metrics: [], entries: [] };
+      let days = 30;
+
+      const el = (tag, props = {}, children = []) => {
+        const node = Object.assign(document.createElement(tag), props);
+        for (const child of children) node.append(child);
+        return node;
+      };
+      const svgEl = (tag, attrs = {}) => {
+        const node = document.createElementNS(NS, tag);
+        for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+        return node;
+      };
+      const fmt = (value, unit) =>
+        value === null || value === undefined
+          ? "–"
+          : unit === ""
+            ? value.toFixed(3)
+            : `${Math.round(value)}${unit === "KB" ? " KB" : " ms"}`;
+      const dateLabel = (iso) =>
+        new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      const change = (prod, staging) =>
+        prod && staging !== null && staging !== undefined
+          ? Math.round(((staging - prod) / prod) * 100)
+          : null;
+      const changeNode = (pct) => {
+        if (pct === null) return document.createTextNode("–");
+        return el("span", {
+          className: pct < 0 ? "better" : pct > 0 ? "worse" : "",
+          textContent: `${pct > 0 ? "+" : ""}${pct}%`,
+        });
+      };
+
+      function visibleEntries() {
+        if (!days) return history.entries;
+        const since = Date.now() - days * 86_400_000;
+        return history.entries.filter((entry) => Date.parse(entry.startedAt) >= since);
+      }
+
+      function chart(metric, entries) {
+        const card = el("section", { className: "card", tabIndex: 0 });
+        card.setAttribute("aria-label", `${metric.label}, prod and staging medians over time`);
+        const last = entries.at(-1)?.summary[metric.key];
+        const latest = el("div", { className: "latest" });
+        if (last) {
+          latest.append(
+            `Latest: prod ${fmt(last.prod.p50, metric.unit)} · staging ${fmt(last.staging.p50, metric.unit)} `,
+            "(",
+            changeNode(change(last.prod.p50, last.staging.p50)),
+            ")",
+          );
+        }
+        card.append(el("h3", { textContent: metric.label }), latest);
+
+        const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+        svg.setAttribute("aria-hidden", "true");
+        card.append(svg);
+        if (entries.length === 0) return card;
+
+        const times = entries.map((entry) => Date.parse(entry.startedAt));
+        const [t0, t1] = [times[0], times.at(-1)];
+        const values = entries.flatMap((entry) =>
+          SITES.map((site) => entry.summary[metric.key]?.[site.key].p50).filter(
+            (value) => value !== null && value !== undefined,
+          ),
+        );
+        const max = Math.max(...values, metric.unit === "" ? 0.01 : 1) * 1.1;
+        const x = (t) =>
+          t1 === t0
+            ? (PAD.left + W - PAD.right) / 2
+            : PAD.left + ((t - t0) / (t1 - t0)) * (W - PAD.left - PAD.right);
+        const y = (v) => H - PAD.bottom - (v / max) * (H - PAD.top - PAD.bottom);
+
+        // Recessive grid: three hairlines with their values, then the baseline.
+        for (const fraction of [0.5, 1]) {
+          const value = (max / 1.1) * fraction;
+          svg.append(
+            svgEl("line", {
+              x1: PAD.left,
+              x2: W - PAD.right,
+              y1: y(value),
+              y2: y(value),
+              stroke: "var(--grid)",
+              "stroke-width": 1,
+            }),
+          );
+          const label = svgEl("text", { x: PAD.left - 6, y: y(value) + 3, "text-anchor": "end" });
+          label.textContent =
+            metric.unit === "" || value >= 10
+              ? fmt(value, metric.unit).replace(/ (ms|KB)$/, "")
+              : value.toPrecision(2);
+          svg.append(label);
+        }
+        svg.append(
+          svgEl("line", {
+            x1: PAD.left,
+            x2: W - PAD.right,
+            y1: H - PAD.bottom,
+            y2: H - PAD.bottom,
+            stroke: "var(--axis)",
+          }),
+        );
+        for (const [t, anchor] of [
+          [t0, "start"],
+          [t1, "end"],
+        ]) {
+          const label = svgEl("text", { x: x(t), y: H - 4, "text-anchor": anchor });
+          label.textContent = dateLabel(new Date(t).toISOString());
+          svg.append(label);
+        }
+
+        // Deploy ticks: where a site's commit differs from the run before.
+        SITES.forEach((site, row) => {
+          entries.forEach((entry, index) => {
+            const hash = entry.versions[site.key]?.hash;
+            if (index === 0 || !hash || hash === entries[index - 1].versions[site.key]?.hash)
+              return;
+            const tx = x(times[index]);
+            svg.append(
+              svgEl("line", {
+                x1: tx,
+                x2: tx,
+                y1: H - PAD.bottom + 2 + row * 4,
+                y2: H - PAD.bottom + 5 + row * 4,
+                stroke: `var(${site.color})`,
+                "stroke-width": 2,
+                "stroke-linecap": "round",
+              }),
+            );
+          });
+        });
+
+        for (const site of SITES) {
+          const points = entries
+            .map((entry, index) => [times[index], entry.summary[metric.key]?.[site.key].p50])
+            .filter(([, value]) => value !== null && value !== undefined);
+          if (points.length === 0) continue;
+          const d = points
+            .map(([t, v], index) => `${index ? "L" : "M"}${x(t).toFixed(1)},${y(v).toFixed(1)}`)
+            .join("");
+          svg.append(
+            svgEl("path", {
+              d,
+              fill: "none",
+              stroke: `var(${site.color})`,
+              "stroke-width": 2,
+              "stroke-linejoin": "round",
+              "stroke-linecap": "round",
+            }),
+          );
+          const [lt, lv] = points.at(-1);
+          svg.append(
+            svgEl("circle", {
+              cx: x(lt),
+              cy: y(lv),
+              r: 4,
+              fill: `var(${site.color})`,
+              stroke: "var(--surface)",
+              "stroke-width": 2,
+            }),
+          );
+        }
+
+        // Crosshair and tooltip: snap to the nearest run.
+        const cross = svgEl("line", {
+          y1: PAD.top,
+          y2: H - PAD.bottom,
+          stroke: "var(--axis)",
+          "stroke-width": 1,
+          visibility: "hidden",
+        });
+        svg.append(cross);
+        const tip = el("div", { className: "tip", hidden: true });
+        card.append(tip);
+        let current = -1;
+
+        function show(index) {
+          current = index;
+          const entry = entries[index];
+          const summary = entry.summary[metric.key];
+          const cx = x(times[index]);
+          cross.setAttribute("x1", cx);
+          cross.setAttribute("x2", cx);
+          cross.setAttribute("visibility", "visible");
+          tip.replaceChildren(
+            el("div", { textContent: new Date(entry.startedAt).toLocaleString() }),
+            ...SITES.map((site) => {
+              const row = el("div", { className: "row" });
+              row.style.setProperty("--c", `var(${site.color})`);
+              const hash = entry.versions[site.key]?.hash?.slice(0, 7) ?? "?";
+              row.append(
+                el("strong", { textContent: fmt(summary?.[site.key].p50, metric.unit) }),
+                el("span", {
+                  textContent: ` ${site.label}, p75 ${fmt(summary?.[site.key].p75, metric.unit)} · ${hash}`,
+                }),
+              );
+              return row;
+            }),
+          );
+          tip.hidden = false;
+          // Positioned within the card (SVG elements have no offsetTop).
+          const box = svg.getBoundingClientRect();
+          const cardBox = card.getBoundingClientRect();
+          const left = box.left - cardBox.left + cx * (box.width / W);
+          tip.style.top = `${box.top - cardBox.top + 4}px`;
+          const width = tip.offsetWidth;
+          const preferred = left + 12 + width > card.clientWidth ? left - width - 12 : left + 12;
+          tip.style.left = `${Math.max(4, Math.min(card.clientWidth - width - 4, preferred))}px`;
+        }
+        function hide() {
+          current = -1;
+          tip.hidden = true;
+          cross.setAttribute("visibility", "hidden");
+        }
+        function nearest(clientX) {
+          const box = svg.getBoundingClientRect();
+          const px = ((clientX - box.left) / box.width) * W;
+          let best = 0;
+          times.forEach((t, index) => {
+            if (Math.abs(x(t) - px) < Math.abs(x(times[best]) - px)) best = index;
+          });
+          return best;
+        }
+        svg.addEventListener("pointermove", (event) => show(nearest(event.clientX)));
+        svg.addEventListener("pointerleave", hide);
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            const step = event.key === "ArrowLeft" ? -1 : 1;
+            const start = current === -1 ? entries.length - 1 : current + step;
+            show(Math.max(0, Math.min(entries.length - 1, start)));
+          } else if (event.key === "Escape") hide();
+        });
+        card.addEventListener("blur", hide);
+        return card;
+      }
+
+      function renderCharts() {
+        const entries = visibleEntries();
+        const root = document.getElementById("charts");
+        root.replaceChildren();
+        if (history.entries.length === 0) {
+          root.append(el("p", { className: "empty", textContent: "No runs yet." }));
+          return;
+        }
+        const groups = [...new Set(history.metrics.map((metric) => metric.group))];
+        for (const group of groups) {
+          root.append(
+            el("h2", { textContent: group }),
+            el(
+              "div",
+              { className: "grid" },
+              history.metrics
+                .filter((metric) => metric.group === group)
+                .map((metric) => chart(metric, entries)),
+            ),
+          );
+        }
+      }
+
+      function renderTable() {
+        const table = document.getElementById("latest");
+        const entry = history.entries.at(-1);
+        if (!entry) return;
+        const head = el(
+          "tr",
+          {},
+          ["Metric", "Prod median", "Staging median", "Change", "Prod p75", "Staging p75"].map(
+            (text) => el("th", { textContent: text, scope: "col" }),
+          ),
+        );
+        const rows = history.metrics.map((metric) => {
+          const { prod, staging } = entry.summary[metric.key] ?? { prod: {}, staging: {} };
+          return el("tr", {}, [
+            el("td", { textContent: metric.label }),
+            el("td", { textContent: fmt(prod.p50, metric.unit) }),
+            el("td", { textContent: fmt(staging.p50, metric.unit) }),
+            el("td", {}, [changeNode(change(prod.p50, staging.p50))]),
+            el("td", { textContent: fmt(prod.p75, metric.unit) }),
+            el("td", { textContent: fmt(staging.p75, metric.unit) }),
+          ]);
+        });
+        table.replaceChildren(el("thead", {}, [head]), el("tbody", {}, rows));
+      }
+
+      function renderSubtitle() {
+        const entry = history.entries.at(-1);
+        const subtitle = document.getElementById("subtitle");
+        if (!entry) {
+          subtitle.textContent = "No runs yet.";
+          return;
+        }
+        const version = (site) => {
+          const v = entry.versions[site];
+          return v ? `${v.hash.slice(0, 7)}${v.branch ? ` (${v.branch})` : ""}` : "unknown";
+        };
+        subtitle.textContent = `${history.entries.length} daily runs. Latest ${new Date(entry.startedAt).toLocaleString()}: ${entry.runs} runs each, ${entry.items}-item list. Prod ${version("prod")}, staging ${version("staging")}.`;
+      }
+
+      for (const button of document.querySelectorAll(".range button")) {
+        button.addEventListener("click", () => {
+          days = Number(button.dataset.days);
+          for (const other of document.querySelectorAll(".range button")) {
+            other.setAttribute("aria-pressed", String(other === button));
+          }
+          renderCharts();
+        });
+      }
+
+      fetch("history.json", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : { metrics: [], entries: [] }))
+        .catch(() => ({ metrics: [], entries: [] }))
+        .then((data) => {
+          history = data;
+          renderSubtitle();
+          renderCharts();
+          renderTable();
+        });
+    </script>
+  </body>
+</html>
