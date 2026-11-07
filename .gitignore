@@ -3,6 +3,9 @@ node_modules
 /.cache
 .env
 .env.e2e.local
+# Logins for pnpm bench and the staging site (scripts/bench/README.md)
+.env.staging.local
+.env.prod.local
 .react-router
 
 # Local Netlify folder
