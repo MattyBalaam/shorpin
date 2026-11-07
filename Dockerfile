@@ -7,7 +7,9 @@ RUN corepack enable
 
 WORKDIR /app
 
+# patches/ holds pnpm patches (patchedDependencies), which install applies.
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 
 COPY . .
