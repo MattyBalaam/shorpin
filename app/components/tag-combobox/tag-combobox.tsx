@@ -15,10 +15,13 @@ import * as styles from "./tag-combobox.css";
 // `onEnter` (the edit dialog saves, the add bar adds). Escape closes an open
 // list without closing a dialog around it.
 //
-// Used in the edit dialog and the list's add bar.
+// Used in the edit dialog and the list's add bar. The add bar sits on the
+// keyboard, so it opens the list `above` (see the CSS for why flipping isn't
+// enough on iOS).
 export function TagCombobox({
   label,
   hideLabel,
+  placement = "below",
   placeholder,
   className,
   inputClassName,
@@ -29,6 +32,7 @@ export function TagCombobox({
 }: {
   label: string;
   hideLabel?: boolean;
+  placement?: "below" | "above";
   placeholder?: string;
   className?: string;
   inputClassName?: string;
@@ -164,7 +168,9 @@ export function TagCombobox({
         role="listbox"
         aria-label="Suggestions"
         popover="manual"
-        className={styles.listbox}
+        className={
+          placement === "above" ? `${styles.listbox} ${styles.listboxAbove}` : styles.listbox
+        }
         style={{ positionAnchor: anchorName }}
       >
         {options.map((option, index) => (
