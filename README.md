@@ -475,15 +475,16 @@ Implementation files:
 
 ### Deferred Sentry (client)
 
-The client Sentry SDK (`@sentry/browser`, ~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports it statically:
+The client Sentry SDK (`@sentry/browser`, ~58 KB gzipped with tracing, plus ~40 KB for replay when it loads) is kept off the critical path. Nothing imports it statically:
 
 - [monitoring.browser.ts](src/lib/monitoring.browser.ts) is the only entry point. `initMonitoring()` runs when [root.tsx](src/root.tsx) loads in the browser, before hydration, and dynamic-imports [sentry.client.ts](src/lib/sentry.client.ts) once the browser is idle (`requestIdleCallback`, 3s timeout).
 - Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root error component) queues too; the queue is flushed into Sentry once it initialises.
 - `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/browser")` directly — the namespace import pulls in every integration.
-- The chunk is precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
+- Session replay is a chunk of its own ([sentry-replay.client.ts](src/lib/sentry-replay.client.ts)), dynamic-imported by `sentry.client.ts`: at init for the 10% of sessions recorded from the start, and otherwise on the session's first error event (`afterSendEvent`), from where it records the rest of the session.
+- The chunks are precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
 - Navigation spans are named by URL (`/lists/milk`), not by route: Sentry's TanStack Router integration is in `@sentry/solid`, which targets Solid 1.
 
-Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`instrument.server.mjs`, [src/start.ts](src/start.ts)) is unaffected.
+Trade-offs: the pageload trace starts late, and an error's replay starts at the error, without the lead-up Sentry's on-error buffer would keep (that buffer needs replay loaded in every session from the start). Errors are captured either way. Server-side Sentry (`instrument.server.mjs`, [src/start.ts](src/start.ts)) is unaffected.
 
 ### Page header
 

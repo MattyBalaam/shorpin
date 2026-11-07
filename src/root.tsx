@@ -19,7 +19,6 @@ import { APP_STYLE_ATTRIBUTE, DEFAULT_APP_STYLE, readAppStyleCookie } from "~/li
 import { getAccountAppStyle } from "~/lib/app-style.functions";
 import { initMonitoring, reportError } from "~/lib/monitoring.browser";
 import { isNetworkOrServerError } from "~/lib/network-error";
-import { initWebVitalsTracking, reportRouteNavigationMetric } from "~/lib/performance.browser";
 import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.browser";
 import { toast } from "~/lib/toast";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
@@ -146,7 +145,11 @@ function App() {
   // resolving. Events without an href change are router.invalidate()
   // re-running the same location, not navigations.
   onSettled(function trackPerformance() {
-    initWebVitalsTracking();
+    // Loaded after hydration rather than with the entry chunk: nothing is
+    // reported until the page is running anyway. Navigations are still
+    // timed from here, and reported once it's loaded.
+    const perf = import("~/lib/performance.browser");
+    void perf.then(({ initWebVitalsTracking }) => initWebVitalsTracking());
 
     let pending: { start: number; fromPathname: string; toPathname: string } | null = null;
 
@@ -164,11 +167,14 @@ function App() {
       // A navigation superseded by a newer one resolves as the newer one.
       if (!started || event.toLocation.pathname !== started.toPathname) return;
       pending = null;
-      reportRouteNavigationMetric({
-        pathname: started.toPathname,
-        durationMs: performance.now() - started.start,
-        fromPathname: started.fromPathname,
-      });
+      const durationMs = performance.now() - started.start;
+      void perf.then(({ reportRouteNavigationMetric }) =>
+        reportRouteNavigationMetric({
+          pathname: started.toPathname,
+          durationMs,
+          fromPathname: started.fromPathname,
+        }),
+      );
     });
 
     return () => {
