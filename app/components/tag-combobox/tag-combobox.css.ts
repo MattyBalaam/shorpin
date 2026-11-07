@@ -15,7 +15,12 @@ export const input = style({
 
 // A popover: undo its centred UA placement and anchor it under the input
 // (anchor names are per instance, set inline), flipping above when there's
-// no room below (e.g. over the keyboard, or from the add bar).
+// no room below.
+//
+// The flip measures the layout viewport, which iOS Safari doesn't shrink for
+// the keyboard, so on an iPhone the space behind the keyboard counts as room
+// and the list opens under it. Controls pinned to the bottom of the screen
+// use `listboxAbove` instead.
 export const listbox = style({
   positionArea: "block-end span-inline-end",
   positionTryFallbacks: "flip-block",
@@ -32,6 +37,12 @@ export const listbox = style({
   boxShadow: vars.style.surfaceShadow,
   background: "Canvas",
   color: "CanvasText",
+});
+
+// Opens above the input, for controls at the bottom of the screen (e.g. the
+// add bar sitting on the keyboard).
+export const listboxAbove = style({
+  positionArea: "block-start span-inline-end",
 });
 
 // Compact rows, close to the control height of the inputs they serve.

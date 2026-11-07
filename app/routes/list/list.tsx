@@ -765,6 +765,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             <TagCombobox
               label="Tag"
               hideLabel
+              placement="above"
               placeholder="No tag"
               className={styles.addTag}
               inputClassName={`${styles.addInput} ${styles.addTagInput}`}
