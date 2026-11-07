@@ -1,5 +1,5 @@
 import { createSignal, type Element, onSettled, Show } from "solid-js";
-import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
+import { toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
@@ -96,7 +96,10 @@ function PaletteDialog(props: {
 function ThemeButton(props: { onConfirm: (colors: ThemeColors) => void }) {
   const [candidate, setCandidate] = createSignal<ThemeColors | null>(null);
 
-  function shuffle() {
+  // The generator is most of the palette code and only runs from here, so
+  // it's loaded on the first press rather than with the list page.
+  async function shuffle() {
+    const { generateThemeColors } = await import("~/lib/palette-generator");
     const { primary, secondary } = generateThemeColors();
     setCandidate({ primary, secondary });
   }
