@@ -556,6 +556,7 @@ function ListPage() {
             <TagCombobox
               label="Tag"
               hideLabel
+              placement="above"
               placeholder="No tag"
               class={styles.addTag}
               inputClass={`${styles.addInput} ${styles.addTagInput}`}
