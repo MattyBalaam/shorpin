@@ -96,6 +96,9 @@
       "vite-plugin-devtools-json>vite": "$vite",
       "playwright-core": "$@playwright/test",
       "uuid": "^14.0.2"
+    },
+    "patchedDependencies": {
+      "@tanstack/solid-router@2.0.0-rc.10": "patches/@tanstack__solid-router@2.0.0-rc.10.patch"
     }
   }
 }

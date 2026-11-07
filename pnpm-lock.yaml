@@ -9,6 +9,11 @@ overrides:
   playwright-core: 1.64.1
   uuid: ^14.0.2
 
+patchedDependencies:
+  '@tanstack/solid-router@2.0.0-rc.10':
+    hash: 2tthzgpcekslkdukvrfkkybfla
+    path: patches/@tanstack__solid-router@2.0.0-rc.10.patch
+
 importers:
 
   .:
@@ -42,7 +47,7 @@ importers:
         version: 2.119.0(@opentelemetry/api@1.10.0)
       '@tanstack/solid-router':
         specifier: 2.0.0-rc.10
-        version: 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
+        version: 2.0.0-rc.10(patch_hash=2tthzgpcekslkdukvrfkkybfla)(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
       '@tanstack/solid-start':
         specifier: 2.0.0-rc.10
         version: 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(crossws@0.4.17(srvx@1.0.8))(esbuild@0.28.1)(rolldown@1.2.16)(rollup@4.67.4)(solid-js@2.0.0-rc.21)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.22.4)(yaml@2.9.1))
@@ -6501,7 +6506,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@tanstack/solid-router@2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)':
+  '@tanstack/solid-router@2.0.0-rc.10(patch_hash=2tthzgpcekslkdukvrfkkybfla)(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)':
     dependencies:
       '@solid-devtools/logger': 0.9.11(solid-js@2.0.0-rc.21)
       '@solid-primitives/refs': 1.1.4(solid-js@2.0.0-rc.21)
@@ -6516,7 +6521,7 @@ snapshots:
     dependencies:
       '@solidjs/web': 2.0.0-rc.21(solid-js@2.0.0-rc.21)
       '@tanstack/router-core': 1.171.22
-      '@tanstack/solid-router': 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
+      '@tanstack/solid-router': 2.0.0-rc.10(patch_hash=2tthzgpcekslkdukvrfkkybfla)(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
       '@tanstack/start-client-core': 1.170.22
       solid-js: 2.0.0-rc.21
 
@@ -6524,7 +6529,7 @@ snapshots:
     dependencies:
       '@solidjs/web': 2.0.0-rc.21(solid-js@2.0.0-rc.21)
       '@tanstack/router-core': 1.171.22
-      '@tanstack/solid-router': 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
+      '@tanstack/solid-router': 2.0.0-rc.10(patch_hash=2tthzgpcekslkdukvrfkkybfla)(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
       '@tanstack/start-server-core': 1.169.26(crossws@0.4.17(srvx@1.0.8))
       solid-js: 2.0.0-rc.21
     transitivePeerDependencies:
@@ -6533,7 +6538,7 @@ snapshots:
   '@tanstack/solid-start@2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(crossws@0.4.17(srvx@1.0.8))(esbuild@0.28.1)(rolldown@1.2.16)(rollup@4.67.4)(solid-js@2.0.0-rc.21)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.22.4)(yaml@2.9.1))':
     dependencies:
       '@solidjs/web': 2.0.0-rc.21(solid-js@2.0.0-rc.21)
-      '@tanstack/solid-router': 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
+      '@tanstack/solid-router': 2.0.0-rc.10(patch_hash=2tthzgpcekslkdukvrfkkybfla)(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
       '@tanstack/solid-start-client': 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(solid-js@2.0.0-rc.21)
       '@tanstack/solid-start-server': 2.0.0-rc.10(@solidjs/web@2.0.0-rc.21(solid-js@2.0.0-rc.21))(crossws@0.4.17(srvx@1.0.8))(solid-js@2.0.0-rc.21)
       '@tanstack/start-client-core': 1.170.22

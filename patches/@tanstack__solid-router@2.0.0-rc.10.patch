@@ -1,0 +1,42 @@
+diff --git a/dist/cjs/ssr/renderRouterToStream.cjs b/dist/cjs/ssr/renderRouterToStream.cjs
+index 5b06957814c0955312f3204d22d8645b20b673fc..8385046eb7d9f7293046ef1c5689b9af84e66fa9 100644
+--- a/dist/cjs/ssr/renderRouterToStream.cjs
++++ b/dist/cjs/ssr/renderRouterToStream.cjs
+@@ -26,6 +26,9 @@ var renderRouterToStream = async ({ request, router, responseHeaders, children,
+ 	});
+ 	const stream = _solidjs_web.renderToStream(() => children, {
+ 		nonce: router.options.ssr?.nonce,
++		// shorpin patch: route chunks are needed to hydrate, so they shouldn't
++		// be preloaded at fetchpriority="low" (Solid's default for lazy() assets).
++		lowPriorityPreloads: false,
+ 		plugins: serovalPlugins,
+ 		manifest: manifest ?? void 0 ?? router.ssr?.manifest
+ 	});
+diff --git a/dist/esm/ssr/renderRouterToStream.js b/dist/esm/ssr/renderRouterToStream.js
+index 1632c1b07020a90a57e0fe25f3353f3e11055738..5e39c9524cc1eca90a56da7f848874b9a6ca6a44 100644
+--- a/dist/esm/ssr/renderRouterToStream.js
++++ b/dist/esm/ssr/renderRouterToStream.js
+@@ -24,6 +24,9 @@ var renderRouterToStream = async ({ request, router, responseHeaders, children,
+ 	});
+ 	const stream = Solid.renderToStream(() => children, {
+ 		nonce: router.options.ssr?.nonce,
++		// shorpin patch: route chunks are needed to hydrate, so they shouldn't
++		// be preloaded at fetchpriority="low" (Solid's default for lazy() assets).
++		lowPriorityPreloads: false,
+ 		plugins: serovalPlugins,
+ 		manifest: manifest ?? void 0 ?? router.ssr?.manifest
+ 	});
+diff --git a/dist/source/ssr/renderRouterToStream.jsx b/dist/source/ssr/renderRouterToStream.jsx
+index 1bd6f0e5b8a1d6f29b69d8044ddeeb65f7160a4b..11b939df9fcdfcf2bb452d476a881d5c32ab937a 100644
+--- a/dist/source/ssr/renderRouterToStream.jsx
++++ b/dist/source/ssr/renderRouterToStream.jsx
+@@ -34,6 +34,9 @@ export const renderRouterToStream = async ({ request, router, responseHeaders, c
+     });
+     const stream = Solid.renderToStream(() => children, {
+         nonce: router.options.ssr?.nonce,
++        // shorpin patch: route chunks are needed to hydrate, so they shouldn't
++        // be preloaded at fetchpriority="low" (Solid's default for lazy() assets).
++        lowPriorityPreloads: false,
+         plugins: serovalPlugins,
+         // Prefer the bundler-provided client-assets bridge (module-keyed, the
+         // shape Solid resolves lazy() assets from); the router's route-keyed
