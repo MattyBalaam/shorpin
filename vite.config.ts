@@ -127,6 +127,13 @@ export default defineConfig(({ mode }) => ({
     // versions support light-dark() (Chrome 123, Safari 17.5) and @scope
     // (Firefox 146), so both pass through untouched.
     cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
+    // One stylesheet for the whole app instead of one per route chunk.
+    // First paint waits on every stylesheet in the head, and per-chunk CSS
+    // meant ~12 small render-blocking requests contending with the JS
+    // preloads. All of it is ~7 KB brotli, so every page loading all of it
+    // costs less than the extra requests. Experimental: compare first paint
+    // with `pnpm bench` before and after.
+    cssCodeSplit: false,
   },
   environments: {
     client: {

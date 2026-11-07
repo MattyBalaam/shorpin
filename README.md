@@ -51,6 +51,7 @@ The preview and mock builds include the dev quick-login and `/dev/notifications`
 
 - **On a phone:** `pnpm preview:https` builds against the test project and serves it at `https://<lan-ip>:3443` through `local-ssl-proxy`, since the service worker needs HTTPS off `localhost`. It reads a certificate from `.certs/lan.pem` and `.certs/lan-key.pem` (gitignored), e.g. `mkcert -cert-file .certs/lan.pem -key-file .certs/lan-key.pem <lan-ip> localhost`. `pnpm serve:https` serves an existing build the same way.
 - **Bundle size:** `pnpm build:analyse` opens a treemap of the client bundle (`dist/stats.html`).
+- **Chunking:** Solid and the router are one `framework` chunk, stable across app-only deploys, and the app's CSS is one stylesheet (`cssCodeSplit: false`) rather than a dozen render-blocking files. Both are in [vite.config.ts](vite.config.ts); the single stylesheet is an experiment to confirm with `pnpm bench`.
 - **Prod vs staging performance:** `pnpm bench` compares the two sites' load, hydration and interaction timings under phone-like throttling. It needs a login for each site and writes a temporary list to prod. See [scripts/bench/README.md](scripts/bench/README.md).
 
 ## Migration to TanStack Start + Solid
