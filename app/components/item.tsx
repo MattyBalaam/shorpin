@@ -2,7 +2,7 @@ import { type FieldMetadata, useFormData } from "@conform-to/react/future";
 import { type KeyboardEvent, type PointerEventHandler, useEffect, useRef, useState } from "react";
 import { useNavigation } from "react-router";
 import { DragGrip } from "~/components/reorderable/drag-grip";
-import { getFirstLink } from "~/lib/extract-link";
+import { useFirstLink } from "~/lib/extract-link";
 import { formatItemTag, parseItemTag } from "~/lib/item-tag";
 import { Button } from "./button/button";
 import { TagCombobox } from "./tag-combobox/tag-combobox";
@@ -47,7 +47,7 @@ export function Item({
   // Labels name the row by its text alone, so a tag doesn't change how tests
   // and assistive tech find it.
   const label = parseItemTag(defaultValue).text;
-  const firstLink = getFirstLink(text);
+  const firstLink = useFirstLink(text);
 
   // Delete is committed locally (intent.remove) only once its exit animation
   // finishes, so by the time any submission is in flight for this row it's

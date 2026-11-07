@@ -1,5 +1,5 @@
 import { createContext, use, useEffect, useRef, useState } from "react";
-import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
+import { toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
@@ -69,9 +69,13 @@ export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps
       value={{
         colors,
         candidate,
+        // The generator is most of the palette code and only runs from
+        // here, so it's loaded on the first press rather than with the list.
         generateCandidate: () => {
-          const { primary, secondary } = generateThemeColors();
-          setCandidate({ primary, secondary });
+          void import("~/lib/palette-generator").then(({ generateThemeColors }) => {
+            const { primary, secondary } = generateThemeColors();
+            setCandidate({ primary, secondary });
+          });
         },
         confirmCandidate: () => {
           setColors(candidate);
