@@ -1,5 +1,7 @@
-import { copyFile } from "node:fs/promises";
+import { copyFile, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+import { brotliCompress, constants as zlibConstants, gzip } from "node:zlib";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import solid from "@solidjs/vite-plugin";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
@@ -32,6 +34,53 @@ function serviceWorker(options: Partial<VitePWAOptions>): Plugin[] {
       },
     },
   ];
+}
+
+/**
+ * Brotli and gzip copies of the hashed client assets, beside them in
+ * .output/public/assets. Nitro's static table picks them up by extension
+ * and serves one by Accept-Encoding: brotli is ~10% smaller than the proxy's
+ * on-the-fly gzip, and nothing is compressed per request.
+ *
+ * Not Nitro's own `compressPublicAssets`, which also compresses sw.js and
+ * offline.html. Those are small and rarely fetched, and offline.spec.ts
+ * simulates a redeploy by editing the built sw.js, which a precompressed
+ * copy would hide. Runs where the worker is built (the same Nitro hook),
+ * once the client assets are in place but before Nitro's static table.
+ */
+const compressible = /\.(?:js|css|svg|json)$/;
+
+function precompressAssets(): Plugin {
+  return {
+    name: "shorpin:precompress-assets",
+    apply: "build",
+    nitro: {
+      setup(nitro) {
+        nitro.hooks.hook("vite:compile:before", async () => {
+          const dir = path.join(nitro.options.output.publicDir, "assets");
+          const files = (await readdir(dir)).filter((file) => compressible.test(file));
+          await Promise.all(
+            files.map(async (file) => {
+              const filePath = path.join(dir, file);
+              const contents = await readFile(filePath);
+              if (contents.length < 1024) return;
+              const [br, gz] = await Promise.all([
+                promisify(brotliCompress)(contents, {
+                  params: {
+                    [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
+                    [zlibConstants.BROTLI_PARAM_QUALITY]: zlibConstants.BROTLI_MAX_QUALITY,
+                    [zlibConstants.BROTLI_PARAM_SIZE_HINT]: contents.length,
+                  },
+                }),
+                promisify(gzip)(contents, { level: zlibConstants.Z_BEST_COMPRESSION }),
+              ]);
+              await Promise.all([writeFile(`${filePath}.br`, br), writeFile(`${filePath}.gz`, gz)]);
+            }),
+          );
+        });
+      },
+    },
+  };
 }
 
 /**
@@ -162,6 +211,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: false, // registered in root.tsx, in builds only
       devOptions: { enabled: false }, // no worker under `pnpm dev`
     }),
+    precompressAssets(),
     ...sentrySourceMaps(),
     // `pnpm build:analyse`: the client bundle's treemap, in dist/stats.html.
     ...(mode === "analyse"
