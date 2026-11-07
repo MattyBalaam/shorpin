@@ -15,6 +15,8 @@ These are working well — don't change them.
 - **Vanilla Extract** — zero runtime CSS overhead; all styles compiled at build time
 - **`clientLoader` offline cache** — sophisticated offline-first caching in `app/routes/list/list.tsx` with smart `shouldRevalidate`
 - **Minimal client state** — only 2 React contexts (`OnlineContext`, `ThemeContext`); form state managed by Conform, not React state
+- **Local JWT verification** — `requireUser` and the other server reads of the user use `getClaims()`, which verifies the access token against the projects' ES256 signing keys (cached by supabase-js) instead of a round trip to the auth server per loader and action
+- **List loader in two queries** — the list query embeds the user's `list_views` row, and the visit is one upsert
 - **RLS indexes** — `lists` and `list_items` tables have indexes on `slug`, `state`, `list_id`, and `sort_order`
 
 ---

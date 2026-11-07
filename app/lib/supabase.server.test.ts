@@ -45,7 +45,7 @@ describe("isTransientAuthError", () => {
 describe("requireUser", () => {
   const clientReturning = (error: AuthError) =>
     ({
-      auth: { getUser: async () => ({ data: { user: null }, error }) },
+      auth: { getClaims: async () => ({ data: null, error }) },
     }) as unknown as Parameters<typeof mod.requireUser>[0];
 
   async function thrownBy(error: AuthError) {

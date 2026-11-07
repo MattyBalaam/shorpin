@@ -2,12 +2,7 @@ import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { users } from "../../../db.ts";
 import { inSameScope } from "../../../scope.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 export const handlers = [
   http.get("*/rest/v1/profiles", async ({ request }) => {
