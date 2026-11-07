@@ -3,21 +3,31 @@
  * phone-like conditions: cold loads of home and a list, a client navigation
  * between them, and the list's main interactions. See scripts/bench/README.md.
  *
- *   pnpm bench [--runs 10] [--items 30] [--no-throttle]
+ *   pnpm bench [--runs 10] [--items 30] [--no-throttle] [--out file.json]
  *
  * Writes to prod: each run creates a "Benchmark …" list on each site, seeds it
  * with the same items, and deletes it at the end (also on failure).
  */
 
-import { mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { type Browser, type BrowserContext, chromium, type Page } from "@playwright/test";
+import {
+  type BenchFile,
+  type LoadMetrics,
+  report,
+  type RunResult,
+  type SiteName,
+  type SiteVersion,
+} from "./metrics.ts";
 
 const { values: args } = parseArgs({
   options: {
     runs: { type: "string", default: "10" },
     items: { type: "string", default: "30" },
     "no-throttle": { type: "boolean", default: false },
+    out: { type: "string" },
   },
 });
 
@@ -26,7 +36,7 @@ const SEED_ITEMS = Number(args.items);
 const THROTTLE = !args["no-throttle"];
 
 interface Site {
-  name: "prod" | "staging";
+  name: SiteName;
   url: string;
   email: string;
   password: string;
@@ -108,20 +118,6 @@ function installObservers() {
     subtree: true,
     attributeFilter: ["data-hydrated-path"],
   });
-}
-
-interface LoadMetrics {
-  /** Main-thread time running script, and all main-thread tasks (DevTools' counters). */
-  scriptMs: number;
-  taskMs: number;
-  ttfb: number;
-  fcp: number;
-  lcp: number;
-  cls: number;
-  tbt: number;
-  hydrated: number;
-  jsKb: number;
-  jsDecodedKb: number;
 }
 
 function readLoadMetrics(): Omit<LoadMetrics, "hydrated" | "scriptMs" | "taskMs"> & {
@@ -287,19 +283,6 @@ async function timeSave(page: Page, origin: string, action: () => Promise<void>)
   return (await response) - start;
 }
 
-interface RunResult {
-  site: Site["name"];
-  run: number;
-  home: LoadMetrics;
-  list: LoadMetrics;
-  navToList: number;
-  addLatency: number;
-  addSaved: number;
-  openEditLatency: number;
-  deleteLatency: number;
-  deleteSaved: number;
-}
-
 async function runOnce(
   browser: Browser,
   target: Site,
@@ -371,82 +354,27 @@ async function runOnce(
   };
 }
 
-// ---- Report ----------------------------------------------------------------
-
-function percentile(values: number[], p: number) {
-  const sorted = values.filter(Number.isFinite).toSorted((a, b) => a - b);
-  if (sorted.length === 0) return Number.NaN;
-  return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
-}
-
-const rows: [label: string, unit: string, pick: (result: RunResult) => number][] = [
-  ["Home: TTFB", "ms", (r) => r.home.ttfb],
-  ["Home: FCP", "ms", (r) => r.home.fcp],
-  ["Home: LCP", "ms", (r) => r.home.lcp],
-  ["Home: hydrated", "ms", (r) => r.home.hydrated],
-  ["Home: TBT", "ms", (r) => r.home.tbt],
-  ["Home: script time", "ms", (r) => r.home.scriptMs],
-  ["Home: main-thread time", "ms", (r) => r.home.taskMs],
-  ["Home: CLS", "", (r) => r.home.cls],
-  ["Home: JS transferred", "KB", (r) => r.home.jsKb],
-  ["Home: JS decoded", "KB", (r) => r.home.jsDecodedKb],
-  ["List: TTFB", "ms", (r) => r.list.ttfb],
-  ["List: FCP", "ms", (r) => r.list.fcp],
-  ["List: LCP", "ms", (r) => r.list.lcp],
-  ["List: hydrated", "ms", (r) => r.list.hydrated],
-  ["List: TBT", "ms", (r) => r.list.tbt],
-  ["List: script time", "ms", (r) => r.list.scriptMs],
-  ["List: main-thread time", "ms", (r) => r.list.taskMs],
-  ["List: CLS", "", (r) => r.list.cls],
-  ["List: JS transferred", "KB", (r) => r.list.jsKb],
-  ["Navigate home → list", "ms", (r) => r.navToList],
-  ["Add item: interaction", "ms", (r) => r.addLatency],
-  ["Add item: saved", "ms", (r) => r.addSaved],
-  ["Open edit dialog: interaction", "ms", (r) => r.openEditLatency],
-  ["Delete item: interaction", "ms", (r) => r.deleteLatency],
-  ["Delete item: saved", "ms", (r) => r.deleteSaved],
-];
-
-function format(value: number, unit: string) {
-  if (!Number.isFinite(value)) return "–";
-  return unit === "" ? value.toFixed(3) : `${Math.round(value)}${unit === "KB" ? " KB" : ""}`;
-}
-
-function report(results: RunResult[]) {
-  const of = (name: Site["name"]) => results.filter((result) => result.site === name);
-  const lines = [
-    `### Prod (React Router) vs staging (Solid + Start)`,
-    "",
-    `${RUNS} runs each, ${THROTTLE ? "4x CPU, 150ms RTT, 1.6 Mbps" : "no throttling"}, ${SEED_ITEMS}-item list, cold cache. Lower is better; times in ms.`,
-    "",
-    "| Metric | Prod median | Staging median | Change | Prod p75 | Staging p75 |",
-    "| --- | ---: | ---: | ---: | ---: | ---: |",
-  ];
-  for (const [label, unit, pick] of rows) {
-    const prod = of("prod").map(pick);
-    const staging = of("staging").map(pick);
-    const [pm, sm] = [percentile(prod, 50), percentile(staging, 50)];
-    const change =
-      pm > 0 && Number.isFinite(sm)
-        ? `${sm > pm ? "+" : ""}${Math.round(((sm - pm) / pm) * 100)}%`
-        : "–";
-    lines.push(
-      `| ${label} | ${format(pm, unit)} | ${format(sm, unit)} | ${change} | ${format(percentile(prod, 75), unit)} | ${format(percentile(staging, 75), unit)} |`,
-    );
-  }
-  lines.push(
-    "",
-    "TTFB and saves include each site's backend (prod and e2e Supabase projects), so they compare infrastructure as much as framework.",
-  );
-  return lines.join("\n");
-}
-
 // ---- Main ------------------------------------------------------------------
 
 // Full Chromium, not Playwright's default headless shell, which reports no
 // long tasks (so no TBT).
+/** What a site is running, so a change in the numbers can be matched to a deploy. */
+async function version(target: Site): Promise<SiteVersion | null> {
+  try {
+    const response = await fetch(`${target.url}/version`, { cache: "no-store" });
+    const body = (await response.json()) as { hash?: string; branch?: string | null };
+    return body.hash ? { hash: body.hash, branch: body.branch ?? null } : null;
+  } catch {
+    return null;
+  }
+}
+
+const startedAt = new Date().toISOString();
+const versions = Object.fromEntries(
+  await Promise.all(sites.map(async (target) => [target.name, await version(target)] as const)),
+) as Record<SiteName, SiteVersion | null>;
 const browser = await chromium.launch({ channel: "chromium" });
-const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+const stamp = startedAt.replace(/[:.]/g, "-");
 const prepared: {
   target: Site;
   page: Page;
@@ -487,13 +415,26 @@ try {
   await browser.close();
 }
 
-const summary = report(results);
-mkdirSync("bench-results", { recursive: true });
-const file = `bench-results/${stamp}.json`;
-writeFileSync(
-  file,
-  JSON.stringify({ runs: RUNS, items: SEED_ITEMS, throttle: THROTTLE, results }, null, 2),
-);
+// A deploy part way through would mix two builds into one result.
+for (const target of sites) {
+  const after = await version(target);
+  if (after?.hash !== versions[target.name]?.hash) {
+    console.warn(`  ${target.name} changed version during the run; its numbers mix two builds`);
+  }
+}
+
+const output: BenchFile = {
+  startedAt,
+  runs: RUNS,
+  items: SEED_ITEMS,
+  throttle: THROTTLE,
+  versions,
+  results,
+};
+const summary = report(output);
+const file = args.out ?? `bench-results/${stamp}.json`;
+mkdirSync(dirname(file), { recursive: true });
+writeFileSync(file, JSON.stringify(output, null, 2));
 if (process.env.GITHUB_STEP_SUMMARY)
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
 console.log(`\n${summary}\n\nRaw results: ${file}`);

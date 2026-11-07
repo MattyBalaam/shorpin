@@ -11,6 +11,22 @@ pnpm bench --no-throttle   # desktop-like, unthrottled
 
 The table goes to the console. The raw runs go to `bench-results/<time>.json`, which is git-ignored. On GitHub Actions the table is also written to the job summary.
 
+## Daily trend
+
+[bench.yml](../../.github/workflows/bench.yml) runs the comparison every day at 05:17 UTC; you can also start it from Actions → Benchmark. Each run:
+
+1. Writes the comparison table to the job summary and uploads the raw runs as an artifact, kept for 30 days.
+2. Appends the day's medians and p75s, plus the commit each site was running, to `history.json` on the `bench-data` branch, using [history.ts](history.ts).
+3. Publishes [the dashboard](dashboard/index.html) with that history to GitHub Pages, at <https://mattybalaam.github.io/shorpin/bench/>. It has one chart per metric, prod against staging over time, with ticks where either site deployed a new commit.
+
+The workflow shares the staging deploy's concurrency group, so a deploy can't land part way through a run. If a site changes version mid-run anyway, the script warns that the run mixes two builds.
+
+It signs in with the `BENCH_PROD_*` and `BENCH_STAGING_*` repo secrets. The Pages site is public, so the dashboard is too. It shows only timings and the two sites' public URLs.
+
+A failed CI run publishes its test report over the whole `gh-pages` branch, which removes the dashboard until the next benchmark run restores it. The history on `bench-data` is unaffected.
+
+To preview the dashboard locally, put a `history.json` beside `dashboard/index.html` (`node scripts/bench/history.ts <results.json> scripts/bench/dashboard/history.json`) and serve the folder.
+
 ## Logins
 
 It signs in to each site with a real account, read from git-ignored env files:

@@ -28,3 +28,4 @@ dist/
 
 # pnpm bench output (scripts/bench/compare.ts)
 bench-results/
+scripts/bench/dashboard/history.json
