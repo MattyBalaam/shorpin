@@ -44,6 +44,13 @@ export default defineConfig((config) => {
         output: {
           manualChunks(id) {
             if (id.includes("@supabase/")) return "vendor-supabase";
+            // React and React Router in one chunk of their own. Its hash
+            // only changes when they're upgraded, so an app-only deploy
+            // leaves it cached (HTTP and the service worker's precache) and
+            // returning users re-download just the app's chunks.
+            if (/[\\/]node_modules[\\/](?:react|react-dom|react-router|scheduler)[\\/]/.test(id)) {
+              return "framework";
+            }
           },
         },
       },
