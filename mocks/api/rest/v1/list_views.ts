@@ -1,12 +1,7 @@
 import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { listViews, users } from "../../../db.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 export const handlers = [
   http.head("*/rest/v1/list_views", async ({ request }) => {

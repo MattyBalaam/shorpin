@@ -17,6 +17,8 @@ These are working well — don't change them.
 - **Vanilla Extract** — zero runtime CSS overhead; all styles compiled at build time
 - **Offline-first loaders** — home and list's isomorphic loaders fall back to IndexedDB in the browser, before or instead of a network request
 - **Fine-grained reactivity, minimal client state** — Solid updates only the DOM that reads a changed signal, so there's no re-render cost to memoise away; one context (`OnlineContext`)
+- **Local JWT verification** — `authMiddleware` uses `getClaims()`, which verifies the access token against the projects' ES256 signing keys (cached by supabase-js) instead of a round trip to the auth server per server function
+- **List page in two queries** — the list query embeds the user's `list_views` row, and the visit is one upsert
 - **Indexes** — `lists` and `list_items` have indexes on `slug`, `state`, `list_id` and `sort_order`; `waitlist` has `waitlist_created_at_idx` for the sign-ups page's `ORDER BY created_at DESC`
 
 ---
@@ -37,21 +39,9 @@ No `Cache-Control`, `ETag`, or `stale-while-revalidate` headers are set on any S
 
 ---
 
-#### 2. Every server function call waits on Supabase auth
-
-**File:** `src/lib/supabase.middleware.ts`
-
-`authMiddleware` calls `supabase.auth.getUser()`, which asks the Supabase auth server to validate the token on every server function call: one auth round-trip (~20–100ms) before the function's own queries start.
-
-**Fix:** `supabase.auth.getClaims()` verifies the JWT locally when the project uses asymmetric signing keys (it falls back to a network call otherwise), and still refreshes an expiring session. Check the project's JWT signing keys first. The middleware's `user` context would become the claims (`sub`, `email`, …) rather than a full `User`, so check what server functions read from it. RLS still enforces access on every query either way.
-
-**Impact:** Removes one auth round-trip from every page load and mutation.
-
----
-
 ### 🟡 Medium impact
 
-#### 3. Config route: ownership check creates a sequential waterfall
+#### 2. Config route: ownership check creates a sequential waterfall
 
 **File:** `src/routes/list/config.functions.ts` (`getListConfig`)
 
@@ -70,5 +60,4 @@ No `Cache-Control`, `ETag`, or `stale-while-revalidate` headers are set on any S
 | Fix                          | Verification method                                                                     |
 | ---------------------------- | --------------------------------------------------------------------------------------- |
 | Cache-Control headers        | Browser DevTools → Network tab → response headers on page navigations                   |
-| Local JWT verification       | Supabase dashboard auth request count, or timing a server function before and after     |
 | Config route parallelisation | Add timing logs around `getListConfig`; compare before/after RTT count in the dashboard |

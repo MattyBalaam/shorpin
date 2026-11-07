@@ -26,16 +26,20 @@ export type ListItem = Tables<"lists">;
  * endpoint, reachable whichever page called it, so it must check for
  * itself. Pages need no allowlist: a page without data needs no check.
  *
- * supabase-js refreshes an expiring access token inside getUser(), and the
- * new cookies go out through setCookie (see createSupabaseClient), so the
- * React Router middleware's own expiry check isn't needed either.
+ * getClaims() verifies the access token's signature locally, against the
+ * project's public signing keys (fetched once and cached by supabase-js),
+ * so a server function doesn't wait on a round trip to the auth server
+ * before its own queries. The trade-off: a session revoked elsewhere stays
+ * usable until its token expires (jwt_expiry, an hour), as it already was
+ * for PostgREST and RLS. It still refreshes an expiring token, and the new
+ * cookies go out through setCookie (see createSupabaseClient).
  */
 export const authMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
   const supabase = createSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
+  // Only the id: it's all server functions need, and it keeps them from
+  // depending on fields a full User has but the token's claims don't.
+  const user = data ? { id: data.claims.sub } : null;
 
   if (!user) {
     // A network blip on token refresh must not look like a logout: the
@@ -46,7 +50,7 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
       throw new Error(SERVICE_UNAVAILABLE);
     }
 
-    logAuthRedirect("getUser returned no user", error);
+    logAuthRedirect("getClaims returned no claims", error);
     throw redirect({ to: "/login" });
   }
 

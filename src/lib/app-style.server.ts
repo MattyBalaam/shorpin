@@ -21,10 +21,9 @@ export function setAppStyleCookie(style: AppStyle) {
  */
 export async function readAccountAppStyle(supabase: SupaBaseContext): Promise<AppStyle | null> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    return user ? await readProfileAppStyle(supabase, user.id) : null;
+    // Verified locally, as in authMiddleware.
+    const { data } = await supabase.auth.getClaims();
+    return data ? await readProfileAppStyle(supabase, data.claims.sub) : null;
   } catch {
     return null;
   }
