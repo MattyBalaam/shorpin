@@ -52,11 +52,17 @@ export const getList = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data: { slug, recordVisit }, context: { supabase, user } }) => {
+    // The user's last view comes embedded, rather than as a second query
+    // after this one: one Supabase round trip fewer on every list load.
+    // list_views' primary key is (list_id, user_id), so it's at most one row.
     const { data, error } = await supabase
       .from("lists")
-      .select("id, name, slug, theme_primary, theme_secondary, theme_style, list_items(*)")
+      .select(
+        "id, name, slug, theme_primary, theme_secondary, theme_style, list_items(*), list_views(viewed_at)",
+      )
       .eq("slug", slug)
       .eq("state", "active")
+      .eq("list_views.user_id", user.id)
       .order("sort_order", { referencedTable: "list_items", ascending: true })
       .maybeSingle();
 
@@ -72,33 +78,17 @@ export const getList = createServerFn({ method: "GET" })
       throw notFound();
     }
 
-    const { data: listView, error: listViewError } = await supabase
-      .from("list_views")
-      .select("viewed_at")
-      .eq("list_id", data.id)
-      .eq("user_id", user.id)
-      .order("viewed_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (listViewError) {
-      console.error("Error loading list view:", listViewError);
-      throw listViewError;
-    }
-
-    const lastViewedAt = listView?.viewed_at ?? 0;
+    const lastViewedAt = data.list_views[0]?.viewed_at ?? 0;
 
     if (recordVisit) {
-      const viewedAt = Date.now();
-      const { error: viewError } = listView
-        ? await supabase
-            .from("list_views")
-            .update({ viewed_at: viewedAt })
-            .eq("list_id", data.id)
-            .eq("user_id", user.id)
-        : await supabase
-            .from("list_views")
-            .insert({ list_id: data.id, user_id: user.id, viewed_at: viewedAt });
+      // One upsert on the (list_id, user_id) key, whether or not there was
+      // a view before.
+      const { error: viewError } = await supabase
+        .from("list_views")
+        .upsert(
+          { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
+          { onConflict: "list_id,user_id" },
+        );
 
       if (viewError) {
         console.error("Error recording list view:", viewError);

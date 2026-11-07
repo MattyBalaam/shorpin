@@ -1,6 +1,6 @@
 import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
-import { lists, listItems, listMembers, users } from "../../../db.ts";
+import { lists, listItems, listMembers, listViews, users } from "../../../db.ts";
 
 function emailFromRequest(request: Request): string | null {
   const auth = request.headers.get("Authorization") ?? "";
@@ -69,7 +69,13 @@ export const handlers = [
         .findMany((q) => q.where({ list_id: list.id }))
         .sort((a, b) => a.sort_order - b.sort_order);
 
-      return HttpResponse.json({ ...list, list_items: items });
+      // `list_views(viewed_at)`, embedded and filtered to the user, as the
+      // list page selects it (getList).
+      const views = listViews
+        .findMany((q) => q.where({ list_id: list.id, user_id: user.id }))
+        .map((v) => ({ viewed_at: v.viewed_at }));
+
+      return HttpResponse.json({ ...list, list_items: items, list_views: views });
     }
 
     const ownedLists = lists.findMany((q) => q.where({ user_id: user.id, state: "active" }));
