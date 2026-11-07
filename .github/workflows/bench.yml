@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Benchmark
+
+# Compares prod (React Router) with staging (whatever branch is deployed there)
+# every day, and keeps the trend: scripts/bench/README.md.
+#
+# - The day's table goes to the job summary, and the raw runs to an artifact.
+# - Each day's medians are appended to history.json on the `bench-data`
+#   branch, which keeps them.
+# - The dashboard is published from that history to GitHub Pages, at
+#   /bench/ (https://mattybalaam.github.io/shorpin/bench/).
+on:
+  schedule:
+    - cron: "17 5 * * *" # 05:17 UTC, outside UK waking hours
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per site
+        required: true
+        default: "10"
+
+# Shares the staging deploy's group, so a deploy never lands part way through
+# a run (and a run never measures a half-finished deploy).
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push bench-data and gh-pages
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Installs full Chromium, which the script launches (channel
+      # "chromium"): the headless shell reports no long tasks.
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - name: Compare prod and staging
+        run: node scripts/bench/compare.ts --runs "$RUNS" --out bench-results/latest.json
+        env:
+          RUNS: ${{ inputs.runs || '10' }}
+          PROD_EMAIL: ${{ secrets.BENCH_PROD_EMAIL }}
+          PROD_PASSWORD: ${{ secrets.BENCH_PROD_PASSWORD }}
+          STAGING_EMAIL: ${{ secrets.BENCH_STAGING_EMAIL }}
+          STAGING_PASSWORD: ${{ secrets.BENCH_STAGING_PASSWORD }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bench-results
+          path: bench-results/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Append to the history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin bench-data; then
+            git worktree add -B bench-data bench-data FETCH_HEAD
+          else
+            git worktree add --orphan -b bench-data bench-data
+          fi
+          node scripts/bench/history.ts bench-results/latest.json bench-data/history.json
+          versions=$(node -e 'const v = require("./bench-results/latest.json").versions; console.log(`prod ${v.prod?.hash.slice(0, 7) ?? "?"}, staging ${v.staging?.hash.slice(0, 7) ?? "?"}`)')
+          cd bench-data
+          git add history.json
+          git commit -m "bench: $(date -u +%F) ($versions)"
+          git push origin bench-data
+
+      - name: Build the dashboard
+        run: |
+          mkdir site
+          cp scripts/bench/dashboard/index.html bench-data/history.json site/
+
+      # Into /bench/ only, keeping everything else on gh-pages (CI's failed
+      # test report). CI's own report publish replaces the whole branch, so a
+      # failed CI run removes the dashboard until the next run here.
+      - name: Publish the dashboard
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: bench
+          keep_files: true
+
+      - name: Link to the dashboard
+        run: echo "[Trend dashboard](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/bench/)" >> "$GITHUB_STEP_SUMMARY"

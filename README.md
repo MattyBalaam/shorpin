@@ -35,6 +35,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 - `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible.
 - The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
 - CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
+- **Performance tracking:** a daily workflow benchmarks prod against staging under phone-like throttling, keeps the trend on the `bench-data` branch, and charts it at [mattybalaam.github.io/shorpin/bench](https://mattybalaam.github.io/shorpin/bench/). Run it locally with `pnpm bench`. See [scripts/bench/README.md](scripts/bench/README.md).
 
 ## Architecture
 
