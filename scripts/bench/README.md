@@ -19,6 +19,14 @@ The table goes to the console. The raw runs go to `bench-results/<time>.json`, w
 2. Appends the day's medians and p75s, plus the commit each site was running, to `history.json` on the `bench-data` branch, using [history.ts](history.ts).
 3. Publishes [the dashboard](dashboard/index.html) with that history to GitHub Pages, at <https://mattybalaam.github.io/shorpin/bench/>. It has one chart per metric, prod against staging over time, with ticks where either site deployed a new commit.
 
+**Regression alerts** ([regressions.ts](regressions.ts)): after each run, the workflow compares the latest medians with the median of the 7 runs before them. Only framework-level metrics count; TTFB and saves are left out because they mostly measure the backends.
+
+- **JS size** alerts on a single run that's more than 5% larger, since a build's size doesn't vary.
+- **Timings** (script and main-thread time, hydration, LCP, navigation, click latency) alert only when the last two runs are both more than 20–25% worse, and worse by a minimum amount: 15–150ms, depending on the metric. A single slow runner day never alerts.
+- Each regression is reported once, on the run where it first appears. A new one opens a `perf-regression` issue, or comments on the open one, and @mentions the repo owner, so GitHub emails them. Close the issue once it's dealt with; the next regression opens a new one.
+
+The thresholds are in `rules` at the top of the file. Replaying the two-month example history through them flags its staged regressions and none of its noise or improvements.
+
 The workflow shares the staging deploy's concurrency group, so a deploy can't land part way through a run. If a site changes version mid-run anyway, the script warns that the run mixes two builds.
 
 It signs in with the `BENCH_PROD_*` and `BENCH_STAGING_*` repo secrets. The Pages site is public, so the dashboard is too. It shows only timings and the two sites' public URLs.

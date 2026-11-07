@@ -27,6 +27,7 @@ concurrency:
 
 permissions:
   contents: write # push bench-data and gh-pages
+  issues: write # the regression alert
 
 jobs:
   bench:
@@ -81,6 +82,29 @@ jobs:
           git add history.json
           git commit -m "bench: $(date -u +%F) ($versions)"
           git push origin bench-data
+
+      # A new regression opens a `perf-regression` issue (or comments on the
+      # open one) that @mentions the repo owner, so GitHub emails them.
+      - name: Check for regressions
+        id: regressions
+        run: node scripts/bench/regressions.ts bench-data/history.json regression.md >> "$GITHUB_OUTPUT"
+
+      - name: Raise the regression alert
+        if: steps.regressions.outputs.regressed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          printf '\n@%s [Run](%s)\n' "$OWNER" "$RUN_URL" >> regression.md
+          cat regression.md >> "$GITHUB_STEP_SUMMARY"
+          gh label create perf-regression --color D93F0B --description "Raised by the daily benchmark" 2>/dev/null || true
+          number=$(gh issue list --label perf-regression --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file regression.md
+          else
+            gh issue create --title "Performance regression" --label perf-regression --body-file regression.md
+          fi
 
       - name: Build the dashboard
         run: |
