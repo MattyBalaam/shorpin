@@ -128,9 +128,42 @@ export default defineConfig(({ mode }) => ({
     // (Firefox 146), so both pass through untouched.
     cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
   },
-  ...(uploadSourceMaps && {
-    environments: { client: { build: { sourcemap: "hidden" as const } } },
-  }),
+  environments: {
+    client: {
+      build: {
+        ...(uploadSourceMaps && { sourcemap: "hidden" as const }),
+        rolldownOptions: {
+          output: {
+            codeSplitting: {
+              groups: [
+                {
+                  // Solid, the router and Start in one chunk of their own.
+                  // Its hash only changes when they're upgraded, so an
+                  // app-only deploy leaves it cached (HTTP and the service
+                  // worker's precache) and returning users re-download just
+                  // the app's chunks. Without it, Rolldown names the shared
+                  // chunks after whichever app module it put in them
+                  // (clickable-element.css-*.js held Solid's runtime), and
+                  // an edit to that module re-hashed the framework too.
+                  //
+                  // Only the runtime packages: Start's client packages
+                  // import the app's router entry, and a group takes its
+                  // modules' dependencies with it. Solid's serialization
+                  // module stays out because it's only loaded lazily, for
+                  // streamed server function responses.
+                  name: "framework",
+                  test: (id) =>
+                    /[\\/]node_modules[\\/](?:solid-js|@solidjs[\\/](?:signals|web)|@tanstack[\\/](?:solid-router|router-core|history))[\\/]/.test(
+                      id,
+                    ) && !/[\\/]@solidjs[\\/]web[\\/]serialization[\\/]/.test(id),
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+  },
   define: {
     "import.meta.env.VITE_GIT_HASH": JSON.stringify(process.env.VITE_GIT_HASH ?? "unknown"),
     "import.meta.env.VITE_GIT_DATE": JSON.stringify(process.env.VITE_GIT_DATE ?? "unknown"),
