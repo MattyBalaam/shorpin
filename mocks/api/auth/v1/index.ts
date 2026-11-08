@@ -1,20 +1,16 @@
 import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { users } from "../../../db.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest, makeAccessToken } from "../../auth-token.ts";
 
 function makeSession(user: { id: string; email: string }) {
+  const expiresAt = Math.floor(Date.now() / 1000) + 3600;
   return {
-    access_token: user.email,
+    access_token: makeAccessToken(user, expiresAt),
     refresh_token: `refresh-${user.email}`,
     token_type: "bearer",
     expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    expires_at: expiresAt,
     user: {
       id: user.id,
       email: user.email,

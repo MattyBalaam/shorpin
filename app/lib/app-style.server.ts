@@ -1,5 +1,6 @@
 import { type AppStyle, DEFAULT_APP_STYLE, isAppStyle } from "./app-style";
 import type { SupaBaseContext } from "./supabase.middleware";
+import { currentUserId } from "./supabase.server";
 
 /**
  * The signed-in account's style, or null when signed out (or when it can't
@@ -8,10 +9,8 @@ import type { SupaBaseContext } from "./supabase.middleware";
  */
 export async function readAccountAppStyle(supabase: SupaBaseContext): Promise<AppStyle | null> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    return user ? await readProfileAppStyle(supabase, user.id) : null;
+    const userId = await currentUserId(supabase);
+    return userId ? await readProfileAppStyle(supabase, userId) : null;
   } catch {
     return null;
   }

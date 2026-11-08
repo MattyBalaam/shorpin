@@ -2,17 +2,13 @@ import { redirectWithError, redirectWithSuccess } from "remix-toast";
 import type { Route } from "./+types/config";
 import { href } from "react-router";
 import { supabaseContext } from "~/lib/supabase.middleware";
+import { currentUserId } from "~/lib/supabase.server";
 
 export async function loader({ params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
 
-  const [
-    {
-      data: { user },
-    },
-    { data, error },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
+  const [userId, { data, error }] = await Promise.all([
+    currentUserId(supabase),
     supabase
       .from("lists")
       .select("id, name, user_id")
@@ -26,7 +22,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
     throw redirectWithError(href("/"), "List not found.");
   }
 
-  if (data.user_id !== user?.id) {
+  if (data.user_id !== userId) {
     throw redirectWithError(href("/"), "Only the list owner can manage settings.");
   }
 
@@ -51,9 +47,7 @@ export async function loader({ params: { list }, context }: Route.LoaderArgs) {
 export async function action({ params: { list }, request, context }: Route.ActionArgs) {
   const supabase = context.get(supabaseContext);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await currentUserId(supabase);
 
   const { data: listData } = await supabase
     .from("lists")
@@ -62,7 +56,7 @@ export async function action({ params: { list }, request, context }: Route.Actio
     .eq("state", "active")
     .maybeSingle();
 
-  if (!listData || listData.user_id !== user?.id) {
+  if (!listData || listData.user_id !== userId) {
     throw redirectWithError(href("/"), "Only the list owner can manage settings.");
   }
 

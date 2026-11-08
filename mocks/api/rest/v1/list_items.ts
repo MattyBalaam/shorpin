@@ -1,12 +1,7 @@
 import { HttpResponse, http } from "msw/http";
 import { delay } from "msw/utils/delay";
 import { lists, listItems, listMembers, listViews, users } from "../../../db.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 function hasListAccess(userId: string, listId: string) {
   const owned = lists.findFirst((q) => q.where({ id: listId, user_id: userId }));
