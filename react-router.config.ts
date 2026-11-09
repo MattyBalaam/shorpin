@@ -10,8 +10,9 @@ export default {
   // never matches and every list mutation 400s. Allow-list the public host(s)
   // here; the custom server that trusts the proxy (see README "Deployment")
   // makes this redundant but harmless. Supports micromatch globs (`*`, `**`).
-  // The staging site too (README "Staging"), so a deployed branch can save.
-  allowedActionOrigins: ["shorpin.matthewbalaam.co.uk", "staging.shorpin.matthewbalaam.co.uk"],
+  // The wildcard covers the staging site (README "Staging") and Coolify PR
+  // previews (`<pr>.shorpin.matthewbalaam.co.uk`). `*` matches one label only.
+  allowedActionOrigins: ["shorpin.matthewbalaam.co.uk", "*.shorpin.matthewbalaam.co.uk"],
   buildEnd: async ({ viteConfig, reactRouterConfig, buildManifest }) => {
     await sentryOnBuildEnd({
       viteConfig: viteConfig,

@@ -480,9 +480,68 @@ report the branch's commit.
   resets it, so sign in with an account in that project.
 - **No Sentry:** the build has no `VITE_SENTRY_DSN`, so staging errors don't
   land in prod's project.
-- **Origin checks:** `allowedActionOrigins` (above) lists the staging host. A
-  branch on TanStack Start needs it in its CSRF middleware's allowed origins
-  instead.
+- **Origin checks:** `allowedActionOrigins` (above) covers the staging host with
+  its `*.shorpin.matthewbalaam.co.uk` wildcard. A branch on TanStack Start
+  needs it in its CSRF middleware's allowed origins instead.
 - **Setup:** the `STAGING_URL` variable and `COOLIFY_STAGING_WEBHOOK_URL`
   secret (the workflow reuses `COOLIFY_TOKEN`), and a Coolify app for the
   `:staging` image.
+
+### PR preview deployments
+
+Coolify's Preview Deployments build every pull request from the same
+`Dockerfile` and serve it at `https://<pr>.shorpin.matthewbalaam.co.uk`
+(wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews use
+the mock backend rather than a Supabase project, so they can't touch real data
+and need no per-PR database or Auth redirect setup.
+
+#### One-time setup
+
+1. **A separate previews app.** Coolify only builds previews for an app it
+   builds from Git itself. Production and staging pull images CI pushed to
+   GHCR, so leave them alone and add a third application: **Sources → + Add →
+   GitHub App** (a deploy key or public repo URL won't receive PR webhooks),
+   install it on this repo, then create an app from that source with the
+   `Dockerfile` build pack, branch `main`. GitHub must be able to reach the
+   Coolify instance's webhook URL from the internet.
+2. **Enable previews.** In the application's **Advanced** settings, turn on
+   **Preview Deployments**.
+3. **Domains.** Give the app a domain one level under production, e.g.
+   `https://demo.shorpin.matthewbalaam.co.uk`. Under **Preview Deployments**,
+   set the URL template to `{{pr_id}}.shorpin.matthewbalaam.co.uk` rather than
+   the default `{{pr_id}}.{{domain}}`, which would add a second level. The
+   `*.shorpin.matthewbalaam.co.uk` entry in `allowedActionOrigins`
+   (`react-router.config.ts`) matches a single label only; change both
+   together.
+4. **Wildcard DNS.** Add an `A` record for `*.shorpin.matthewbalaam.co.uk`
+   pointing at the same public IP as the production domain. Traefik requests a
+   Let's Encrypt certificate per preview host over HTTP-01, so no wildcard
+   certificate is needed.
+5. **Build variable.** Add `BUILD_SCRIPT=build:preview` as a build variable,
+   both for the app itself and under **Environment Variables → Preview
+   Deployments**. The Dockerfile runs `pnpm run "$BUILD_SCRIPT"` (default
+   `build`), so production and staging are unaffected, and the app's own
+   deployment of `main` is a mock-backed demo too.
+6. **Leave Supabase and Sentry unset.** Don't add `VITE_SUPABASE_*` or
+   `VITE_SENTRY_DSN` to this app. Vite gives process env precedence over
+   `.env.preview`, so a copied production value would point previews at the
+   real database; an unset DSN keeps preview errors out of Sentry.
+
+Open a PR to test: Coolify builds it, comments the preview link on the PR, and
+removes the deployment when the PR is closed or merged.
+
+#### Preview behaviour
+
+- `build:preview` starts MSW inside the server (`entry.server.tsx`), which
+  seeds the same in-memory data as `pnpm dev`. Sign in on `/login` with the
+  quick-login shortcuts (any password works).
+- The server imports `msw` at runtime, so for any `BUILD_SCRIPT` other than
+  `build` the Dockerfile's runtime stage keeps dev dependencies. Production
+  still installs `--prod`.
+- Point the app's health check at `/version`. `/health` is behind the auth
+  middleware and redirects to `/login`, which Coolify counts as unhealthy.
+- Data resets whenever the container restarts.
+- Realtime is not mocked in previews, so collaborative live updates don't work
+  there. See [docs/mocking.md](docs/mocking.md).
+- Each preview is a full Docker build on the Coolify host, so close stale PRs
+  to free memory.

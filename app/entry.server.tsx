@@ -10,9 +10,9 @@ export const handleError = Sentry.createSentryHandleError({
 
 export const streamTimeout = 5_000;
 
-// In preview builds, intercept all Supabase calls with MSW so the Netlify
-// Function doesn't need a real Supabase project. Runs once on cold start;
-// state persists for the lifetime of the warm function instance.
+// In preview builds (Coolify PR previews), intercept all Supabase calls with
+// MSW so the server doesn't need a real Supabase project. Runs once at
+// startup; state persists in memory until the container restarts.
 if (import.meta.env.MODE === "preview") {
   const { network } = await import("virtual:msw");
   const { handlers } = await import("../mocks/handlers.ts");
