@@ -532,9 +532,14 @@ removes the deployment when the PR is closed or merged.
 
 #### Preview behaviour
 
-- `build:preview` bundles MSW into the server build (`entry.server.tsx`), which
+- `build:preview` starts MSW inside the server (`entry.server.tsx`), which
   seeds the same in-memory data as `pnpm dev`. Sign in on `/login` with the
   quick-login shortcuts (any password works).
+- The server imports `msw` at runtime, so for any `BUILD_SCRIPT` other than
+  `build` the Dockerfile's runtime stage keeps dev dependencies. Production
+  still installs `--prod`.
+- Point the app's health check at `/version`. `/health` is behind the auth
+  middleware and redirects to `/login`, which Coolify counts as unhealthy.
 - Data resets whenever the container restarts.
 - Realtime is not mocked in previews, so collaborative live updates don't work
   there. See [docs/mocking.md](docs/mocking.md).

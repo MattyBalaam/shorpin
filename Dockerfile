@@ -23,8 +23,8 @@ ARG VITE_GIT_HASH
 ARG VITE_GIT_DATE
 ARG VITE_PR_NUMBER
 ARG VITE_BRANCH
-# Coolify PR previews set this to `build:preview`, which bundles the MSW mock
-# backend into the server so previews never touch the real Supabase project.
+# Coolify PR previews set this to `build:preview`, which runs the MSW mock
+# backend inside the server so previews never touch the real Supabase project.
 ARG BUILD_SCRIPT=build
 
 RUN pnpm run "$BUILD_SCRIPT"
@@ -38,7 +38,14 @@ RUN apk add --no-cache wget
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+# The server build imports msw (a dev dependency) at runtime in preview
+# builds, so they keep dev dependencies. Production stays --prod.
+ARG BUILD_SCRIPT=build
+RUN if [ "$BUILD_SCRIPT" = "build" ]; then \
+      pnpm install --frozen-lockfile --prod; \
+    else \
+      pnpm install --frozen-lockfile; \
+    fi
 
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/instrument.server.mjs ./instrument.server.mjs
