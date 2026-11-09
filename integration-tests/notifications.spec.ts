@@ -11,7 +11,19 @@ test("a success notification clears itself", async ({ page, ctx }) => {
 
   const panel = page.getByRole("region", { name: "Notifications" });
   await expect(panel.getByText("You have been logged out.")).toBeVisible();
-  await expect(panel).toHaveJSProperty("offsetHeight", 0, { timeout: 10_000 });
+  // The dismissal is a CSS animation with a 5s delay. Polled through the
+  // locator (toHaveJSProperty), it never finished in Chromium, presumably
+  // something in the role locator's re-resolution holding it up. A plain
+  // evaluate leaves it alone.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.querySelector<HTMLElement>("[aria-label=Notifications]")?.offsetHeight,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(0);
 });
 
 test("shows the newest notification with a count, and clears one or all", async ({
@@ -35,7 +47,7 @@ test("shows the newest notification with a count, and clears one or all", async 
   async function reconnect() {
     const syncSubmitted = page.waitForResponse(
       (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+        response.url().includes("/lists/shopping/items") && response.request().method() === "POST",
     );
     await context.setOffline(false);
     await syncSubmitted;

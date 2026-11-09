@@ -1,42 +1,115 @@
-A todo style app built with React Router SSR Framework mode. Oringally running on Netlify, but now using Coolify.
+A shared shopping-list app. This branch (`spike/html-first`) is an experiment: the same app as `main` (React Router) and `spike/tanstack-solid` (TanStack Start + Solid), rebuilt so the browser gets HTML and CSS, and JavaScript only where it earns its place. Every core flow works with JavaScript turned off; scripts add saves without reloads, live updates, drag to reorder and offline editing.
 
 This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
-- **Framework**: React Router v8 (SSR)
-- **Language**: TypeScript
-- **Styling**: Vanilla Extract CSS-in-JS
-- **Build Tool**: Vite
-- **Testing**: Playwright with accessibility testing
+- **Server**: [Hono](https://hono.dev) on Node 24, plain TypeScript run by Node's type stripping (no server build step)
+- **Templates**: Hono's escaping `html` tagged template
+- **Client**: no framework. One stylesheet and three small enhancement scripts, bundled by Vite
+- **Styling**: plain CSS (compiled once from the Vanilla Extract sources)
+- **Data**: Supabase (unchanged schema, RLS and mock server)
+- **Testing**: Playwright (including a JavaScript-disabled project), Vitest
 - **Package Manager**: pnpm
 
 ## Docs
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
+- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript and testing conventions
+- [docs/migration-review.md](docs/migration-review.md) — what this spike changed and the trade-offs
 - [integration-tests/README.md](integration-tests/README.md) — running integration tests, architecture, CI
 - [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
 
 ## Environment Files
 
-Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
+The server reads its settings from the environment at runtime; nothing is baked into a browser bundle any more. The variable names keep their `VITE_` prefix from the React app so existing `.env` files, CI secrets and Docker build args carry over.
 
-| File                                                    | Mode      | Used by                                         | Notes                                                                                                                   |
-| ------------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
-| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
-| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
-| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
-
-`.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.test.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
+| File                              | Used by                           | Notes                                                                                                       |
+| --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `.env.mock`                       | `pnpm dev`                        | Points at the local mock server (`mocks/server.ts`) and sets `APP_MODE=mock` (dev quick-login). Checked in. |
+| `.env` (copy from `.env.example`) | `pnpm dev:supabase`, `pnpm start` | Real Supabase project credentials.                                                                          |
+| `.env.test.local`                 | `pnpm test:e2e`                   | Your own **test** Supabase project's credentials (gitignored). See [e2e/README.md](e2e/README.md).          |
 
 ## Development Workflow
 
+- `pnpm dev` runs the mock Supabase, Vite rebuilding the browser assets on change, and the server restarting on change (`node --watch`). Open http://localhost:3000.
+- `pnpm build` builds the browser assets into `dist/`; `pnpm start` runs the server.
 - Run `pnpm verify` before opening a PR or asking an agent to commit. It applies formatting, runs lint, runs typecheck, then confirms formatting is clean with `pnpm fmt:check`.
-- `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible.
-- The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
-- CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
+- `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible (not in a linked worktree, whose hooks belong to the main checkout).
 
-## Architecture
+## HTML-first architecture
+
+### The shape of it
+
+- **The server renders every page.** `server/routes/*.ts` are Hono routes; `server/views/` holds the shared markup. There is no client-side rendering and no hydration: the markup is the app.
+- **Every change is a form post.** A `<form method="post">` hits a route, the route does the work and answers `303` back to the page (or re-renders it with errors and a `422`). Messages for the next page ride in a one-shot cookie ([server/flash.ts](server/flash.ts)).
+- **Scripts only enhance.** Each page gets [base.ts](client/enhance/base.ts); home and list add one more. Turn JavaScript off and everything still works, more slowly: the `no-js` Playwright project ([no-js.spec.ts](integration-tests/no-js.spec.ts)) proves the core flows that way.
+- **Vite builds browser assets only** ([vite.config.ts](vite.config.ts), plus [vite.sw.config.ts](vite.sw.config.ts) for the service worker). The server reads `dist/.vite/manifest.json` to link the hashed files ([server/assets.ts](server/assets.ts)).
+
+### What ships
+
+Measured from `pnpm build`, brotli-compressed. The Solid spike's home page loaded 98.3 KB of JS across 31 files (see `spike/tanstack-solid`'s migration review).
+
+| Page           | JS (brotli)      | CSS (brotli) | Without JS |
+| -------------- | ---------------- | ------------ | ---------- |
+| Sign in & auth | 1.8 KB (2 files) | 7.2 KB       | Works      |
+| Home           | 4.4 KB (4 files) | 7.2 KB       | Works      |
+| List           | 4.7 KB (4 files) | 7.2 KB       | Works      |
+| Service worker | 1.4 KB           |              |            |
+
+A list of 30 items is about 110 KB of HTML (7 KB gzipped): each row carries its own small forms and edit dialog, which is what lets it work without a script. Template indentation is collapsed at render ([server/html.ts](server/html.ts)) and the per-row icons come from one SVG sprite.
+
+### Platform features doing the work
+
+| Feature                                    | How                                                                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dialog routes (`/style`, `/config/:list`…) | The parent page rendered with an open `<dialog>`. Without JS it's a non-modal `dialog[open]` styled like the modal; base.ts upgrades it with `showModal()`. Close buttons are invoker commands (`command="close"`). |
+| Edit item, colours                         | A `<dialog>` per row opened by an **invoker command** (`commandfor` + `command="show-modal"`): no script.                                                                                                           |
+| Tag picker                                 | `<input list>` + one shared `<datalist>` of the list's tags, in place of the custom combobox. The server folds the tag into the value (`[tag]`, [lib/item-tag.ts](lib/item-tag.ts)).                                |
+| Reorder                                    | ↑/↓ submit buttons per row (the no-script and keyboard route). With JS, the grip is native HTML drag and drop ([reorder.ts](client/lib/reorder.ts)); the buttons stay visible on touch screens.                     |
+| Swipe to delete                            | Each row is a horizontal `scroll-snap` container onto a Delete submit button (coarse pointers only). The browser does the gesture, momentum and snapping.                                                           |
+| Notifications                              | Server-rendered into a `role="status"` panel. Successes clear themselves with a CSS animation, paused while the panel has focus. Script-made ones (live updates, offline) use the same markup.                      |
+| Page-to-page animation                     | Cross-document view transitions (`@view-transition { navigation: auto }`). Rows have their own `view-transition-name`, so a reorder slides them into place even after a full page load.                             |
+| Scroll shadows                             | `scroll-state()` container queries, with a **scroll-driven animation** fallback (Safari, Firefox) instead of the React app's script.                                                                                |
+| Light/dark                                 | A form post setting a cookie; base.ts applies it in place so it also works offline. All colours are `light-dark()`.                                                                                                 |
+| Open link                                  | Found by linkify on the server; no script ships for it.                                                                                                                                                             |
+| CSRF                                       | Non-GET requests must be `Sec-Fetch-Site: same-origin` (or `none`), so no tokens in forms and no allow-list of origins behind the TLS-terminating proxy.                                                            |
+
+### The scripts
+
+- **No-reload saves** ([submit.ts](client/lib/submit.ts)): forms marked `data-enhance` post with `fetch`. The server answers exactly as it would without a script (a `303`), fetch follows it, and the returned page's `data-swap` regions replace the current ones ([swap.ts](client/lib/swap.ts)) inside a view transition. Focus, scroll and half-typed input stay put. Posts go one at a time, in order. Deletes and adds show at once (a hidden row, a "saving…" placeholder) until the server's page arrives.
+- **Live updates** ([list.ts](client/enhance/list.ts)): an `EventSource` on `/lists/:list/events`. After any change the server publishes to an in-process pub/sub ([server/realtime.ts](server/realtime.ts)); other members' pages re-fetch themselves. The browser no longer loads the Supabase realtime client. One Node process serves the app, so a `Map` is the whole pub/sub; more instances would need a shared channel (Supabase broadcast or Postgres `LISTEN/NOTIFY`) feeding the same `publish()`.
+- **Offline**: see below.
+
+### List mutations: one row per post
+
+`POST /lists/:list/items` takes `op=add|edit|delete|recreate|move|group|palette` and the item it acts on. Each op writes only the rows it names, with direct PostgREST writes under the existing RLS policies. The `mutate_list` RPC is no longer used.
+
+- The RPC soft-deleted whatever was missing from a submitted copy of the whole list. That's why the React app needed a three-way rebase before replaying offline edits, and it would let two people adding at the same moment delete each other's items if the server fed it a freshly read list.
+- Adds carry an id made with the form (a hidden field, renewed by submit.ts), inserted with "ignore duplicates", so posting the same add twice is a no-op.
+- "Recreate last deleted" lives in the URL: a delete redirects to `?deleted=<id>`, which shows the button. A reorder writes only the rows whose position changed; concurrent reorders are last-write-wins per row.
+- Accepted race: an op reads the list, then writes. Two moves at the same instant can interleave; nothing is ever deleted by it.
+
+### Offline
+
+- **Pages**: the service worker ([client/sw.ts](client/sw.ts)) keeps the last good copy of home and each list (network first), plus the hashed assets, and serves `offline.html` for anything else.
+- **Changes**: a list or home post that can't reach the server is kept in IndexedDB ([queue.ts](client/lib/queue.ts)) and replayed in order. With a script the page queues it (whether or not the worker is in control yet), shows the change locally and replays it when the connection returns, retrying with backoff. Without a script the worker queues the post and answers with a short "saved on this device" page. Background Sync replays when no page is open. A replay that meets a lapsed session stops, keeps the queue, and sends the page to sign in.
+- Each queued op is keyed by id and applied to the server's current state, so replays need no rebase and can't clobber other members' changes.
+- Sign-out sends `Clear-Site-Data: "cache", "storage"`, dropping the per-user page cache and queue.
+
+### Styles
+
+`client/styles/app.css` is the React app's Vanilla Extract styles, compiled once with readable names (`item-row`, `--palette-primary`) and checked in as plain CSS; `html-first.css` adds what this version does differently. App styles are still `[data-app-style]` blocks; list palettes are an inline `<style>` setting `--palette-primary`/`--palette-secondary`.
+
+### Known gaps and risks
+
+- **Touch drag and drop is unverified.** It relies on the browser's long-press drag support (iOS Safari 15+, recent Chrome Android), which Playwright can't emulate. The ↑/↓ buttons stay visible on touch screens as the dependable route. Try it on real devices.
+- **No Sentry or performance beacons.** The React app's client and server monitoring isn't ported; `/perf` is gone.
+- **Edits show no "saving…" or "edited" marker**, and there are no FLIP spring animations: rows move with view transitions instead.
+- **Offline edits of a queued add** wait for the sync (the queued row has no edit dialog yet).
+- **The Docker image hasn't been built locally** (no daemon here). CI's deploy job is unchanged apart from paths; build args become runtime env in the image.
+
+## React app architecture (`main`, kept for comparison)
+
+Much of what follows describes the React Router app this spike replaces (routes, components, the offline store, Sentry). It's left in place to compare the two approaches; the section above is what this branch does.
 
 ### Routing Structure
 
@@ -449,6 +522,8 @@ the container with a Traefik reverse proxy that terminates TLS and forwards
 plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
 ### Forwarded-proto / action origin validation
+
+_On this branch:_ the server checks `Sec-Fetch-Site` instead (see "Platform features doing the work"), which doesn't depend on the scheme or host the proxy forwards, so none of the following applies. Kept for comparison with `main`:
 
 React Router 8.3.1 added an action-origin CSRF check: a POST to a UI route is
 rejected (sanitised `400`) unless its `Origin` header matches the origin of

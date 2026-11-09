@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# ---- Build stage ----
+# ---- Build stage: the browser assets (one stylesheet, a few small scripts,
+# the service worker). The server is plain TypeScript run by Node, so there's
+# nothing of it to build.
 FROM node:24-alpine AS builder
 
 RUN corepack enable
@@ -11,19 +13,6 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-
-# Vite bakes these into the client bundle at build time
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-# Without this the client Sentry.init() gets an undefined DSN and silently
-# does nothing. The server reads VITE_SENTRY_DSN at runtime instead (see
-# instrument.server.mjs), so it must also be set as a runtime variable.
-ARG VITE_SENTRY_DSN
-ARG VITE_GIT_HASH
-ARG VITE_GIT_DATE
-ARG VITE_PR_NUMBER
-ARG VITE_BRANCH
-
 RUN pnpm build
 
 # ---- Runtime stage ----
@@ -37,9 +26,27 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/instrument.server.mjs ./instrument.server.mjs
+COPY server ./server
+COPY lib ./lib
+COPY --from=builder /app/dist ./dist
 
+# The server reads these at runtime. CI still passes them as build args (as
+# it did when they were baked into the React client bundle), so they become
+# the image's defaults; a runtime env var of the same name wins. The
+# Supabase key is the publishable one, safe to keep in an image.
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+ARG VITE_GIT_HASH
+ARG VITE_GIT_DATE
+ARG VITE_PR_NUMBER
+ARG VITE_BRANCH
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY \
+    VITE_GIT_HASH=$VITE_GIT_HASH \
+    VITE_GIT_DATE=$VITE_GIT_DATE \
+    VITE_PR_NUMBER=$VITE_PR_NUMBER \
+    VITE_BRANCH=$VITE_BRANCH \
+    NODE_ENV=production
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["node", "server/index.ts"]

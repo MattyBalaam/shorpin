@@ -4,7 +4,7 @@ Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Stack
 
-React Router v7 SSR · TypeScript · Vanilla Extract · Playwright · pnpm · Supabase
+HTML-first spike: Hono server rendering HTML, framework-free browser scripts, plain CSS (see README "HTML-first architecture") · TypeScript · Playwright · pnpm · Supabase
 
 ## Communication
 

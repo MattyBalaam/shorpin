@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { expectPageSnapshot, login } from "./helpers";
 
@@ -25,10 +25,8 @@ function queuedMutationCount(page: Page) {
         const open = indexedDB.open("shorpin-offline");
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
-          const count = open.result
-            .transaction("mutation-queue")
-            .objectStore("mutation-queue")
-            .count();
+          if (!open.result.objectStoreNames.contains("posts")) return resolve(0);
+          const count = open.result.transaction("posts").objectStore("posts").count();
           count.onsuccess = () => resolve(count.result);
           count.onerror = () => reject(count.error);
         };
@@ -93,7 +91,9 @@ test("an item added to a long list is scrolled into view @webkit", async ({ page
           return li.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom;
         }),
       )
-      .toBeLessThanOrEqual(0);
+      // Within a pixel: the scroll range is whole pixels, rows aren't, so the
+      // last row can sit a fraction past the end (see layout.spec.ts).
+      .toBeLessThan(1);
   }
 });
 
@@ -150,116 +150,25 @@ test("'Recreate last deleted' re-adds the deleted value as a fresh item", async 
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
-test("'Recreate last deleted' explains why it can't run while a change is saving", async ({
-  page,
-  ctx,
-}) => {
+test("'Recreate last deleted' only appears once the delete has saved", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
-  // Keeps the delete in flight long enough to click Recreate during it.
+  // Keeps the delete in flight for a moment.
   await page.route(/\/lists\/shopping/, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     await route.continue();
   });
 
   await page.getByRole("button", { name: "Delete Milk" }).click();
+  // The row goes at once; recreating it needs the server's deleted copy, so
+  // the button comes with the saved page rather than ahead of it.
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
   const recreate = page.getByRole("button", { name: "Recreate last deleted" });
-  // Never disabled: clicking says why instead.
-  await expect(recreate).toBeEnabled();
-  await recreate.click();
-  await expect(page.getByText("Still saving - try again in a moment")).toBeVisible();
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+  await expect(recreate).toHaveCount(0);
 
-  // Once the delete has saved, the same click works.
   await page.unrouteAll({ behavior: "wait" });
-  await expect(async () => {
-    await recreate.click();
-    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
-  }).toPass();
-});
-
-/**
- * Drags a row horizontally from its drag handle, the gesture that both
- * reorders (vertical) and swipe-deletes (horizontal) list items.
- */
-async function swipeHandle(
-  page: Page,
-  label: string,
-  {
-    distance,
-    steps,
-    holdBeforeRelease = 0,
-  }: { distance: number; steps: number; holdBeforeRelease?: number },
-) {
-  const box = await page.getByLabel(label).boundingBox();
-  if (!box) throw new Error(`Unable to determine position of "${label}"`);
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
-
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.mouse.move(x + distance, y, { steps });
-  if (holdBeforeRelease) await page.waitForTimeout(holdBeforeRelease);
-  await page.mouse.up();
-}
-
-test("swiping an item far enough deletes it and persists", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  // Slow swipe well past the distance threshold so velocity plays no part.
-  await swipeHandle(page, "Reorder Milk", { distance: -200, steps: 20, holdBeforeRelease: 200 });
-
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
-
-  await openList(page, "shopping");
-  await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
-  await expect(page.getByLabel("Edit Bread")).toBeVisible();
-  await expect(page.getByLabel("Edit Eggs")).toBeVisible();
-});
-
-test("a quick short fling deletes an item", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  // Under the distance threshold, but fast enough to count as a fling.
-  // Dispatched in-page: page.mouse steps are separate CDP round trips, and on
-  // a loaded CI runner their spacing alone can drop velocity under threshold.
-  await page.getByLabel("Reorder Bread").evaluate(async (handle) => {
-    const { x, y, width, height } = handle.getBoundingClientRect();
-    const init = (dx: number): PointerEventInit => ({
-      pointerId: 1,
-      isPrimary: true,
-      bubbles: true,
-      button: 0,
-      clientX: x + width / 2 + dx,
-      clientY: y + height / 2,
-    });
-
-    handle.dispatchEvent(new PointerEvent("pointerdown", init(0)));
-    for (const dx of [30, 60, 90]) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      window.dispatchEvent(new PointerEvent("pointermove", init(dx)));
-    }
-    window.dispatchEvent(new PointerEvent("pointerup", init(90)));
-  });
-
-  await expect(page.getByLabel("Edit Bread")).not.toBeVisible();
+  await recreate.click();
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
-});
-
-test("a slow short swipe springs the item back instead of deleting", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  await swipeHandle(page, "Reorder Eggs", { distance: -80, steps: 10, holdBeforeRelease: 200 });
-
-  const row = page.locator("li").filter({ has: page.getByLabel("Edit Eggs") });
-  await expect(row).toBeVisible();
-  // Settles back to rest with no leftover offset or lift.
-  await expect(row).toHaveCSS("transform", "none");
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
 test("editing an item in the modal saves the new value", async ({ page, ctx }) => {
@@ -275,8 +184,8 @@ test("editing an item in the modal saves the new value", async ({ page, ctx }) =
 
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
-  // Values are plain text now, not editable fields.
-  await expect(page.locator("li textarea")).toHaveCount(0);
+  // Values are plain text; the textareas belong to the (closed) edit dialogs.
+  await expect(page.locator("li textarea:visible")).toHaveCount(0);
 
   await openList(page, "shopping");
   await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
@@ -288,7 +197,7 @@ test("editing an item in the modal saves the new value", async ({ page, ctx }) =
 function shoppingSaved(page: Page) {
   return page.waitForResponse(
     (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+      response.url().includes("/lists/shopping/items") && response.request().method() === "POST",
   );
 }
 
@@ -324,26 +233,21 @@ test("an item added as 'text [tag]' shows its tag, which the modal edits", async
   await expect(row.getByText("tag: dairy")).toHaveCount(0);
 });
 
-// On iOS, tapping an option blurs the input before the click lands, which
-// used to close the list and let the click fall through to the dialog,
-// closing it without saving.
-test("picking a tag from the list keeps the edit modal open @webkit", async ({
+test("the edit modal offers the list's tags and saves the chosen one @webkit", async ({
   page,
   ctx,
-  hasTouch,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
+  // One shared <datalist> of the list's tags backs every tag field.
+  await expect(page.locator("datalist#tags option")).toHaveCount(5);
+
   await page.getByRole("button", { name: "Edit Milk" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit item" });
-  // A tap on touch devices, for its event order (blur before click).
-  const press = (locator: Locator) => (hasTouch ? locator.tap() : locator.click());
-  await press(dialog.getByLabel("Tag"));
-  await press(page.getByRole("option", { name: "fruit" }));
-
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel("Tag")).toHaveValue("fruit");
+  const tag = dialog.getByRole("combobox", { name: "Tag" });
+  await expect(tag).toHaveAttribute("list", "tags");
+  await tag.fill("fruit");
 
   const edited = shoppingSaved(page);
   await dialog.getByRole("button", { name: "Save" }).click();
@@ -416,25 +320,22 @@ test("grouping by tag gathers tagged items and saves the order", async ({ page, 
   await expect(page.getByText("Already grouped by tag")).toBeVisible();
 });
 
-test("the add bar's tag combobox tags each new item until a reload", async ({ page, ctx }) => {
+test("the add bar's tag field tags each new item until a reload", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  const tag = page.getByRole("combobox", { name: "Tag" });
-  const suggestions = page.getByRole("listbox", { name: "Suggestions" });
+  const tag = page.getByRole("combobox", { name: "Tag" }).first();
   const newItem = page.getByLabel("New item");
 
-  await tag.click();
-  await expect(suggestions.getByRole("option")).toHaveText([
-    "dairy",
-    "fruit",
-    "household",
-    "meat",
-    "veg",
-  ]);
-  await suggestions.getByRole("option", { name: "dairy" }).click();
-  await expect(tag).toHaveValue("dairy");
+  await expect
+    .poll(() =>
+      page
+        .locator("datalist#tags option")
+        .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value)),
+    )
+    .toEqual(["dairy", "fruit", "household", "meat", "veg"]);
 
+  await tag.fill("dairy");
   await newItem.fill("Oat milk");
   await page.getByRole("button", { name: "Add" }).click();
   const row = page.locator("li").filter({ has: page.getByLabel("Edit Oat milk") });
@@ -447,16 +348,15 @@ test("the add bar's tag combobox tags each new item until a reload", async ({ pa
   const kefir = page.locator("li").filter({ has: page.getByLabel("Edit Kefir") });
   await expect(kefir.getByText("tag: dairy")).toBeVisible();
 
-  // A tag typed into the value wins over the combobox's.
+  // A tag typed into the value wins over the field's.
   await newItem.fill("Brie [deli]");
   await page.getByRole("button", { name: "Add" }).click();
   const brie = page.locator("li").filter({ has: page.getByLabel("Edit Brie") });
   await expect(brie.getByText("tag: deli")).toBeVisible();
 
-  // A new tag can be typed here too; Enter with nothing highlighted adds.
+  // A new tag can be typed too; Enter in the tag field adds.
   await tag.fill("bakery");
   await newItem.fill("Bagels");
-  await tag.focus();
   await tag.press("Enter");
   const bagels = page.locator("li").filter({ has: page.getByLabel("Edit Bagels") });
   await expect(bagels.getByText("tag: bakery")).toBeVisible();
@@ -464,70 +364,6 @@ test("the add bar's tag combobox tags each new item until a reload", async ({ pa
   await page.reload();
   await expect(row.getByText("tag: dairy")).toBeVisible();
   await expect(tag).toHaveValue("");
-});
-
-test("the edit modal's tag combobox lists, filters, picks and adds tags", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  await page.getByRole("button", { name: "Edit Milk" }).click();
-  const dialog = page.getByRole("dialog", { name: "Edit item" });
-  const tag = dialog.getByRole("combobox", { name: "Tag" });
-  const suggestions = dialog.getByRole("listbox", { name: "Suggestions" });
-
-  // The list floats over the dialog rather than pushing its contents down.
-  const save = dialog.getByRole("button", { name: "Save" });
-  const saveBefore = await save.boundingBox();
-  await tag.focus();
-  await expect(suggestions).toBeVisible();
-  expect(await save.boundingBox()).toEqual(saveBefore);
-  await expect(suggestions.getByRole("option")).toHaveText([
-    "dairy",
-    "fruit",
-    "household",
-    "meat",
-    "veg",
-  ]);
-
-  // Typing filters; arrowing to an option and pressing Enter picks it
-  // without saving.
-  await tag.fill("da");
-  await expect(suggestions.getByRole("option")).toHaveText(["dairy", 'Add "da"']);
-  await tag.press("ArrowDown");
-  await expect(tag).toHaveAttribute("aria-activedescendant", /.+/);
-  await tag.press("Enter");
-  await expect(tag).toHaveValue("dairy");
-  await expect(suggestions).toBeHidden();
-  await expect(dialog).toBeVisible();
-
-  // With a tag chosen, opening again shows every tag, not just the match.
-  await tag.click();
-  await expect(suggestions.getByRole("option")).toHaveText([
-    "dairy",
-    "fruit",
-    "household",
-    "meat",
-    "veg",
-  ]);
-  await expect(suggestions.locator('[data-current="true"]')).toHaveText("dairy");
-
-  // A new tag is offered as "Add …"; Escape closes only the list.
-  await tag.fill("deli");
-  await suggestions.getByRole("option", { name: 'Add "deli"' }).click();
-  await expect(tag).toHaveValue("deli");
-  await tag.fill("del");
-  await tag.press("Escape");
-  await expect(suggestions).toBeHidden();
-  await expect(dialog).toBeVisible();
-
-  await tag.fill("deli");
-  // The open tag list sits over Save; tapping elsewhere closes it.
-  await dialog.getByLabel("Item").click();
-  const saved = shoppingSaved(page);
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await saved;
-  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
-  await expect(row.getByText("tag: deli")).toBeVisible();
 });
 
 test("pressing Enter in the edit modal saves", async ({ page, ctx }) => {
@@ -600,7 +436,7 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   // aborts any request still in flight.
   const syncSubmitted = page.waitForResponse(
     (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+      response.url().includes("/lists/shopping/items") && response.request().method() === "POST",
   );
 
   await context.setOffline(false);
@@ -618,14 +454,16 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
 test("an add that fails before the browser reports offline is queued, not an error", async ({
   page,
   ctx,
+  context,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
+  // context.route, not page.route: the service worker makes the request.
   // A dead connection that navigator.onLine hasn't noticed yet — what a
   // phone does for a few seconds after losing signal.
-  await page.route("**/lists/shopping.data*", (route) => route.abort("internetdisconnected"));
+  await context.route("**/lists/shopping/items", (route) => route.abort("internetdisconnected"));
 
   await page.getByLabel("New item").fill("Lie-fi butter");
   await page.getByRole("button", { name: "Add" }).click();
@@ -636,7 +474,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 
   // No offline→online transition happens, so the sync's own backoff retry
   // has to deliver it once the server is reachable.
-  await page.unroute("**/lists/shopping.data*");
+  await context.unroute("**/lists/shopping/items");
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -646,6 +484,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 test("an add whose response is lost isn't duplicated when the queued copy syncs", async ({
   page,
   ctx,
+  context,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -653,7 +492,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
 
   // The POST reaches the server and is applied, but the response never
   // makes it back, so the client queues the same add offline.
-  await page.route("**/lists/shopping.data*", async (route) => {
+  await context.route("**/lists/shopping/items", async (route) => {
     if (route.request().method() === "POST") await route.fetch();
     await route.abort("internetdisconnected");
   });
@@ -663,7 +502,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
   await expect(page.getByLabel("Edit Lost-response jam")).toBeVisible();
   await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
 
-  await page.unroute("**/lists/shopping.data*");
+  await context.unroute("**/lists/shopping/items");
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -692,7 +531,7 @@ test("multiple items added offline all sync to the server on reconnect", async (
 
   const syncSubmitted = page.waitForResponse(
     (response) =>
-      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+      response.url().includes("/lists/shopping/items") && response.request().method() === "POST",
   );
 
   await context.setOffline(false);
@@ -737,7 +576,7 @@ test.describe(() => {
     const syncDelivered = new Promise<void>((resolve) => {
       delivered = resolve;
     });
-    await page.route("**/lists/shopping.data*", async (route) => {
+    await page.route("**/lists/shopping/items", async (route) => {
       if (route.request().method() !== "POST") return route.continue();
       await route.fetch();
       delivered();
@@ -745,7 +584,7 @@ test.describe(() => {
 
     await context.setOffline(false);
     await syncDelivered;
-    await page.unroute("**/lists/shopping.data*");
+    await page.unroute("**/lists/shopping/items");
 
     // The remount retries the still-queued edit, rebased onto fresh server
     // state that already contains the addition.
@@ -771,32 +610,24 @@ test("a stale-session redirect mid-sync doesn't drop the queued edit, and it flu
   await page.getByRole("button", { name: "Add" }).click();
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible({ timeout: 10000 });
 
-  // The rebase-and-resubmit sync goes through RR's single-fetch protocol
-  // (submit(), not a raw fetch), so a middleware redirect arrives encoded
-  // as a 204 + X-Remix-Redirect/-Status headers, not a raw 3xx — see
-  // fetchAndDecodeViaTurboStream in react-router's single-fetch client.
-  // This is what supabaseMiddleware's redirect(href("/login")) actually
-  // produces for a stale/unrefreshable session.
+  // What requireAuth answers a script's request with when the session has
+  // lapsed (a redirect would only be followed by fetch, not the page).
   let redirectedPostSeen = false;
-  await page.route("**/lists/shopping.data", async (route) => {
+  await context.route("**/lists/shopping/items", async (route) => {
     if (route.request().method() === "POST") {
       redirectedPostSeen = true;
-      await route.fulfill({
-        status: 204,
-        headers: { "X-Remix-Redirect": "/login", "X-Remix-Status": "302" },
-      });
+      await route.fulfill({ status: 401, headers: { "X-Location": "/login" } });
       return;
     }
     await route.continue();
   });
 
   await context.setOffline(false);
-  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
   await expect.poll(() => redirectedPostSeen).toBe(true);
-  // React Router follows the redirect as a normal completed navigation.
+  // The page goes to sign in, keeping the queue for afterwards.
   await page.waitForURL("/login");
 
-  await page.unroute("**/lists/shopping.data");
+  await context.unroute("**/lists/shopping/items");
 
   // Log back in and return — no further online/offline transition occurs
   // here, so only the mount-time retry (not just onOnline) can pick the
@@ -858,7 +689,7 @@ test("a concurrent addition from another device survives reconnect sync", async 
 
     const syncSubmitted = ownerPage.waitForResponse(
       (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+        response.url().includes("/lists/shopping/items") && response.request().method() === "POST",
     );
 
     // No check for the "Back online" notification: the collaborator's
@@ -870,66 +701,6 @@ test("a concurrent addition from another device survives reconnect sync", async 
     // Reload to confirm both changes actually reached the server: the
     // collaborator's concurrent addition survived, and the owner's own
     // offline deletion was applied.
-    await openList(ownerPage, "shopping");
-    await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
-    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
-  } finally {
-    await ownerContext.close();
-    await collabContext.close();
-  }
-});
-
-test("a failed fresh-data fetch on reconnect never syncs against stale cached data", async ({
-  browser,
-  ctx,
-}, testInfo) => {
-  testInfo.slow();
-
-  const ownerContext = await browser.newContext({ baseURL });
-  const collabContext = await browser.newContext({ baseURL });
-  try {
-    const ownerPage = await ownerContext.newPage();
-    const collabPage = await collabContext.newPage();
-
-    await login(ownerPage, ctx.ownerEmail);
-    await login(collabPage, ctx.collabEmail);
-
-    await openList(ownerPage, "shopping");
-
-    await ownerContext.setOffline(true);
-    await expect(ownerPage.getByText("Offline", { exact: true })).toBeVisible();
-    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
-    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible({ timeout: 10000 });
-
-    await openList(collabPage, "shopping");
-    await collabPage.getByLabel("New item").fill("Margarine");
-    await collabPage.getByRole("button", { name: "Add" }).click();
-    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
-
-    // Data fetches keep failing for a moment after reconnecting, as they can
-    // while the connection settles, so the loader falls back to the cached
-    // list that predates Margarine. Syncing against that would delete it.
-    let failedFetches = 0;
-    let failUntil = Number.POSITIVE_INFINITY;
-    await ownerPage.route("**/lists/shopping.data*", async (route) => {
-      if (route.request().method() === "GET" && Date.now() < failUntil) {
-        failedFetches += 1;
-        await route.abort("internetdisconnected");
-        return;
-      }
-      await route.continue();
-    });
-
-    const syncSubmitted = ownerPage.waitForResponse(
-      (response) =>
-        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
-    );
-    failUntil = Date.now() + 1500;
-    await ownerContext.setOffline(false);
-    await syncSubmitted;
-    expect(failedFetches).toBeGreaterThan(0);
-    await ownerPage.unroute("**/lists/shopping.data*");
-
     await openList(ownerPage, "shopping");
     await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
     await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();

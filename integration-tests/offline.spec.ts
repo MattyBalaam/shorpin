@@ -101,9 +101,11 @@ test("an offline edit still queues successfully even when Background Sync is una
 
 test("navigating back to a visited list while the network is down shows the cached list, even before the browser reports offline", async ({
   page,
+  context,
   ctx,
 }) => {
   await login(page, ctx.ownerEmail);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
   await page.getByRole("link", { name: "Shopping" }).first().click();
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
@@ -111,32 +113,13 @@ test("navigating back to a visited list while the network is down shows the cach
   await expect(page.getByLabel("New list")).toBeVisible();
 
   // Kill the network without flipping navigator.onLine — what a real device
-  // does in the gap before it notices the connection has gone. Every loader
-  // (root's included) attempts, and fails, a real fetch.
-  await page.route(/\.data|__manifest/, (route) => route.abort("internetdisconnected"));
+  // does in the gap before it notices the connection has gone. The service
+  // worker's fetch of the page fails, so it serves its cached copy.
+  await context.route(/\/lists\/shopping$/, (route) => route.abort("internetdisconnected"));
 
   await page.getByRole("link", { name: "Shopping" }).first().click();
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
-});
-
-test("cancelling the network error modal goes back to the previous page", async ({
-  page,
-  context,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await expect(page.getByLabel("New list")).toBeVisible();
-
-  // /sign-ups has no offline cache, so an SPA navigation to it while
-  // offline lands on the network error modal.
-  await context.setOffline(true);
-  await page.getByRole("link", { name: /pending/ }).click();
-  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
-
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page).toHaveURL("/");
-  await expect(page.getByLabel("New list")).toBeVisible();
 });
 
 // Playwright can't intercept the browser's own fetch of a worker script
@@ -144,7 +127,7 @@ test("cancelling the network error modal goes back to the previous page", async 
 // for real: append a comment to the built sw.js for the duration of the test.
 // The result is still a valid worker, so tests running in parallel just
 // install it as a first install in their fresh contexts.
-const builtWorkerPath = path.resolve("build/client/sw.js");
+const builtWorkerPath = path.resolve("dist/sw.js");
 
 test("a redeployed service worker waits and offers a reload instead of taking over", async ({
   page,

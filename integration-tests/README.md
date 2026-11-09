@@ -56,13 +56,13 @@ Each worker's seed contains:
 
 ### Hydration gate
 
-`login()` in `integration-tests/helpers.ts` waits for the app to hydrate at `/` before returning. The app writes `data-hydrated-path="/"` to `<html>` inside a `useEffect` (client-only) after every route render. The helper asserts that attribute is present within 300ms:
+`login()` in `integration-tests/helpers.ts` waits for the page to be enhanced at `/` before returning. On this branch the server renders `data-path` on `<html>`, and [base.ts](../client/enhance/base.ts) copies it to `data-hydrated-path` once every module script has run and any incoming view transition has finished (the page takes no input while one plays). The helper asserts that attribute is present within 300ms:
 
 ```ts
 await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached({ timeout: 300 });
 ```
 
-If this fails it means React has not taken over the page within 300ms of navigation — likely a slow-hydration regression — and the test fails with a clear Playwright assertion message rather than a confusing URL mismatch later.
+If this fails, the enhancement scripts haven't run within 300ms of navigation, and the test fails with a clear Playwright assertion message rather than a confusing failure later. The `no-js` project (JavaScript off) uses its own sign-in helper instead, since nothing sets the attribute there.
 
 ### Debug logging
 

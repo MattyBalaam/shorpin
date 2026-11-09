@@ -20,9 +20,6 @@ async function openList(page: Page, slug: string) {
   await expect(page.locator(`html[data-hydrated-path="${listPath(slug)}"]`)).toBeAttached();
 }
 
-// Comfortably past the hook's LONG_PRESS_MS, which touch reorders require.
-const LONG_PRESS = 500;
-
 /** Touch-drags from the centre of the element labelled `label`. */
 async function touchDrag(
   page: Page,
@@ -63,176 +60,62 @@ async function touchDrag(
   await cdp.detach();
 }
 
-async function centreDistance(page: Page, fromLabel: string, toLabel: string) {
-  const from = await page.getByLabel(fromLabel).boundingBox();
-  const to = await page.getByLabel(toLabel).boundingBox();
-  if (!from || !to) throw new Error("Unable to determine drag handle positions");
-  return to.y + to.height / 2 - (from.y + from.height / 2);
-}
+const row = (page: Page, item: string) =>
+  page.locator("li").filter({ has: page.getByLabel(`Edit ${item}`) });
 
-// The seeded Shopping list has more items; these tests only move the first three.
-const itemOrder = (page: Page) =>
-  page
-    .locator('li input[type="hidden"][name$=".value"]')
-    .evaluateAll((elements) =>
-      elements.slice(0, 3).map((element) => (element as HTMLInputElement).value),
-    );
-
-// Reorders persist on release; wait for that POST before reloading, otherwise
-// the reload can abort it.
-const reorderSaved = (page: Page) =>
-  page.waitForResponse((response) => response.request().method() === "POST");
-
-const listOrder = (page: Page) =>
-  page
-    .locator('li a[href^="/lists/"]')
-    .evaluateAll((elements) =>
-      elements.map((element) => element.textContent?.trim() ?? "").filter(Boolean),
-    );
-
-test("swiping an item far enough deletes it and persists", async ({ page, ctx }) => {
+// Swipe-to-delete is the browser's own sideways scrolling, snapped: each
+// row scrolls onto a Delete button. No script is involved.
+test("swiping a row reveals Delete, which deletes it and persists", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  await touchDrag(page, "Reorder Milk", {
-    dx: -200,
-    steps: 20,
-    stepDelay: 10,
-    holdBeforeRelease: 200,
-  });
+  const milk = row(page, "Milk");
+  await touchDrag(page, "Edit Milk", { dx: -200, steps: 10, stepDelay: 16 });
+  const scroller = milk.locator(".item-container");
+  await expect.poll(() => scroller.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
 
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+  const reveal = milk.locator(".item-swipe-delete");
+  await expect(reveal).toBeInViewport();
+  const box = await reveal.boundingBox();
+  if (!box) throw new Error("Delete not revealed");
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
-
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
-  await expect(page.getByLabel("Edit Bread")).toBeVisible();
 });
 
-test("a quick short fling deletes an item", async ({ page, ctx }) => {
+test("a short swipe snaps the row back", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  await touchDrag(page, "Reorder Bread", { dx: 90, steps: 3 });
-
-  await expect(page.getByLabel("Edit Bread")).not.toBeVisible();
-  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  // Slowly, and held before letting go: a quick flick carries on to Delete.
+  await touchDrag(page, "Edit Eggs", { dx: -20, steps: 10, stepDelay: 50, holdBeforeRelease: 300 });
+  await expect
+    .poll(() =>
+      row(page, "Eggs")
+        .locator(".item-container")
+        .evaluate((element) => element.scrollLeft),
+    )
+    .toBe(0);
+  await expect(page.getByLabel("Edit Eggs")).toBeVisible();
 });
 
-test("a slow short swipe springs the item back instead of deleting", async ({ page, ctx }) => {
+// Native drag and drop on touch depends on the browser's long-press support,
+// which Chromium's touch emulation can't drive; on touch screens the ↑/↓
+// buttons stay visible as the dependable route.
+test("the move buttons reorder items on a touch screen", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  await touchDrag(page, "Reorder Eggs", {
-    dx: -80,
-    steps: 10,
-    stepDelay: 10,
-    holdBeforeRelease: 200,
-  });
-
-  const row = page.locator("li").filter({ has: page.getByLabel("Edit Eggs") });
-  await expect(row).toBeVisible();
-  await expect(row).toHaveCSS("transform", "none");
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
-});
-
-test("vertical touch drag reorders list items without scrolling the page", async ({
-  page,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-  await expect.poll(() => itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
-
-  const scrollBefore = await page.evaluate(() => window.scrollY);
-  const distance = await centreDistance(page, "Reorder Milk", "Reorder Eggs");
-  const saved = reorderSaved(page);
-  await touchDrag(page, "Reorder Milk", {
-    dy: distance + 10,
-    steps: 20,
-    stepDelay: 10,
-    holdBeforeMove: LONG_PRESS,
-  });
-  await saved;
-
-  await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Eggs", "Milk"]);
-  // Once lifted, the hook cancels touchmove — the browser must not pan the page.
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+  const first = () => page.locator(".item-edit-button").first();
+  await expect(first()).toHaveAccessibleName("Edit Milk");
+  await page.getByRole("button", { name: "Move Bread up" }).tap();
+  await expect(first()).toHaveAccessibleName("Edit Bread");
 
   await openList(page, "shopping");
-  await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Eggs", "Milk"]);
-});
-
-test("vertical touch drag reorders lists on home", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await expect.poll(() => listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
-
-  const distance = await centreDistance(page, "Reorder Owner Empty", "Reorder Shopping");
-  const saved = reorderSaved(page);
-  await touchDrag(page, "Reorder Owner Empty", {
-    dy: distance - 10,
-    steps: 20,
-    stepDelay: 10,
-    holdBeforeMove: LONG_PRESS,
-  });
-  await saved;
-
-  await expect.poll(() => listOrder(page)).toEqual(["Owner Empty", "Shopping"]);
-
-  await page.reload();
-  await expect.poll(() => listOrder(page)).toEqual(["Owner Empty", "Shopping"]);
-});
-
-test("a vertical touch drag without a long-press doesn't reorder", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-  await expect.poll(() => itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
-
-  const distance = await centreDistance(page, "Reorder Milk", "Reorder Eggs");
-  await touchDrag(page, "Reorder Milk", { dy: distance + 10, steps: 20, stepDelay: 10 });
-
-  // The handle allows vertical panning, so this is a scroll, not a reorder.
-  await page.waitForTimeout(300);
-  expect(await itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
-});
-
-test("a home touch drag without a long-press doesn't reorder, even if nothing scrolls", async ({
-  page,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await expect.poll(() => listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
-
-  // Some browsers (e.g. iOS Safari) only cancel the pointer when something
-  // actually scrolls, and the short home list doesn't. Stop Chromium claiming
-  // the pan so the hook alone has to enforce the long-press.
-  await page.addStyleTag({ content: '[aria-label^="Reorder"] { touch-action: none !important; }' });
-
-  const distance = await centreDistance(page, "Reorder Owner Empty", "Reorder Shopping");
-  await touchDrag(page, "Reorder Owner Empty", { dy: distance - 10, steps: 20, stepDelay: 10 });
-
-  await page.waitForTimeout(300);
-  expect(await listOrder(page)).toEqual(["Shopping", "Owner Empty"]);
-});
-
-test("a swipe that drifts a full row vertically reorders instead of deleting", async ({
-  page,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-  await expect.poll(() => itemOrder(page)).toEqual(["Milk", "Bread", "Eggs"]);
-
-  const distance = await centreDistance(page, "Reorder Milk", "Reorder Bread");
-  const saved = reorderSaved(page);
-  // Mostly horizontal, so it starts as a swipe, but it also travels a row and a
-  // bit downwards — past the far swipe-delete distance.
-  await touchDrag(page, "Reorder Milk", { dx: -200, dy: distance + 10, steps: 20, stepDelay: 10 });
-  await saved;
-
-  await expect(page.getByLabel("Edit Milk")).toBeVisible();
-  await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Milk", "Eggs"]);
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
+  await expect(first()).toHaveAccessibleName("Edit Bread");
 });
 
 test("tapping the edge of the edit button opens the editor, not a drag", async ({ page, ctx }) => {

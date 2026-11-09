@@ -54,6 +54,17 @@ export async function login(page: Page, email: string) {
   // Home has then shown (and spent) the "Welcome back!" flash, so it can't
   // open the notification panel on whatever page the test goes to next.
   await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached();
+  // Clear it, as a user would, rather than let it collapse itself 5s in and
+  // shift the rows under a test that's mid-drag or mid-screenshot.
+  await page
+    .getByRole("region", { name: "Notifications" })
+    .getByRole("button", { name: "Clear" })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.querySelector<HTMLElement>("#notifications")?.offsetHeight),
+    )
+    .toBe(0);
 }
 
 /**
@@ -115,5 +126,11 @@ export async function expectPageSnapshot(
   const { pathname } = new URL(page.url());
   await expect(page.locator(`html[data-hydrated-path="${pathname}"]`)).toBeAttached();
   await page.evaluate(() => document.fonts.ready);
+  // Wherever the last click left it, the pointer would hover a row.
+  await page.mouse.move(0, 0);
+  // Hover state updates on the next frame.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask });
 }

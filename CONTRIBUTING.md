@@ -1,5 +1,7 @@
 # Contributing
 
+> **On `spike/html-first`:** the React-specific sections below describe `main`. Here, views are `html` tagged templates in `server/views` and `server/routes`; browser code is plain TypeScript in `client/`, and must stay optional: every core flow has to keep passing the `no-js` Playwright project. Server code runs through Node's type stripping, so imports name the `.ts` file and TypeScript-only syntax that emits code (enums, namespaces, parameter properties) isn't allowed (`erasableSyntaxOnly`).
+
 ## TypeScript
 
 Apply the guidelines below with pragmatism. A one-off internal helper does not need the same rigour as a public component API. The goal is to catch real mistakes at compile time, not to over-engineer simple code.

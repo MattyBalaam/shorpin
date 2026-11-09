@@ -24,7 +24,7 @@ jobs:
           install-script: pnpm install --frozen-lockfile
           build-script: build
           strip-hash: "-[A-Za-z0-9_-]{8}(?=\\.)"
-          pattern: "./build/client/**/*.{js,css}"
+          pattern: "./dist/**/*.{js,css}"
 
       # Dependabot PRs get a read-only token, so the comment above fails.
       # The job summary needs no permissions and works for every PR.

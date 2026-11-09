@@ -29,8 +29,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm react-router build && pnpm react-router-serve ./build/server/index.js`,
-    url: `http://localhost:${appPort}`,
+    command: "pnpm build && node server/index.ts",
+    url: `http://localhost:${appPort}/health`,
     env: {
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? "",
       VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY:

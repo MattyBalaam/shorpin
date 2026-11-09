@@ -1,7 +1,7 @@
 import { Collection } from "@msw/data";
 import type { InferOutput } from "valibot";
 import * as v from "valibot";
-import type { Tables } from "~/lib/database.types";
+import type { Tables } from "../lib/database.types.ts";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 

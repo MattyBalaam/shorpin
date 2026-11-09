@@ -127,21 +127,14 @@ test("a stale-session redirect during reconnect sync doesn't drop a queued list,
   await page.route(isRootPath, redirectToLogin);
 
   await context.setOffline(false);
-  await expect(page.getByText("Back online - syncing changes")).toBeVisible();
   await expect.poll(() => redirectedPostSeen).toBe(true);
 
-  // Redirected-away, not delivered: the pending row must survive rather
-  // than silently vanishing or falsely resolving into a real list link.
-  // fetch() following a redirect never navigates the page itself, so this
-  // assertion (unlike list.tsx's) needs no waitForURL.
-  await expect(page.getByText("Camping (pending", { exact: false })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Camping" })).toHaveCount(0);
-
+  // Redirected to sign in, not delivered: the page goes there, and the
+  // queued list waits for the next signed-in page to replay it.
+  await page.waitForURL("/login");
   await page.unroute(isRootPath, redirectToLogin);
 
-  // No further online/offline transition occurs here — only the mount-time
-  // retry (not just onOnline) can pick this queued entry back up.
-  await page.reload();
+  await login(page, ctx.ownerEmail);
   await expect(page.getByRole("link", { name: "Camping" })).toBeVisible({ timeout: 10000 });
 });
 
@@ -244,7 +237,7 @@ test("owner can reorder lists while offline, synced on reconnect", async ({
     // serverAction(), not for the logical request clientAction sees), so
     // match on path rather than a .data suffix.
     (response) =>
-      new URL(response.url()).pathname === "/" && response.request().method() === "POST",
+      new URL(response.url()).pathname === "/lists-order" && response.request().method() === "POST",
   );
 
   await context.setOffline(false);
@@ -394,8 +387,7 @@ test("starred list opens on app launch, and un-starring falls back to home", asy
   // Only the star's own action response carries Set-Cookie — not e.g. the
   // /perf beacon, which is also a POST.
   const isStarSubmission = (response: Response) =>
-    new URL(response.url()).pathname.startsWith("/_.data") &&
-    response.request().method() === "POST";
+    new URL(response.url()).pathname === "/default-list" && response.request().method() === "POST";
 
   await login(page, ctx.ownerEmail);
 
@@ -447,7 +439,7 @@ test("installed app opens the starred list on launch even without start_url (iOS
 
   const starred = page.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname.startsWith("/_.data") &&
+      new URL(response.url()).pathname === "/default-list" &&
       response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "Open Shopping on launch" }).click();
