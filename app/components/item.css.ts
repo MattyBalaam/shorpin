@@ -1,16 +1,22 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
+
+const itemBackground = fallbackVar(vars.style.itemBackground, vars.palette.secondary);
+
+// Row icons are a muted shade of the row's ink rather than a fixed grey, so
+// they keep their contrast on every app style's row colour. In `color`,
+// currentColor is the inherited ink.
+const iconInk = "color-mix(in oklab, currentColor 70%, transparent)";
 
 export const itemContainer = style({
   display: "grid",
   gridTemplateColumns: "1fr",
   gridColumn: "1 / -1",
   width: "100%",
-  background: vars.palette.secondary,
+  background: itemBackground,
+  backgroundImage: vars.style.sheen,
+  borderBottom: vars.style.itemDivider,
   selectors: {
-    "&:has(textarea:focus)": {
-      background: vars.palette.primary,
-    },
     "&[data-dismissing=true]": {
       background: vars.palette.error,
     },
@@ -20,56 +26,28 @@ export const itemContainer = style({
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[input] minmax(0, 1fr) [state] auto [link] auto [drag] auto [done] auto",
+  gridTemplateColumns:
+    "[input] minmax(0, 1fr) [link] auto [tag] auto [edit] auto [drag] auto [done] auto",
   gap: vars.spacing.md,
   width: `min(60ch, calc(100% - (2 * ${vars.spacing.appMargin})))`,
   marginInline: "auto",
   paddingBlockStart: vars.spacing.sm,
   alignItems: "center",
-  selectors: {
-    "&:has(textarea:focus)": {
-      alignItems: "start",
-    },
-  },
 });
 
-export const input = style({
-  border: "1px solid transparent",
+export const value = style({
   gridRow: 1,
-  gridColumn: "input / span 2",
-  padding: `${vars.spacing.sm} ${vars.spacing.md}`,
-  marginLeft: `calc(0px - ${vars.spacing.md})`,
-  borderRadius: "3px",
-  background: "transparent",
-  color: "currentColor",
-  // height: `calc(1lh + (2 * ${vars.spacing.sm}) + 2px)`,
-  boxSizing: "border-box",
+  gridColumn: "input",
+  paddingBlock: vars.spacing.sm,
   lineHeight: 1.35,
-  // resize: "none",
-  // overflow: "hidden",
   whiteSpace: "pre-wrap",
-  // overflowWrap: "anywhere",
-  transition: "height 140ms ease, background-color 140ms ease, color 140ms ease",
-  ":focus": {
-    outline: "0 none",
-    background: "white",
-    color: "black",
-    overflowY: "auto",
-  },
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      ":focus": {
-        background: "black",
-        color: "white",
-      },
-    },
-  },
+  overflowWrap: "anywhere",
 });
 
+// Inline after the item's text (inside `value`).
 export const state = style({
-  gridRow: 1,
-  gridColumn: "state",
-  paddingInlineEnd: vars.spacing.md,
+  marginInlineStart: vars.spacing.sm,
+  whiteSpace: "nowrap",
 });
 
 export const newIndicator = style({
@@ -78,7 +56,7 @@ export const newIndicator = style({
   justifyContent: "center",
   minHeight: "1.1rem",
   paddingInline: vars.spacing.sm,
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   background: vars.palette.primary,
   color: vars.palette.textOnPalette,
   border: `1px solid ${vars.palette.textOnPalette}`,
@@ -92,21 +70,31 @@ export const newIndicator = style({
 export const dragHandle = style({
   gridColumn: "drag",
   userSelect: "none",
-  touchAction: "none",
+  // Vertical pans scroll the list; reordering on touch needs a long-press
+  // first (see use-drag-list.ts). Horizontal moves still reach the swipe.
+  touchAction: "pan-y",
+  WebkitTouchCallout: "none",
   cursor: "grab",
-  color: vars.palette.chrome,
+  color: iconInk,
   display: "flex",
+  justifyContent: "center",
+  // With the hit area's half-gap either side, this makes it 44px wide.
+  minInlineSize: `calc(44px - ${vars.spacing.md})`,
   position: "relative",
   ":hover": {
-    color: "black",
+    color: "inherit",
   },
   ":active": {
     color: "cyan",
+    cursor: "grabbing",
   },
+  // Larger hit area, but only halfway into the column gap on each side so it
+  // never covers the neighbouring edit and delete buttons.
   "::before": {
     content: '""',
     position: "absolute",
-    inset: "-1em",
+    insetBlock: "-1em",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
   },
 });
 
@@ -116,15 +104,15 @@ export const linkButton = style({
   alignItems: "center",
   justifyContent: "center",
   alignSelf: "center",
-  color: vars.palette.chrome,
+  color: iconInk,
   textDecoration: "none",
   minWidth: "44px",
   minHeight: "44px",
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   outline: "1px solid white",
   selectors: {
     "&:hover": {
-      color: "black",
+      color: "inherit",
       background: "rgb(255 255 255 / 0.4)",
     },
     "&:focus-visible": {
@@ -133,6 +121,57 @@ export const linkButton = style({
       background: "rgb(255 255 255 / 0.4)",
     },
   },
+});
+
+export const editButton = style({
+  gridColumn: "edit",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "28px",
+  height: "28px",
+  padding: 0,
+  border: "none",
+  borderRadius: "50%",
+  background: "transparent",
+  color: iconInk,
+  cursor: "pointer",
+  // Generous invisible hit area without widening the grid column.
+  position: "relative",
+  "::before": {
+    content: '""',
+    position: "absolute",
+    insetBlock: "-8px",
+    insetInline: `calc(${vars.spacing.md} / -2)`,
+  },
+  selectors: {
+    "&:hover": {
+      color: "inherit",
+      background: "rgb(0 0 0 / 0.1)",
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.palette.textOnPalette}`,
+      outlineOffset: "2px",
+    },
+  },
+});
+
+export const editIcon = style({
+  width: "18px",
+  height: "18px",
+});
+
+export const editTextarea = style({
+  width: "100%",
+  minHeight: "5lh",
+  // Grows with its content where supported; otherwise scrolls.
+  fieldSizing: "content",
+  maxHeight: "50dvh",
+  padding: vars.spacing.md,
+  border: `1px solid ${vars.palette.chrome}`,
+  borderRadius: vars.style.controlRadius,
+  lineHeight: 1.35,
+  resize: "vertical",
 });
 
 export const linkIcon = style({
@@ -172,40 +211,24 @@ export const itemContainerReorderable = style({
   // Use the list's theme palette (primary/secondary are overridden per-list by
   // the Theme component) rather than a flat grey, with dark text for contrast
   // against the light pastel theme colours.
-  background: vars.palette.secondary,
-  color: vars.palette.textOnPalette,
-  selectors: {
-    "&:has(textarea:focus)": {
-      background: vars.palette.primary,
-    },
-  },
+  // backgroundColor, not the shorthand, so itemContainer's sheen survives.
+  backgroundColor: itemBackground,
+  color: fallbackVar(vars.style.itemInk, vars.palette.textOnPalette),
 });
 
+// Background, ink, border, shadow and focus come from the Button's primary
+// variant, so the close button is a solid control in every app style.
 export const deleteReorderable = style({
-  appearance: "none",
-  border: "none",
-  background: "transparent",
   cursor: "pointer",
   width: "28px",
   height: "28px",
   padding: 0,
   margin: 0,
   borderRadius: "50%",
-  color: vars.palette.chrome,
   fontSize: vars.fontSize.sm,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  selectors: {
-    "&:hover": {
-      color: "black",
-      background: "rgb(0 0 0 / 0.1)",
-    },
-    "&:focus-visible": {
-      outline: `2px solid ${vars.palette.textOnPalette}`,
-      outlineOffset: "2px",
-    },
-  },
 });
 
 const spin = keyframes({
@@ -230,4 +253,19 @@ export const saving = style({
     borderBlockEndColor: "transparent",
     animation: `1s infinite ${spin}`,
   },
+});
+
+// Its own column right before the edit button — which every row has — so
+// tags range right and line up down the list whatever else a row shows.
+export const tag = style({
+  gridRow: 1,
+  gridColumn: "tag",
+  justifySelf: "end",
+  paddingInline: vars.spacing.sm,
+  borderRadius: vars.style.pillRadius,
+  border: "1px solid currentColor",
+  fontSize: vars.fontSize.xs,
+  lineHeight: 1.6,
+  whiteSpace: "nowrap",
+  opacity: 0.75,
 });

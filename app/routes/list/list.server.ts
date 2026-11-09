@@ -1,7 +1,9 @@
 import { parseSubmission, report } from "@conform-to/react/future";
 
+import { href } from "react-router";
 import { dataWithError } from "remix-toast";
 import * as v from "valibot";
+import { isAppStyle } from "~/lib/app-style";
 import { supabaseContext } from "~/lib/supabase.middleware";
 import { requireUser } from "~/lib/supabase.server";
 import type { Route } from "./+types/list";
@@ -20,15 +22,40 @@ const zMutateListRpcResult = v.union([
   }),
 ]);
 
+/**
+ * Sends an add that carries a client-generated id (see `newId` in data.ts) as
+ * a `newItems`/`newItemIds` entry rather than `new`, so mutate_list uses that
+ * id for the row and a replay of the same add is a no-op (migration
+ * 20261011000000) instead of a duplicate. No migration needed: `new` stays
+ * the fallback for any client that doesn't send an id.
+ */
+function toIdempotentAdd({ newId, ...payload }: v.InferOutput<typeof zList>) {
+  if (!payload.new || !newId || payload.newItems.length !== payload.newItemIds.length) {
+    return payload;
+  }
+  return {
+    ...payload,
+    new: "",
+    newItems: [...payload.newItems, payload.new],
+    newItemIds: [...payload.newItemIds, newId],
+  };
+}
+
 export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
   const supabase = context.get(supabaseContext);
   const user = await requireUser(supabase);
 
+  // The user's last view comes embedded, rather than as a second query
+  // after this one: one Supabase round trip fewer on every list load.
+  // list_views' primary key is (list_id, user_id), so it's at most one row.
   const { data, error } = await supabase
     .from("lists")
-    .select("id, name, slug, theme_primary, theme_secondary, list_items(*)")
+    .select(
+      "id, name, slug, theme_primary, theme_secondary, theme_style, list_items(*), list_views(viewed_at)",
+    )
     .eq("slug", list)
     .eq("state", "active")
+    .eq("list_views.user_id", user.id)
     .order("sort_order", { referencedTable: "list_items", ascending: true })
     .maybeSingle();
 
@@ -50,21 +77,7 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     );
   }
 
-  const { data: listView, error: listViewError } = await supabase
-    .from("list_views")
-    .select("viewed_at")
-    .eq("list_id", data.id)
-    .eq("user_id", user.id)
-    .order("viewed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (listViewError) {
-    console.error("Error loading list view:", listViewError);
-    throw listViewError;
-  }
-
-  const lastViewedAt = listView?.viewed_at ?? 0;
+  const lastViewedAt = data.list_views[0]?.viewed_at ?? 0;
 
   const referer = request.headers.get("referer");
   const isSameListRevalidation = (() => {
@@ -73,7 +86,9 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     }
 
     try {
-      return new URL(referer).pathname === `/lists/${list}`;
+      // Includes the style dialog, a child route: saving there isn't a visit.
+      const listPath = href("/lists/:list", { list });
+      return [listPath, href("/lists/:list/style", { list })].includes(new URL(referer).pathname);
     } catch {
       return false;
     }
@@ -82,16 +97,14 @@ export async function loader({ request, params: { list }, context }: Route.Loade
   // Record that this user viewed the list on entry, but avoid writing on same-page
   // revalidation after actions (e.g. adding an item), which would clear unread too soon.
   if (!isSameListRevalidation) {
-    const viewedAt = Date.now();
-    const { error: viewError } = listView
-      ? await supabase
-          .from("list_views")
-          .update({ viewed_at: viewedAt })
-          .eq("list_id", data.id)
-          .eq("user_id", user.id)
-      : await supabase
-          .from("list_views")
-          .insert({ list_id: data.id, user_id: user.id, viewed_at: viewedAt });
+    // One upsert on the (list_id, user_id) key, whether or not there was
+    // a view before.
+    const { error: viewError } = await supabase
+      .from("list_views")
+      .upsert(
+        { list_id: data.id, user_id: user.id, viewed_at: Date.now() },
+        { onConflict: "list_id,user_id" },
+      );
 
     if (viewError) {
       console.error("Error recording list view:", viewError);
@@ -115,6 +128,8 @@ export async function loader({ request, params: { list }, context }: Route.Loade
       themeSecondary: data.theme_secondary ?? undefined,
     },
     listId: data.id,
+    // Read by root to style the whole page (see useAppStyleOverride).
+    appStyleOverride: isAppStyle(data.theme_style) ? data.theme_style : null,
     newItemIds: items
       .filter(({ state, updatedAt }) => state === "active" && updatedAt > lastViewedAt)
       .map(({ id }) => id),
@@ -146,7 +161,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
-    p_payload: result.output,
+    p_payload: toIdempotentAdd(result.output),
     p_mutated_at: updatedAt,
   });
 

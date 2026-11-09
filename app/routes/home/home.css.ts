@@ -1,5 +1,8 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
+
+const rowBackground = fallbackVar(vars.style.rowBackground, vars.palette.surface);
+const rowInk = fallbackVar(vars.style.rowInk, vars.palette.textOnSurface);
 
 export const listWrapper = style({
   // Safari has intermittent shrink-to-content bugs with display: contents
@@ -13,6 +16,7 @@ export const listWrapper = style({
 
 export const list = style({
   listStyle: "none",
+  margin: 0,
   padding: 0,
   gridColumn: "1 / -1",
   display: "grid",
@@ -20,6 +24,9 @@ export const list = style({
   width: "100%",
   minWidth: 0,
   alignSelf: "start" /** prevents items from stretching vertically */,
+  // Rows' enlarged hit areas reach past the first and last row; clip them so
+  // they don't add scrollable space to ScrollArea.
+  overflowY: "clip",
 });
 
 export const itemWrapper = style({
@@ -30,22 +37,22 @@ export const itemWrapper = style({
   width: "100%",
   minWidth: 0,
   paddingBlock: vars.spacing.md,
-  background: vars.palette.chrome,
+  background: rowBackground,
+  backgroundImage: vars.style.sheen,
   margin: 0,
-  borderBottom: `1px solid ${vars.palette.chromeLight}`,
-  color: vars.palette.textOnChrome,
+  borderBottom: vars.style.divider,
+  color: rowInk,
   position: "relative",
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
-    },
-  },
 });
+
+const configWidth = `calc(${vars.spacing.controlHeight} * 1.5)`;
 
 export const item = style({
   display: "grid",
   gridColumn: "1 / -1",
-  gridTemplateColumns: "[name] 1fr [star] auto [drag] auto [config] auto [status] 3ch",
+  // Rows are independent grids, so the config track is fixed rather than auto:
+  // rows without the cog (lists you don't own) keep their actions aligned.
+  gridTemplateColumns: `[name] 1fr [config] ${configWidth} [star] auto [drag] auto [status] 3ch`,
   alignItems: "center",
   gap: vars.spacing.lg,
   // Recreate the central content width without relying on subgrid line names.
@@ -77,6 +84,7 @@ export const pendingItemLink = style({
 export const itemConfig = style({
   gridColumn: "config",
   zIndex: 1,
+  justifySelf: "center",
 });
 
 export const itemStar = style({
@@ -115,9 +123,12 @@ export const itemStarButton = style({
 export const itemDragHandle = style({
   gridColumn: "drag",
   userSelect: "none",
-  touchAction: "none",
+  // Vertical pans scroll the list; reordering on touch needs a long-press
+  // first (see use-drag-list.ts). Horizontal moves still reach the swipe.
+  touchAction: "pan-y",
+  WebkitTouchCallout: "none",
   cursor: "grab",
-  color: vars.palette.textOnChrome,
+  color: rowInk,
   display: "flex",
   zIndex: 1,
   position: "relative",
@@ -128,6 +139,7 @@ export const itemDragHandle = style({
   },
   ":active": {
     color: "cyan",
+    cursor: "grabbing",
     opacity: 1,
     transform: "translateY(0)",
   },
@@ -135,11 +147,6 @@ export const itemDragHandle = style({
     content: '""',
     position: "absolute",
     inset: "-0.75rem",
-  },
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
-    },
   },
 });
 
@@ -161,7 +168,7 @@ export const unreadBadge = style({
   fontSize: vars.fontSize.xs,
   background: vars.palette.primary,
   color: vars.palette.textOnPalette,
-  borderRadius: vars.radius.pill,
+  borderRadius: vars.style.pillRadius,
   paddingInline: vars.spacing.sm,
   minWidth: "1.5em",
 });
@@ -176,8 +183,8 @@ export const skeletonRow = style({
   gridColumn: "1 / -1",
   gridTemplateColumns: "1fr",
   paddingBlock: vars.spacing.md,
-  background: vars.palette.chrome,
-  borderBottom: `1px solid ${vars.palette.chromeLight}`,
+  background: rowBackground,
+  borderBottom: vars.style.divider,
 });
 
 export const skeletonBar = style({
@@ -198,25 +205,22 @@ export const skeletonBar = style({
 
 export const actions = style({
   gridColumn: "content",
-});
-
-export const pendingSignUps = style({
-  gridRow: "breadcrumbs",
-  gridColumn: "left",
-  containerType: "inline-size",
   display: "flex",
-  justifyContent: "flex-start",
-  alignItems: "center",
-  paddingInlineStart: vars.spacing.md,
+  alignItems: "end",
+  justifyContent: "space-between",
+  gap: vars.spacing.md,
 });
 
-export const signUpsLabel = style({
-  display: "none",
-  "@container": {
-    "(min-width: 10ch)": {
-      display: "inline",
-    },
-  },
+// Style and the colour scheme toggle sit together at the end of the bar.
+export const appearance = style({
+  display: "flex",
+  gap: vars.spacing.sm,
+});
+
+// Takes the bar's spare width, as the list page's add input does.
+export const addListForm = style({
+  flex: 1,
+  minWidth: 0,
 });
 
 export const newList = style({
@@ -224,8 +228,22 @@ export const newList = style({
   gap: vars.spacing.md,
 });
 
+export const newListInput = style({
+  flex: 1,
+  // Inputs have an intrinsic width from their default `size`; let it shrink.
+  minWidth: 0,
+});
+
 export const formError = style({
   gridColumn: "content",
   color: vars.palette.error,
   margin: 0,
+});
+
+// HydrateFallback sits in <main>'s grid beside the breadcrumbs, so it needs
+// its own cell: auto-placed, it lands on the breadcrumbs row and overlaps them.
+export const hydrateFallback = style({
+  gridRow: "content",
+  gridColumn: "content",
+  placeSelf: "center",
 });

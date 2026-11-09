@@ -1,4 +1,4 @@
-import { keyframes, style } from "@vanilla-extract/css";
+import { fallbackVar, keyframes, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const wrapper = style({
@@ -7,18 +7,14 @@ export const wrapper = style({
   gridColumn: "1 / -1",
   width: "100%",
   minWidth: 0,
-  cursor: "grab",
   marginBlockEnd: 0,
-  color: vars.palette.textOnChrome,
-
-  "@media": {
-    "(prefers-color-scheme: dark)": {
-      color: vars.palette.textOnChromeDarkMode,
-    },
-  },
-  ":active": {
-    cursor: "grabbing",
-  },
+  // Keeps a row scrolled into view clear of ScrollArea's edge shade.
+  scrollMarginBlock: vars.spacing.sm,
+  // light-dark() rather than a media query, so a pinned colour scheme applies.
+  color: fallbackVar(
+    vars.style.itemInk,
+    `light-dark(${vars.palette.textOnChrome}, ${vars.palette.textOnChromeDarkMode})`,
+  ),
 });
 
 export const items = style({
@@ -26,8 +22,12 @@ export const items = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   width: "100%",
+  margin: 0,
   padding: 0,
   alignContent: "start",
+  // Rows' enlarged hit areas reach past the first and last row; clip them so
+  // they don't add scrollable space to ScrollArea.
+  overflowY: "clip",
 });
 
 const shimmer = keyframes({
@@ -40,7 +40,9 @@ export const skeletonItem = style({
   gridTemplateColumns: "subgrid",
   gridColumn: "1 / -1",
   paddingBlock: vars.spacing.sm,
-  background: vars.palette.secondary,
+  // Keeps a row scrolled into view clear of ScrollArea's edge shade.
+  scrollMarginBlock: vars.spacing.sm,
+  background: fallbackVar(vars.style.itemBackground, vars.palette.secondary),
 });
 
 export const skeletonContent = style({

@@ -131,6 +131,7 @@ export type Database = {
           state: Database["public"]["Enums"]["list_item_state"];
           theme_primary: string | null;
           theme_secondary: string | null;
+          theme_style: string | null;
           updated_at: number;
           user_id: string | null;
         };
@@ -143,6 +144,7 @@ export type Database = {
           state?: Database["public"]["Enums"]["list_item_state"];
           theme_primary?: string | null;
           theme_secondary?: string | null;
+          theme_style?: string | null;
           updated_at?: number;
           user_id?: string | null;
         };
@@ -155,6 +157,7 @@ export type Database = {
           state?: Database["public"]["Enums"]["list_item_state"];
           theme_primary?: string | null;
           theme_secondary?: string | null;
+          theme_style?: string | null;
           updated_at?: number;
           user_id?: string | null;
         };
@@ -162,14 +165,17 @@ export type Database = {
       };
       profiles: {
         Row: {
+          app_style: string | null;
           email: string;
           id: string;
         };
         Insert: {
+          app_style?: string | null;
           email: string;
           id: string;
         };
         Update: {
+          app_style?: string | null;
           email?: string;
           id?: string;
         };

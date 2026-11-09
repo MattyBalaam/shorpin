@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { HttpNetworkFrame } from "msw/experimental";
 import { setupServer } from "msw/node";
 import { type WebSocket, WebSocketServer } from "ws";
 import { type BroadcastMessage, broadcastEmitter } from "./broadcast.ts";
@@ -23,11 +24,11 @@ const port = Number(process.env.MOCK_SERVER_PORT ?? "9001");
 // MSW intercepts fetch() calls within this process before any TCP connection
 const msw = setupServer(...handlers);
 msw.listen({
-  onUnhandledRequest: (request, print) => {
+  onUnhandledFrame: ({ frame, defaults }) => {
     // WebSocket upgrade requests for Supabase Realtime are handled by the
     // upgrade event on httpServer below — not by MSW fetch interception.
-    if (request.url.includes("/realtime/")) return;
-    print.error();
+    if (frame instanceof HttpNetworkFrame && frame.data.request.url.includes("/realtime/")) return;
+    defaults.error();
   },
 });
 

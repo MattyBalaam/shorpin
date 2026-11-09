@@ -2,6 +2,7 @@ import { Form } from "react-router";
 import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Button } from "~/components/button/button";
 import { Link } from "~/components/link/link";
+import { PageHeader } from "~/components/page-header/page-header";
 import type { Route } from "./+types/delete";
 import * as styles from "./delete.css";
 
@@ -27,22 +28,23 @@ export const meta: Route.MetaFunction = ({ loaderData: { listName } }) => {
 
 export default function Delete({ loaderData }: Route.ComponentProps) {
   return (
-    <Form method="POST" className={styles.form}>
-      <h1>Delete?</h1>
+    <>
+      <PageHeader />
+      <Form method="POST" className={styles.form}>
+        <h1>Delete?</h1>
 
-      <p>Are you sure?</p>
+        <p>Are you sure?</p>
 
-      <div className={styles.actions}>
-        <Button variant="destructive" type="submit">
-          Yes
-        </Button>
+        <div className={styles.actions}>
+          <Button variant="destructive" type="submit">
+            Yes
+          </Button>
 
-        <Link variant="outline" to={loaderData.returnTo}>
-          I do not
-        </Link>
-      </div>
-
-      {loaderData.returnTo}
-    </Form>
+          <Link variant="outline" to={loaderData.returnTo}>
+            I do not
+          </Link>
+        </div>
+      </Form>
+    </>
   );
 }

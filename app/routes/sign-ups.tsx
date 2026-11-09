@@ -38,9 +38,11 @@ export default function SignUps({ loaderData: { signUps } }: Route.ComponentProp
     <Modal urlOnClose={href("/")}>
       <h2>Pending sign-ups</h2>
 
-      <Suspense fallback={null}>
-        <SignUpsList signUpsPromise={signUps} />
-      </Suspense>
+      <Modal.Body>
+        <Suspense fallback={null}>
+          <SignUpsList signUpsPromise={signUps} />
+        </Suspense>
+      </Modal.Body>
 
       <Modal.Actions>
         <Modal.Close>Close</Modal.Close>

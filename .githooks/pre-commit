@@ -11,5 +11,17 @@ if command -v fnm >/dev/null 2>&1; then
   eval "$(fnm env)"
 fi
 
-echo "[pre-commit] Running pnpm verify" >&2
-pnpm verify
+# Checks only — never rewrites files. Formatting here used to change the
+# working tree without re-staging, so the commit kept the unformatted
+# content while the check after it passed. The format check is scoped to
+# staged files so unrelated work in progress can't block a commit.
+echo "[pre-commit] Checking staged formatting, lint and types" >&2
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -n "$STAGED" ]; then
+  git diff --cached --name-only --diff-filter=ACMR -z |
+    xargs -0 pnpm exec oxfmt --check --no-error-on-unmatched-pattern
+fi
+
+pnpm lint
+pnpm typecheck

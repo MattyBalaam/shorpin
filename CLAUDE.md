@@ -21,35 +21,20 @@ React Router v7 SSR · TypeScript · Vanilla Extract · Playwright · pnpm · Su
 
 ### PostToolUse — after every file edit
 
-A `PostToolUse` hook (`.claude/hooks/post-edit-checks.sh`) runs automatically after every `Write`, `Edit`, or `NotebookEdit`. It:
-
-1. Runs `pnpm typecheck` — blocks if there are type errors
-2. Runs `pnpm lint` — blocks if there are lint errors
-3. Runs `pnpm fmt` — formats files in place
+A `PostToolUse` hook (`.claude/hooks/post-edit-checks.sh`) runs after every `Write`, `Edit`, or `NotebookEdit` on a file inside the project. For JS/TS files it runs `pnpm typecheck` and lints the edited file, and blocks with the errors if either fails. It then formats only the edited file, so files you have open aren't rewritten behind you.
 
 These hooks are helpful but not sufficient on their own in every agent runtime. Some edit paths, especially patch-based ones, may not trigger them reliably.
 
 ### PreToolUse — before every `git commit`
 
-A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs automatically before every `git commit`. It:
+A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs before a Bash command that runs `git commit`. It runs **before the whole command**, so it sees the index as it is at that moment:
 
-1. Runs `pnpm typecheck`, `pnpm lint`, `pnpm fmt` (same as above)
-2. Runs scoped integration tests based on what is staged:
+- **Stage and commit in separate Bash calls.** A command that stages (`git add`, `stash`, `reset`, `commit -a`…) and commits is refused, because the checks would miss what actually gets committed.
+- It formats the staged files and re-stages only those. A staged file that also has unstaged changes isn't re-staged; if it needs formatting, the commit is refused so you can fix it.
+- It runs the integration specs that the staged files map to (the `case` block in the script is the source of truth). Any file without a mapping runs the full suite. Tests run with one retry; a test that only passed on retry is named in the result instead of blocking the commit.
+- On failure, the reason names the failing tests and the path to the full log.
 
-| Staged files                                                                                      | Integration action                                                                                         |
-| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Only `*.css.ts`, `*.d.ts`, `*.md`, `.claude/**`                                                   | Skip                                                                                                       |
-| Any `mocks/**`, `app/lib/**`, `public/**`, `app/root.*`, `app/routes/app/**`, `app/components/**` | Full suite (`pnpm test:integration`)                                                                       |
-| `integration-tests/home*`                                                                         | `integration-tests/home.spec.ts`                                                                           |
-| `integration-tests/list*`                                                                         | `integration-tests/list.spec.ts` + `integration-tests/delete.spec.ts` + `integration-tests/config.spec.ts` |
-| `integration-tests/delete*`                                                                       | `integration-tests/delete.spec.ts`                                                                         |
-| `integration-tests/offline*`                                                                      | `integration-tests/offline.spec.ts`                                                                        |
-| `integration-tests/auth/**`                                                                       | `integration-tests/auth.spec.ts`                                                                           |
-| `integration-tests/sign-ups*`                                                                     | `integration-tests/sign-ups.spec.ts`                                                                       |
-| `integration-tests/*.spec.ts` changed                                                             | That spec                                                                                                  |
-| Anything else unmatched                                                                           | Full suite (safe fallback)                                                                                 |
-
-The durable local guardrail is `pnpm verify` plus the repo-managed Git pre-commit hook installed by `pnpm install`.
+Typecheck, lint and the format check run in the repo-managed Git pre-commit hook (`.githooks/pre-commit`, installed by `pnpm install`). It only checks and never rewrites files, and its format check covers staged files only.
 
 **If hooks are not supported** in your environment, run these steps manually before committing:
 

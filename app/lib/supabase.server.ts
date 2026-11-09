@@ -74,17 +74,29 @@ export function logAuthRedirect(
   });
 }
 
+/**
+ * The signed-in user, from the access token's claims. getClaims() verifies
+ * the token's signature locally, against the project's public signing keys
+ * (fetched once and cached by supabase-js), so a loader doesn't wait on a
+ * round trip to the auth server before its own queries. The trade-off: a
+ * session revoked elsewhere stays usable until its token expires
+ * (jwt_expiry, an hour), as it already was for PostgREST and RLS. Only the
+ * id: it's all callers need, and a full User has fields the claims don't.
+ */
 export async function requireUser(supabase: SupaBaseContext) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
 
-  if (!user) {
+  if (!data) {
     if (isTransientAuthError(error)) throw authUnavailable(error);
 
-    logAuthRedirect("getUser returned no user", error);
+    logAuthRedirect("getClaims returned no claims", error);
     throw redirect(href("/login"));
   }
-  return user;
+  return { id: data.claims.sub };
+}
+
+/** The signed-in user's id, verified as in requireUser; undefined when signed out. */
+export async function currentUserId(supabase: SupaBaseContext) {
+  const { data } = await supabase.auth.getClaims();
+  return data?.claims.sub;
 }

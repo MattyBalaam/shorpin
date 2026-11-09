@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 test("owner can open config modal for their list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
@@ -44,4 +44,10 @@ test("owner can add a collaborator to a list", async ({ page, ctx }) => {
   // Should redirect back to home page after saving
   await page.waitForURL("/");
   await expect(page).toHaveURL("/");
+});
+
+test("config modal matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto("/config/shopping");
+  await expectPageSnapshot(page, "list-config");
 });

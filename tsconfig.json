@@ -9,8 +9,8 @@
     ".react-router/types/**/*"
   ],
   "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@react-router/node", "vite/client"],
+    "lib": ["DOM", "DOM.Iterable", "ES2024"],
+    "types": ["@react-router/node", "vite/client", "msw/vite/client"],
     "isolatedModules": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",

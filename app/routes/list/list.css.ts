@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { fallbackVar, style } from "@vanilla-extract/css";
 import { vars } from "~/styles/theme.css";
 
 export const form = style({
@@ -14,6 +14,12 @@ export const undoButton = style({
   gridColumnStart: "input",
   gridColumnEnd: "done",
   marginLeft: "auto",
+});
+
+export const undoIcon = style({
+  display: "block",
+  width: "18px",
+  height: "18px",
 });
 
 export const actions = style({
@@ -33,27 +39,25 @@ export const addInput = style({
   paddingInline: vars.spacing.md,
   fontSize: vars.fontSize.md,
   fontFamily: "inherit",
-  border: "none",
-  outline: "none",
+  border: fallbackVar(vars.style.inputBorder, "none"),
   background: "white",
   color: "black",
 });
 
-// Pill "Add" button. Layered over Button's primary variant (which loads first),
-// so these visual overrides win — same pattern as item.css `tick`.
-export const addButton = style({
-  background: vars.palette.text,
-  color: "white",
-  borderRadius: vars.radius.pill,
-  paddingInline: vars.spacing.lg,
-  fontSize: vars.fontSize.md,
-  fontWeight: vars.fontWeight.semibold,
+// Matches the taller list input; the look comes from Button's solid variant.
+export const addTag = style({
+  flex: "0 1 8rem",
+  minWidth: 0,
 });
 
-export const topActions = style({
-  gridRow: "breadcrumbs",
-  gridColumn: "content",
-  justifySelf: "end",
-  display: "flex",
-  gap: vars.spacing.sm,
+// Styled with addInput, to match the item input beside it. addInput's
+// `flex: 1` widens the item input across the bar, but in the combobox's
+// column (label above input) it would grow the input's height instead.
+export const addTagInput = style({
+  flex: "none",
+  width: "100%",
+});
+
+export const addButton = style({
+  height: "auto",
 });

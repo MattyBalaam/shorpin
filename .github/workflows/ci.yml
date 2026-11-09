@@ -18,6 +18,7 @@ jobs:
       E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
       E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_SUPABASE_DB_PASSWORD: ${{ secrets.E2E_SUPABASE_DB_PASSWORD }}
     steps:
       - name: Check required Supabase secrets
         id: check
@@ -28,6 +29,11 @@ jobs:
           [ -z "$E2E_SUPABASE_URL" ] && missing+=("E2E_SUPABASE_URL")
           [ -z "$E2E_SUPABASE_ANON_KEY" ] && missing+=("E2E_SUPABASE_ANON_KEY")
           [ -z "$E2E_SUPABASE_SERVICE_ROLE_KEY" ] && missing+=("E2E_SUPABASE_SERVICE_ROLE_KEY")
+          # Only needed to migrate the e2e project, which Dependabot PRs skip
+          # (they never add migrations), so it isn't in the Dependabot store.
+          if [ "$GITHUB_ACTOR" != "dependabot[bot]" ]; then
+            [ -z "$E2E_SUPABASE_DB_PASSWORD" ] && missing+=("E2E_SUPABASE_DB_PASSWORD")
+          fi
 
           if [ ${#missing[@]} -gt 0 ]; then
             {
@@ -190,6 +196,37 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Push pending migrations to the e2e project
+        # Dependabot PRs only bump dependencies, never add migrations, so they
+        # test against the schema maintainers' PRs have already pushed — and
+        # E2E_SUPABASE_DB_PASSWORD is deliberately kept out of the Dependabot
+        # secrets store.
+        if: github.actor != 'dependabot[bot]'
+        # The PR's own migrations, so the tests below run against the schema
+        # the PR's code expects (prod only migrates on main, in migrate-prod).
+        # Same connection as migrate-prod — see its comments for why it's
+        # --db-url via the Supavisor session pooler. The pooler host is
+        # region-specific: set the E2E_SUPABASE_POOLER_HOST repository
+        # variable if the e2e project isn't in the same region as prod.
+        #
+        # Migrations from a PR that's later closed unmerged stay applied
+        # here. That's tolerable only because this project never holds real
+        # data (see README "CI secrets on Dependabot PRs").
+        #
+        # The project ref is the subdomain of the hosted project URL
+        # (https://<ref>.supabase.co), so it needs no secret of its own.
+        #
+        # node, not jq, for the URL-encoding: jq isn't in the Playwright
+        # container image this job runs in.
+        run: |
+          project_ref=$(node -e 'process.stdout.write(new URL(process.env.SUPABASE_URL).hostname.split(".")[0])')
+          encoded_password=$(node -e 'process.stdout.write(encodeURIComponent(process.env.SUPABASE_DB_PASSWORD))')
+          pnpm exec supabase db push --db-url "postgresql://postgres.${project_ref}:${encoded_password}@${SUPABASE_POOLER_HOST}:5432/postgres"
+        env:
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.E2E_SUPABASE_DB_PASSWORD }}
+          SUPABASE_POOLER_HOST: ${{ vars.E2E_SUPABASE_POOLER_HOST || 'aws-1-eu-west-1.pooler.supabase.com' }}
 
       - run: pnpm test:e2e
         env:

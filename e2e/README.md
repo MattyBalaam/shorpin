@@ -29,6 +29,7 @@ The tests use `playwright.supabase.config.ts` which:
 
 ## Test files
 
-| File                     | What it covers                       |
-| ------------------------ | ------------------------------------ |
-| `supabase-smoke.spec.ts` | Basic Supabase connectivity and auth |
+| File                     | What it covers                                           |
+| ------------------------ | -------------------------------------------------------- |
+| `supabase-smoke.spec.ts` | Basic Supabase connectivity and auth                     |
+| `sign-up.spec.ts`        | Request access, invite link, set password, sign in again |

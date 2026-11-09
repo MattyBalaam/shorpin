@@ -14,7 +14,7 @@ export const checkbox = style({
   padding: 0,
   flexShrink: 0,
   border: `2px solid currentColor`,
-  borderRadius: vars.spacing.controlRadius,
+  borderRadius: vars.style.controlRadius,
   cursor: "pointer",
   outlineOffset: 0,
   selectors: {

@@ -1,18 +1,23 @@
 import { useForm } from "@conform-to/react/future";
 import { Suspense, useEffect, useEffectEvent } from "react";
 import {
+  href,
   type MetaFunction,
   Outlet,
   Form as RouterForm,
-  useNavigation,
   useRevalidator,
   useRouteError,
 } from "react-router";
 import { toast } from "~/lib/toast";
 
 import { Actions } from "~/components/actions/actions";
+import { Link } from "~/components/link/link";
+import { BrushIcon, PowerIcon } from "~/components/icon/icons";
 import { Button } from "~/components/button/button";
+import { ColorSchemeToggle } from "~/components/color-scheme/color-scheme";
+import { SUBMIT_ACTION, useIsSubmitting } from "~/components/button/use-is-submitting";
 import { ErrorState } from "~/components/error-state/error-state";
+import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { useIsOnline } from "~/components/online-status/online-status";
 import { ScrollArea } from "~/components/scroll-area/scroll-area";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
@@ -46,7 +51,12 @@ export const handle = {
 };
 
 export function HydrateFallback() {
-  return <p>Loading...</p>;
+  return (
+    <div role="status" className={styles.hydrateFallback}>
+      <VisuallyHidden>Loading...</VisuallyHidden>
+      <Spinner />
+    </div>
+  );
 }
 
 clientLoader.hydrate = true;
@@ -58,7 +68,7 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
     shouldRevalidate: "onInput",
   });
 
-  const { state } = useNavigation();
+  const isAddingList = useIsSubmitting("add-list");
   const { revalidate } = useRevalidator();
 
   // Neither create-list nor reorder-lists needs list.tsx's rebase treatment
@@ -112,12 +122,20 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
 
   return (
     <>
-      <div className={styles.pendingSignUps}>
-        <Suspense fallback={null}>
-          <Revalidator data={loaderData.revalidatePromise} />
-          <PendingSignUps countPromise={loaderData.waitlistCount} />
-        </Suspense>
-      </div>
+      <PageHeader
+        actions={[
+          <Suspense key="sign-ups" fallback={null}>
+            <Revalidator data={loaderData.revalidatePromise} />
+            <PendingSignUps countPromise={loaderData.waitlistCount} />
+          </Suspense>,
+          <RouterForm key="sign-out" method="POST" action={href("/logout")}>
+            <Button type="submit">
+              <PowerIcon />
+              <ActionLabel>Sign out</ActionLabel>
+            </Button>
+          </RouterForm>,
+        ]}
+      />
       <ScrollArea>
         <nav className={styles.listWrapper}>
           <Suspense fallback={<Spinner />}>
@@ -131,23 +149,43 @@ export default function Index({ loaderData, actionData }: Route.ComponentProps) 
       </ScrollArea>
 
       <Actions>
-        <RouterForm {...form.props} method="POST" className={styles.actions}>
-          {form.errors?.map((error, i) => (
-            <p key={i} className={styles.formError}>
-              {error}
-            </p>
-          ))}
-          <div className={styles.newList}>
-            <VisuallyHidden>
-              <label htmlFor={fields["new-list"].id}>New list</label>
-            </VisuallyHidden>
-            <input name={fields["new-list"].name} id={fields["new-list"].id} autoComplete="off" />
+        <div className={styles.actions}>
+          <RouterForm {...form.props} method="POST" className={styles.addListForm}>
+            {form.errors?.map((error, i) => (
+              <p key={i} className={styles.formError}>
+                {error}
+              </p>
+            ))}
+            <div className={styles.newList}>
+              <VisuallyHidden>
+                <label htmlFor={fields["new-list"].id}>New list</label>
+              </VisuallyHidden>
+              <input
+                name={fields["new-list"].name}
+                id={fields["new-list"].id}
+                autoComplete="off"
+                className={styles.newListInput}
+              />
 
-            <Button type="submit" isSubmitting={state === "submitting"}>
-              Add
-            </Button>
+              <Button
+                type="submit"
+                name={SUBMIT_ACTION}
+                value="add-list"
+                isSubmitting={isAddingList}
+                variant="solid"
+              >
+                Add
+              </Button>
+            </div>
+          </RouterForm>
+          <div className={styles.appearance}>
+            <Link variant="outline" to={href("/style")}>
+              <BrushIcon />
+              Style
+            </Link>
+            <ColorSchemeToggle />
           </div>
-        </RouterForm>
+        </div>
       </Actions>
       <Outlet />
     </>

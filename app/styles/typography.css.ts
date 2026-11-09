@@ -6,7 +6,7 @@ import { app } from "./layers.css";
 globalStyle("body", {
   "@layer": {
     [app]: {
-      fontFamily: vars.font.sans,
+      fontFamily: vars.style.bodyFont,
       fontSize: vars.fontSize.base,
       lineHeight: vars.lineHeight.normal,
       fontWeight: vars.fontWeight.normal,
@@ -23,7 +23,10 @@ globalStyle("body", {
 globalStyle("h1, h2, h3, h4, h5, h6", {
   "@layer": {
     [app]: {
-      fontWeight: vars.fontWeight.bold,
+      fontFamily: vars.style.headingFont,
+      fontWeight: vars.style.headingWeight,
+      textTransform: vars.style.headingTransform,
+      letterSpacing: vars.style.headingTracking,
       lineHeight: vars.lineHeight.tight,
       marginBlockStart: vars.spacing.xl,
       marginBlockEnd: vars.spacing.md,
@@ -35,7 +38,7 @@ globalStyle("h1", {
   "@layer": {
     [app]: {
       fontSize: vars.fontSize.xxl,
-      marginBlockStart: 0,
+      marginBlock: 0,
     },
   },
 });
@@ -97,8 +100,8 @@ globalStyle("a", {
     [app]: {
       color: "inherit",
       textDecorationColor: "currentColor",
-      textDecorationThickness: "0.08em",
-      textUnderlineOffset: "0.15em",
+      textDecorationThickness: vars.style.linkThickness,
+      textUnderlineOffset: vars.style.linkOffset,
     },
   },
 });
@@ -106,7 +109,7 @@ globalStyle("a", {
 globalStyle("a:hover", {
   "@layer": {
     [app]: {
-      textDecorationThickness: "0.12em",
+      textDecorationThickness: vars.style.linkHoverThickness,
     },
   },
 });

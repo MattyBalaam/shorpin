@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Safari interactive-widget check
+
+# Monthly check for iOS Safari support of `interactive-widget`, which retires
+# the temporary keyboard workaround in app/root.tsx. Opens an issue once.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - id: compat
+        run: node scripts/check-interactive-widget.mjs
+
+      - if: steps.compat.outputs.supported == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.compat.outputs.version }}
+        run: |
+          title="Remove iOS keyboard workaround: Safari supports interactive-widget"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq length)
+          if [ "$existing" != "0" ]; then
+            echo "Issue already open"
+            exit 0
+          fi
+          cat > issue.md <<EOF
+          iOS Safari supports \`interactive-widget\` since version $VERSION, according to MDN's browser-compat-data.
+
+          The temporary \`trackKeyboardViewport\` workaround can now be removed. Follow the steps in the README section "On-screen keyboard sizing":
+
+          - Delete the \`trackKeyboardViewport\` effect in \`app/root.tsx\`.
+          - Drop the \`var(--visual-viewport-height, …)\` in \`app/root.css.ts\`, leaving \`height: 100%\`.
+          - Confirm on an iPhone that the add-item bar sits directly above the keyboard.
+
+          Wait until enough users are on that Safari version before removing it.
+          EOF
+          gh issue create --title "$title" --body-file issue.md

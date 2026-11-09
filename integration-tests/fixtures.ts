@@ -10,12 +10,12 @@ export { expect } from "@playwright/test";
  * concurrently with others in the same file.
  */
 export const test = base.extend<{ ctx: TestContext }>({
-  ctx: async ({ page }, use) => {
+  ctx: async ({ page }, use, testInfo) => {
     // DEBUG: forward browser console and errors to the test runner output
     page.on("console", (msg) => console.log(`[browser][${msg.type()}] ${msg.text()}`));
     page.on("pageerror", (err) => console.error(`[browser][pageerror] ${err.message}`));
 
-    const ctx = createTestContext();
+    const ctx = createTestContext(testInfo);
     await resetDb(page, ctx);
     await use(ctx);
   },

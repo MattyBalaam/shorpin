@@ -1,8 +1,10 @@
 import { createContext, use, useEffect, useRef, useState } from "react";
-import { generateThemeColors, toAdaptiveCss } from "~/lib/palette";
+import { toAdaptiveCss } from "~/lib/palette";
 import { vars } from "~/styles/theme.css";
 import * as modalStyles from "../modal/modal.css";
 import { Button } from "../button/button";
+import { PaletteIcon } from "../icon/icons";
+import { ActionLabel } from "../page-header/page-header";
 import { PalettePreview } from "./palette-preview";
 
 type Colors = { primary: string; secondary: string };
@@ -67,9 +69,13 @@ export function Theme({ defaultPrimary, defaultSecondary, children }: ThemeProps
       value={{
         colors,
         candidate,
+        // The generator is most of the palette code and only runs from
+        // here, so it's loaded on the first press rather than with the list.
         generateCandidate: () => {
-          const { primary, secondary } = generateThemeColors();
-          setCandidate({ primary, secondary });
+          void import("~/lib/palette-generator").then(({ generateThemeColors }) => {
+            const { primary, secondary } = generateThemeColors();
+            setCandidate({ primary, secondary });
+          });
         },
         confirmCandidate: () => {
           setColors(candidate);
@@ -147,7 +153,10 @@ function ThemeButton({ formId }: ThemeButtonProps) {
 
   return (
     <>
-      <Button onClick={generateCandidate}>🎨</Button>
+      <Button onClick={generateCandidate}>
+        <PaletteIcon />
+        <ActionLabel>Colours</ActionLabel>
+      </Button>
       {candidate && (
         <dialog
           ref={dialogRef}
@@ -160,7 +169,9 @@ function ThemeButton({ formId }: ThemeButtonProps) {
           }}
         >
           <div className={modalStyles.content}>
-            <PalettePreview primary={candidate.primary} secondary={candidate.secondary} />
+            <div className={modalStyles.body}>
+              <PalettePreview primary={candidate.primary} secondary={candidate.secondary} />
+            </div>
             <div className={modalStyles.actions}>
               <Button variant="outline" type="button" onClick={dismissCandidate}>
                 Cancel

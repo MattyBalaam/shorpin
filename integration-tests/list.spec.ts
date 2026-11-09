@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { holdLoader, login } from "./helpers";
+import { expectPageSnapshot, login } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -64,6 +64,39 @@ test("owner can add an item on list", async ({ page, ctx }) => {
   await expect(page.getByLabel("Edit Butter")).toBeVisible();
 });
 
+test("an item added to a long list is scrolled into view @webkit", async ({ page, ctx }) => {
+  // A short viewport so a handful of rows overflows the list's scroll area.
+  await page.setViewportSize({ width: 375, height: 420 });
+  await login(page, ctx.ownerEmail);
+  await openList(page, "owner-empty");
+  // A slow network keeps the placeholder up long enough to scroll into view
+  // before the saved row replaces it, as on a phone. Dropping the placeholder
+  // a commit early clamps the scroll position in WebKit only.
+  await page.route(/\/lists\/owner-empty/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.continue();
+  });
+
+  for (const value of ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"]) {
+    await page.getByLabel("New item").fill(value);
+    await page.getByRole("button", { name: "Add" }).click();
+    const row = page.locator("li", { has: page.getByLabel(`Edit ${value}`) });
+    await expect(row).toBeVisible();
+    // Whole row, not just a sliver: the saved row is taller than its
+    // placeholder. Measured against the scroll area by hand, because WebKit's
+    // toBeInViewport doesn't count the scroll area's clipping.
+    await expect
+      .poll(() =>
+        row.evaluate((li) => {
+          const scroller = li.closest("ul")?.parentElement;
+          if (!scroller) return Infinity;
+          return li.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom;
+        }),
+      )
+      .toBeLessThanOrEqual(0);
+  }
+});
+
 test("item with a URL shows a single open-link control", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "owner-empty");
@@ -106,12 +139,43 @@ test("'Recreate last deleted' re-adds the deleted value as a fresh item", async 
   await page.getByRole("button", { name: "Delete Milk" }).click();
   await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
 
-  await page.getByRole("button", { name: "Recreate last deleted" }).click();
-
-  // Milk returns (as a freshly-added item at the end of the list)
-  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+  // Retried: while the delete is still saving, a click only explains why it
+  // can't run yet (see the next test).
+  await expect(async () => {
+    await page.getByRole("button", { name: "Recreate last deleted" }).click();
+    // Milk returns (as a freshly-added item at the end of the list)
+    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
+  }).toPass();
   // The affordance clears once the value has been recreated
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
+});
+
+test("'Recreate last deleted' explains why it can't run while a change is saving", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  // Keeps the delete in flight long enough to click Recreate during it.
+  await page.route(/\/lists\/shopping/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
+
+  await page.getByRole("button", { name: "Delete Milk" }).click();
+  const recreate = page.getByRole("button", { name: "Recreate last deleted" });
+  // Never disabled: clicking says why instead.
+  await expect(recreate).toBeEnabled();
+  await recreate.click();
+  await expect(page.getByText("Still saving - try again in a moment")).toBeVisible();
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+
+  // Once the delete has saved, the same click works.
+  await page.unrouteAll({ behavior: "wait" });
+  await expect(async () => {
+    await recreate.click();
+    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
+  }).toPass();
 });
 
 /**
@@ -198,45 +262,301 @@ test("a slow short swipe springs the item back instead of deleting", async ({ pa
   await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
-test("edited icon does not appear on unedited items while another item is being deleted", async ({
+test("editing an item in the modal saves the new value", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  await expect(dialog.getByLabel("Item")).toHaveValue("Milk");
+
+  await dialog.getByLabel("Item").fill("Oat Milk");
+  await dialog.getByRole("button", { name: "Save" }).click();
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
+  // Values are plain text now, not editable fields.
+  await expect(page.locator("li textarea")).toHaveCount(0);
+
+  await openList(page, "shopping");
+  await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit Milk" })).toHaveCount(0);
+});
+
+// Resolves once a save of the shopping list has been answered, so a test can
+// reload without aborting it, or edit again without two saves racing.
+function shoppingSaved(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+}
+
+test("an item added as 'text [tag]' shows its tag, which the modal edits", async ({
   page,
   ctx,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
 
-  // Edit Milk without submitting, giving it edited=true
-  await page.getByLabel("Edit Milk").fill("Oat Milk");
+  await page.getByLabel("New item").fill("Oat milk [dairy]");
+  const added = shoppingSaved(page);
+  await page.getByRole("button", { name: "Add" }).click();
+  await added;
 
-  // Hold the revalidation loader so the navigation stays in "loading" state
-  // long enough to assert — this is when navigation.formData becomes null and
-  // isSavingEdit incorrectly flips true for all edited items.
-  const { intercepted, release } = await holdLoader(page, /\/lists\/shopping\.data/);
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Oat milk") });
+  await expect(row.getByText("tag: dairy")).toBeVisible();
 
-  // Delete a different item
-  await page.getByRole("button", { name: "Delete Bread" }).click();
+  await page.getByRole("button", { name: "Edit Oat milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  await expect(dialog.getByLabel("Item")).toHaveValue("Oat milk");
+  await expect(dialog.getByLabel("Tag")).toHaveValue("dairy");
 
-  // Wait until the GET revalidation is actually intercepted before asserting
-  await intercepted;
+  await dialog.getByLabel("Tag").fill("fridge");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const edited = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await edited;
 
-  // While in "loading" state no saving indicator should appear — we are not
-  // persisting any edit, we are only deleting Bread
-  await expect(
-    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
-  ).not.toContainText("saving");
+  await openList(page, "shopping");
+  await expect(row.getByText("tag: fridge")).toBeVisible();
+  await expect(row.getByText("tag: dairy")).toHaveCount(0);
+});
 
-  release();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
+// On iOS, tapping an option blurs the input before the click lands, which
+// used to close the list and let the click fall through to the dialog,
+// closing it without saving.
+test("picking a tag from the list keeps the edit modal open @webkit", async ({
+  page,
+  ctx,
+  hasTouch,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
 
-  // The delete form submission also saves all current item values (including
-  // "Oat Milk"), so at idle there is no pending unsaved edit — the edited
-  // indicator should not appear for any item.
-  await expect(
-    page.locator("li").filter({ has: page.getByLabel("Edit Oat Milk") }),
-  ).not.toContainText(" edited");
-  await expect(page.locator("li").filter({ has: page.getByLabel("Edit Eggs") })).not.toContainText(
-    " edited",
-  );
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  // A tap on touch devices, for its event order (blur before click).
+  const press = (locator: Locator) => (hasTouch ? locator.tap() : locator.click());
+  await press(dialog.getByLabel("Tag"));
+  await press(page.getByRole("option", { name: "fruit" }));
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Tag")).toHaveValue("fruit");
+
+  const edited = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await edited;
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  await expect(row.getByText("tag: fruit")).toBeVisible();
+});
+
+test("a tag can be added and cleared in the edit modal", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  await dialog.getByLabel("Tag").fill("dairy");
+  const tagged = shoppingSaved(page);
+  await dialog.getByLabel("Tag").press("Enter");
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await tagged;
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  await dialog.getByLabel("Tag").fill("");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const cleared = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toHaveCount(0);
+  await cleared;
+
+  await openList(page, "shopping");
+  await expect(row).toBeVisible();
+  await expect(row.getByText("tag: dairy")).toHaveCount(0);
+});
+
+test("grouping by tag gathers tagged items and saves the order", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const editLabels = () =>
+    page
+      .locator('button[aria-label^="Edit "]')
+      .evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label")));
+  // Each group sits where its first item was: untagged (led by Milk), then
+  // dairy (Cheese), fruit (Bananas), veg (Tomatoes), meat, household.
+  const groupedTail = [
+    "Edit Cheese",
+    "Edit Yogurt",
+    "Edit Bananas",
+    "Edit Apples",
+    "Edit Tomatoes",
+    "Edit Onions",
+    "Edit Carrots",
+    "Edit Chicken",
+    "Edit Washing-up liquid",
+    "Edit Toilet roll",
+  ];
+
+  const grouped = shoppingSaved(page);
+  await page.getByRole("button", { name: "Group by tag" }).click();
+  await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
+  await grouped;
+  expect((await editLabels())[0]).toBe("Edit Milk");
+
+  await openList(page, "shopping");
+  await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
+
+  await page.getByRole("button", { name: "Group by tag" }).click();
+  await expect(page.getByText("Already grouped by tag")).toBeVisible();
+});
+
+test("the add bar's tag combobox tags each new item until a reload", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  const tag = page.getByRole("combobox", { name: "Tag" });
+  const suggestions = page.getByRole("listbox", { name: "Suggestions" });
+  const newItem = page.getByLabel("New item");
+
+  await tag.click();
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+  await suggestions.getByRole("option", { name: "dairy" }).click();
+  await expect(tag).toHaveValue("dairy");
+
+  await newItem.fill("Oat milk");
+  await page.getByRole("button", { name: "Add" }).click();
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Oat milk") });
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await expect(tag).toHaveValue("dairy");
+
+  // The tag carries on to the next add.
+  await newItem.fill("Kefir");
+  await newItem.press("Enter");
+  const kefir = page.locator("li").filter({ has: page.getByLabel("Edit Kefir") });
+  await expect(kefir.getByText("tag: dairy")).toBeVisible();
+
+  // A tag typed into the value wins over the combobox's.
+  await newItem.fill("Brie [deli]");
+  await page.getByRole("button", { name: "Add" }).click();
+  const brie = page.locator("li").filter({ has: page.getByLabel("Edit Brie") });
+  await expect(brie.getByText("tag: deli")).toBeVisible();
+
+  // A new tag can be typed here too; Enter with nothing highlighted adds.
+  await tag.fill("bakery");
+  await newItem.fill("Bagels");
+  await tag.focus();
+  await tag.press("Enter");
+  const bagels = page.locator("li").filter({ has: page.getByLabel("Edit Bagels") });
+  await expect(bagels.getByText("tag: bakery")).toBeVisible();
+
+  await page.reload();
+  await expect(row.getByText("tag: dairy")).toBeVisible();
+  await expect(tag).toHaveValue("");
+});
+
+test("the edit modal's tag combobox lists, filters, picks and adds tags", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Edit Milk" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit item" });
+  const tag = dialog.getByRole("combobox", { name: "Tag" });
+  const suggestions = dialog.getByRole("listbox", { name: "Suggestions" });
+
+  // The list floats over the dialog rather than pushing its contents down.
+  const save = dialog.getByRole("button", { name: "Save" });
+  const saveBefore = await save.boundingBox();
+  await tag.focus();
+  await expect(suggestions).toBeVisible();
+  expect(await save.boundingBox()).toEqual(saveBefore);
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+
+  // Typing filters; arrowing to an option and pressing Enter picks it
+  // without saving.
+  await tag.fill("da");
+  await expect(suggestions.getByRole("option")).toHaveText(["dairy", 'Add "da"']);
+  await tag.press("ArrowDown");
+  await expect(tag).toHaveAttribute("aria-activedescendant", /.+/);
+  await tag.press("Enter");
+  await expect(tag).toHaveValue("dairy");
+  await expect(suggestions).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  // With a tag chosen, opening again shows every tag, not just the match.
+  await tag.click();
+  await expect(suggestions.getByRole("option")).toHaveText([
+    "dairy",
+    "fruit",
+    "household",
+    "meat",
+    "veg",
+  ]);
+  await expect(suggestions.locator('[data-current="true"]')).toHaveText("dairy");
+
+  // A new tag is offered as "Add …"; Escape closes only the list.
+  await tag.fill("deli");
+  await suggestions.getByRole("option", { name: 'Add "deli"' }).click();
+  await expect(tag).toHaveValue("deli");
+  await tag.fill("del");
+  await tag.press("Escape");
+  await expect(suggestions).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  await tag.fill("deli");
+  // The open tag list sits over Save; tapping elsewhere closes it.
+  await dialog.getByLabel("Item").click();
+  const saved = shoppingSaved(page);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await saved;
+  const row = page.locator("li").filter({ has: page.getByLabel("Edit Milk") });
+  await expect(row.getByText("tag: deli")).toBeVisible();
+});
+
+test("pressing Enter in the edit modal saves", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  await page.getByRole("button", { name: "Edit Bread" }).click();
+  const textarea = page.getByRole("dialog", { name: "Edit item" }).getByLabel("Item");
+  await textarea.fill("Sourdough");
+  await textarea.press("Enter");
+
+  await expect(page.getByRole("button", { name: "Edit Sourdough" })).toBeVisible();
+});
+
+test("cancelling the edit modal leaves the item unchanged", async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+
+  for (const dismiss of ["cancel button", "escape"] as const) {
+    await page.getByRole("button", { name: "Edit Eggs" }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit item" });
+    await dialog.getByLabel("Item").fill("Duck eggs");
+    if (dismiss === "escape") await page.keyboard.press("Escape");
+    else await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit Eggs" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit Duck eggs" })).toHaveCount(0);
+  }
 });
 
 test("when offline, the offline indicator appears and cached list data remains visible", async ({
@@ -293,6 +613,61 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
   // The offline item must survive a full reload — i.e. it reached the server
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Offline butter")).toBeVisible();
+});
+
+test("an add that fails before the browser reports offline is queued, not an error", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  // A dead connection that navigator.onLine hasn't noticed yet — what a
+  // phone does for a few seconds after losing signal.
+  await page.route("**/lists/shopping.data*", (route) => route.abort("internetdisconnected"));
+
+  await page.getByLabel("New item").fill("Lie-fi butter");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await expect(page.getByLabel("Edit Lie-fi butter")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
+
+  // No offline→online transition happens, so the sync's own backoff retry
+  // has to deliver it once the server is reachable.
+  await page.unroute("**/lists/shopping.data*");
+  await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Lie-fi butter")).toHaveCount(1);
+});
+
+test("an add whose response is lost isn't duplicated when the queued copy syncs", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).toBeVisible();
+
+  // The POST reaches the server and is applied, but the response never
+  // makes it back, so the client queues the same add offline.
+  await page.route("**/lists/shopping.data*", async (route) => {
+    if (route.request().method() === "POST") await route.fetch();
+    await route.abort("internetdisconnected");
+  });
+
+  await page.getByLabel("New item").fill("Lost-response jam");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByLabel("Edit Lost-response jam")).toBeVisible();
+  await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
+
+  await page.unroute("**/lists/shopping.data*");
+  await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Lost-response jam")).toHaveCount(1);
 });
 
 test("multiple items added offline all sync to the server on reconnect", async ({
@@ -486,14 +861,75 @@ test("a concurrent addition from another device survives reconnect sync", async 
         response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
     );
 
+    // No check for the "Back online" notification: the collaborator's
+    // broadcast can arrive just after it and be shown in front of it.
     await ownerContext.setOffline(false);
-    await expect(ownerPage.getByText("Back online - syncing changes")).toBeVisible();
     await syncSubmitted;
     await expect(ownerPage.getByText("Offline", { exact: true })).not.toBeVisible();
 
     // Reload to confirm both changes actually reached the server: the
     // collaborator's concurrent addition survived, and the owner's own
     // offline deletion was applied.
+    await openList(ownerPage, "shopping");
+    await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
+test("a failed fresh-data fetch on reconnect never syncs against stale cached data", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await openList(ownerPage, "shopping");
+
+    await ownerContext.setOffline(true);
+    await expect(ownerPage.getByText("Offline", { exact: true })).toBeVisible();
+    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
+    await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible({ timeout: 10000 });
+
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible({ timeout: 10000 });
+
+    // Data fetches keep failing for a moment after reconnecting, as they can
+    // while the connection settles, so the loader falls back to the cached
+    // list that predates Margarine. Syncing against that would delete it.
+    let failedFetches = 0;
+    let failUntil = Number.POSITIVE_INFINITY;
+    await ownerPage.route("**/lists/shopping.data*", async (route) => {
+      if (route.request().method() === "GET" && Date.now() < failUntil) {
+        failedFetches += 1;
+        await route.abort("internetdisconnected");
+        return;
+      }
+      await route.continue();
+    });
+
+    const syncSubmitted = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+    );
+    failUntil = Date.now() + 1500;
+    await ownerContext.setOffline(false);
+    await syncSubmitted;
+    expect(failedFetches).toBeGreaterThan(0);
+    await ownerPage.unroute("**/lists/shopping.data*");
+
     await openList(ownerPage, "shopping");
     await expect(ownerPage.getByLabel("Edit Margarine")).toBeVisible();
     await expect(ownerPage.getByLabel("Edit Milk")).not.toBeVisible();
@@ -659,13 +1095,13 @@ test("reordering items does not create unread or new markers for self", async ({
 
   const getEditOrder = async () =>
     page
-      .locator('textarea[aria-label^="Edit "]')
+      .locator('button[aria-label^="Edit "]')
       .evaluateAll((elements) =>
         elements.map((element) => element.getAttribute("aria-label") ?? "").filter(Boolean),
       );
 
-  // Guard against the selector silently matching nothing again: the value
-  // fields are <textarea>. Poll so the clientLoader HydrateFallback (skeleton)
+  // Guard against the selector silently matching nothing again: each row has
+  // an "Edit <value>" button. Poll so the clientLoader HydrateFallback (skeleton)
   // resolves before we assert the initial order.
   await expect
     .poll(getEditOrder)
@@ -680,6 +1116,26 @@ test("reordering items does not create unread or new markers for self", async ({
       "Edit Yogurt",
       "Edit Orange juice",
       "Edit Coffee",
+      "Edit Tea",
+      "Edit Sugar",
+      "Edit Rice",
+      "Edit Pasta",
+      "Edit Tomatoes",
+      "Edit Onions",
+      "Edit Garlic",
+      "Edit Potatoes",
+      "Edit Carrots",
+      "Edit Chicken",
+      "Edit Olive oil",
+      "Edit Flour",
+      "Edit Cereal",
+      "Edit Peanut butter",
+      "Edit Honey",
+      "Edit Lettuce",
+      "Edit Cucumber",
+      "Edit Peppers",
+      "Edit Washing-up liquid",
+      "Edit Toilet roll",
     ]);
 
   // Drag-and-drop can be timing-sensitive in CI; retry a few times.
@@ -728,4 +1184,10 @@ test("reordering items does not create unread or new markers for self", async ({
   await expect(
     page.locator('[data-new="true"]').filter({ has: page.getByLabel("Edit Milk") }),
   ).toHaveCount(0);
+});
+
+test("list page matches its snapshot", { tag: "@visual" }, async ({ page, ctx }) => {
+  await login(page, ctx.ownerEmail);
+  await page.goto(listPath("shopping"));
+  await expectPageSnapshot(page, "list");
 });

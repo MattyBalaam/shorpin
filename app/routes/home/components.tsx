@@ -2,8 +2,11 @@ import { type PointerEvent, use } from "react";
 import { href, useFetcher, useSubmit } from "react-router";
 
 import { Link } from "~/components/link/link";
+import { DragGrip } from "~/components/reorderable/drag-grip";
 import { reorderViaFormData } from "~/components/reorderable/reorder-strategies";
+import type { StartDragOptions } from "~/components/reorderable/use-drag-list";
 import { useReorderable } from "~/components/reorderable/use-reorderable";
+import { ActionLabel } from "~/components/page-header/page-header";
 import { VisuallyHidden } from "~/components/visually-hidden/visually-hidden";
 
 import * as styles from "./home.css";
@@ -14,7 +17,7 @@ export function PendingSignUps({ countPromise }: { countPromise: Promise<number>
   if (count === 0) return null;
   return (
     <Link to={href("/sign-ups")}>
-      {count} <span className={styles.signUpsLabel}>pending</span>
+      {count} <ActionLabel>pending</ActionLabel>
     </Link>
   );
 }
@@ -63,7 +66,7 @@ export function ReorderableListItem({
   list: ListItem;
   userId: string;
   defaultListId: string | null;
-  startDrag: (event: PointerEvent<HTMLElement>) => void;
+  startDrag: (event: PointerEvent<HTMLElement>, options?: StartDragOptions) => void;
 }) {
   const { id, name, slug, user_id, unreadCount, totalCount, pending } = list;
   const isOwner = user_id === userId;
@@ -80,17 +83,6 @@ export function ReorderableListItem({
             {name}
           </Link>
         )}
-
-        {!pending && <StarButton id={id} name={name} defaultListId={defaultListId} />}
-
-        <span
-          className={styles.itemDragHandle}
-          aria-label={`Reorder ${name}`}
-          onPointerDown={startDrag}
-        >
-          <VisuallyHidden>Reorder {name}</VisuallyHidden>
-          <span aria-hidden>|-|-|-|-|</span>
-        </span>
 
         {isOwner && !pending && (
           <Link
@@ -111,6 +103,17 @@ export function ReorderableListItem({
             </svg>
           </Link>
         )}
+
+        {!pending && <StarButton id={id} name={name} defaultListId={defaultListId} />}
+
+        <span
+          className={styles.itemDragHandle}
+          aria-label={`Reorder ${name}`}
+          onPointerDown={(event) => startDrag(event, { liftScale: 1.03 })}
+        >
+          <VisuallyHidden>Reorder {name}</VisuallyHidden>
+          <DragGrip />
+        </span>
 
         <span className={styles.itemStatus}>
           {unreadCount > 0 && (

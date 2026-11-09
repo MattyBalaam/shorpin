@@ -1,11 +1,7 @@
-import { delay, HttpResponse, http } from "msw";
+import { HttpResponse, http } from "msw/http";
+import { delay } from "msw/utils/delay";
 import { lists, listItems, listMembers, listViews, users } from "../../../db.ts";
-
-function emailFromRequest(request: Request): string | null {
-  const auth = request.headers.get("Authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  return token || null;
-}
+import { emailFromRequest } from "../../auth-token.ts";
 
 function hasListAccess(userId: string, listId: string) {
   const owned = lists.findFirst((q) => q.where({ id: listId, user_id: userId }));
@@ -55,6 +51,7 @@ export const handlers = [
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
+        themeStyle?: string;
       };
       p_mutated_at: number;
     };
@@ -162,6 +159,16 @@ export const handlers = [
         data(draft) {
           draft.theme_primary = body.p_payload.themePrimary;
           draft.theme_secondary = body.p_payload.themeSecondary;
+        },
+      });
+    }
+
+    // Mirrors mutate_list: only applied when sent; 'default' clears it.
+    const { themeStyle } = body.p_payload;
+    if (themeStyle !== undefined) {
+      await lists.update((q) => q.where({ id: list.id }), {
+        data(draft) {
+          draft.theme_style = themeStyle === "default" ? null : themeStyle;
         },
       });
     }

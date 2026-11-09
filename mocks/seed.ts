@@ -47,7 +47,9 @@ export async function seed(
     email: collabEmail,
   });
 
-  // Owner gets 2 lists: one with 10 items, one empty
+  // Owner gets 2 lists: one long enough to scroll (30 items), one empty.
+  // Some items carry a trailing `[tag]` (see app/lib/item-tag.ts); Milk,
+  // Bread and Eggs stay untagged as the tests' everyday fixtures.
   const ownerList = await createListWithItems(
     owner.id,
     "Shopping",
@@ -57,12 +59,32 @@ export async function seed(
       "Bread",
       "Eggs",
       "Butter",
-      "Cheese",
-      "Bananas",
-      "Apples",
-      "Yogurt",
+      "Cheese [dairy]",
+      "Bananas [fruit]",
+      "Apples [fruit]",
+      "Yogurt [dairy]",
       "Orange juice",
       "Coffee",
+      "Tea",
+      "Sugar",
+      "Rice",
+      "Pasta",
+      "Tomatoes [veg]",
+      "Onions [veg]",
+      "Garlic",
+      "Potatoes",
+      "Carrots [veg]",
+      "Chicken [meat]",
+      "Olive oil",
+      "Flour",
+      "Cereal",
+      "Peanut butter",
+      "Honey",
+      "Lettuce",
+      "Cucumber",
+      "Peppers",
+      "Washing-up liquid [household]",
+      "Toilet roll [household]",
     ],
     0,
   );
@@ -73,7 +95,7 @@ export async function seed(
     collab.id,
     "Collab Shopping",
     "collab-shopping",
-    ["Coffee", "Tea", "Sugar", "Cream", "Honey", "Jam"],
+    ["Coffee", "Tea", "Sugar", "Cream [dairy]", "Honey", "Jam [spreads]"],
     0,
   );
   await createListWithItems(collab.id, "Collab Empty", "collab-empty", [], 1);
@@ -92,7 +114,9 @@ export async function seed(
       email: waitlistEmail,
       first_name: "Pending",
       last_name: "User",
-      created_at: new Date().toISOString(),
+      // Fixed, so the sign-ups snapshot's date (masked, but still sized by
+      // its text) doesn't change width from day to day.
+      created_at: "2026-01-15T12:00:00.000Z",
     });
   }
 }
