@@ -13,7 +13,12 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm build
+
+# Coolify PR previews set this to `build:preview`, which also ships the
+# preview settings (dist/runtime.env): the server then runs the MSW mock
+# backend in-process, so previews never touch the real Supabase project.
+ARG BUILD_SCRIPT=build
+RUN pnpm run "$BUILD_SCRIPT"
 
 # ---- Runtime stage ----
 FROM node:24-alpine
@@ -24,16 +29,26 @@ RUN apk add --no-cache wget
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+# Previews import msw (a dev dependency) at runtime, so they keep dev
+# dependencies. Production stays --prod.
+ARG BUILD_SCRIPT=build
+RUN if [ "$BUILD_SCRIPT" = "build" ]; then \
+      pnpm install --frozen-lockfile --prod; \
+    else \
+      pnpm install --frozen-lockfile; \
+    fi
 
 COPY server ./server
 COPY lib ./lib
+# Only previews import these (server/preview.ts).
+COPY mocks ./mocks
 COPY --from=builder /app/dist ./dist
 
 # The server reads these at runtime. CI still passes them as build args (as
 # it did when they were baked into the React client bundle), so they become
 # the image's defaults; a runtime env var of the same name wins. The
-# Supabase key is the publishable one, safe to keep in an image.
+# Supabase key is the publishable one, safe to keep in an image. Left unset
+# (previews), they're empty, and the server falls back to dist/runtime.env.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 ARG VITE_GIT_HASH
@@ -47,6 +62,7 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_PR_NUMBER=$VITE_PR_NUMBER \
     VITE_BRANCH=$VITE_BRANCH \
     NODE_ENV=production
+
 EXPOSE 3000
 
 CMD ["node", "server/index.ts"]

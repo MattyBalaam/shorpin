@@ -3,6 +3,9 @@ node_modules
 /.cache
 .env
 .env.test.local
+# Logins for pnpm bench (scripts/bench/README.md)
+.env.staging.local
+.env.prod.local
 .react-router
 
 # Local Netlify folder
@@ -21,3 +24,7 @@ supabase/.temp/
 
 # Client build output (vite build)
 /dist
+
+# pnpm bench output (scripts/bench/compare.ts)
+bench-results/
+scripts/bench/dashboard/history.json

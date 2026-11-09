@@ -86,6 +86,14 @@
 - `login()` now clears the "Welcome back!" notification and waits for the panel to close. Left alone, it collapsed 5s in and shifted the rows under tests that were mid-drag or mid-screenshot, which made two home tests intermittent.
 - Visual baselines were regenerated. They match the React app apart from a hover artefact (now prevented by parking the mouse) and the date format: the server renders `en-GB` where the browser used to render its own locale.
 
+## Stage 8: PR previews (merged from `main`)
+
+- Merged `main` after #135 (Coolify PR previews on the mock API). `main`'s React-only performance work (lazy linkify, chunking, Sentry replay, the combobox fix) was dropped. Kept: the palette generator in its own module, the mock's real JWTs, and the bench workflow.
+- `build:preview` builds as usual and copies `.env.preview` (placeholders plus `APP_MODE=preview`) to `dist/runtime.env`. The server applies it at startup for anything unset or empty. Previews then start MSW inside the server and seed the dev data (`server/preview.ts`).
+- **Review:** "unset or empty" because Docker turns an unset build arg into an empty variable. A real value set on the deployment still wins, so the README's warning stands: don't give the previews app Supabase credentials.
+- The Dockerfile keeps `main`'s `BUILD_SCRIPT` arg and dev-dependency install for previews, and copies `mocks/` (only previews import it).
+- Unlike `main`'s previews, live updates work (in-process SSE). `/health` is public, and any preview host passes the origin check.
+
 ## Open
 
 - **Test on a real iPhone and Android phone:** long-press drag to reorder, and scroll-snap swipe.

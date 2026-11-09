@@ -2,15 +2,13 @@ import { describe, expect, test } from "vitest";
 import {
   BACKGROUND_L,
   DARK_BACKGROUND_L,
-  generateThemeColors,
   inSrgbGamut,
-  strategies,
   toAdaptiveCss,
   toBackground,
   toCss,
   toDarkModeCss,
-  type PaletteStrategy,
 } from "./palette.ts";
+import { generateThemeColors, strategies, type PaletteStrategy } from "./palette-generator.ts";
 
 const OKLCH = /^oklch\((\d\.\d{3}) (\d\.\d{3}) (\d{1,3}\.\d)\)$/;
 

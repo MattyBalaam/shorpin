@@ -34,6 +34,9 @@ The server reads its settings from the environment at runtime; nothing is baked 
 - `pnpm build` builds the browser assets into `dist/`; `pnpm start` runs the server.
 - Run `pnpm verify` before opening a PR or asking an agent to commit. It applies formatting, runs lint, runs typecheck, then confirms formatting is clean with `pnpm fmt:check`.
 - `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible (not in a linked worktree, whose hooks belong to the main checkout).
+- The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
+- CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
+- **Performance tracking:** a daily workflow benchmarks prod against staging under phone-like throttling, keeps the trend on the `bench-data` branch, and charts it at [mattybalaam.github.io/shorpin/bench](https://mattybalaam.github.io/shorpin/bench/). Run it locally with `pnpm bench`. See [scripts/bench/README.md](scripts/bench/README.md).
 
 ## HTML-first architecture
 
@@ -484,20 +487,21 @@ The app includes lightweight client-side telemetry to help diagnose slow pages a
 
 Implementation files:
 
-- Client metrics collection: `app/lib/performance.client.ts`
+- Client metrics collection: `app/lib/performance.client.ts`, dynamic-imported by `root.tsx` after hydration rather than shipped with the root route. Its observers use `buffered: true`, so entries from before it loads aren't lost
 - Metric ingestion route: `app/routes/perf.ts`
 
 ### Deferred Sentry (client)
 
-The client Sentry SDK (~80 KB gzipped with tracing + replay) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
+The client Sentry SDK (~60 KB gzipped with tracing, plus ~40 KB for replay when it loads) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
 
 - `app/lib/monitoring.client.ts` is the only entry point. `initMonitoring()` runs after `hydrateRoot` and dynamic-imports `app/lib/sentry.client.ts` once the browser is idle (`requestIdleCallback`, 3s timeout).
 - Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root `ErrorBoundary`) queues too; the queue is flushed into Sentry once it initialises.
 - `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/react-router")` directly — the namespace import pulls in every integration.
 - There's deliberately no `manualChunks` rule for `@sentry/`: it dragged `react` into the Sentry chunk, which made the entry import it eagerly.
-- The chunk is precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
+- Session replay is a chunk of its own ([sentry-replay.client.ts](app/lib/sentry-replay.client.ts)), dynamic-imported by `sentry.client.ts`: at init for the 10% of sessions recorded from the start, and otherwise on the session's first error event (`afterSendEvent`), from where it records the rest of the session.
+- The chunks are precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
 
-Trade-offs: the pageload trace starts late, and errors in the first second or so get no on-error replay (they're still captured). Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
+Trade-offs: the pageload trace starts late, and an error's replay starts at the error, without the lead-up Sentry's on-error buffer would keep (that buffer needs replay loaded in every session from the start). Errors are captured either way. Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
 
 ### Page header
 
@@ -553,9 +557,71 @@ report the branch's commit.
   resets it, so sign in with an account in that project.
 - **No Sentry:** the build has no `VITE_SENTRY_DSN`, so staging errors don't
   land in prod's project.
-- **Origin checks:** `allowedActionOrigins` (above) lists the staging host. A
-  branch on TanStack Start needs it in its CSRF middleware's allowed origins
-  instead.
+- **Origin checks:** `allowedActionOrigins` (above) covers the staging host with
+  its `*.shorpin.matthewbalaam.co.uk` wildcard. A branch on TanStack Start
+  needs it in its CSRF middleware's allowed origins instead.
 - **Setup:** the `STAGING_URL` variable and `COOLIFY_STAGING_WEBHOOK_URL`
   secret (the workflow reuses `COOLIFY_TOKEN`), and a Coolify app for the
   `:staging` image.
+
+### PR preview deployments
+
+Coolify's Preview Deployments build every pull request from the same
+`Dockerfile` and serve it at `https://<pr>.shorpin.matthewbalaam.co.uk`
+(wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews use
+the mock backend rather than a Supabase project, so they can't touch real data
+and need no per-PR database or Auth redirect setup.
+
+#### One-time setup
+
+1. **A separate previews app.** Coolify only builds previews for an app it
+   builds from Git itself. Production and staging pull images CI pushed to
+   GHCR, so leave them alone and add a third application: **Sources → + Add →
+   GitHub App** (a deploy key or public repo URL won't receive PR webhooks),
+   install it on this repo, then create an app from that source with the
+   `Dockerfile` build pack, branch `main`. GitHub must be able to reach the
+   Coolify instance's webhook URL from the internet.
+2. **Enable previews.** In the application's **Advanced** settings, turn on
+   **Preview Deployments**.
+3. **Domains.** Give the app a domain one level under production, e.g.
+   `https://demo.shorpin.matthewbalaam.co.uk`. Under **Preview Deployments**,
+   set the URL template to `{{pr_id}}.shorpin.matthewbalaam.co.uk` rather than
+   the default `{{pr_id}}.{{domain}}`, which would add a second level. (On
+   `main`, React Router's `allowedActionOrigins` only accepts one level. This
+   branch checks `Sec-Fetch-Site` instead, which works on any host.)
+4. **Wildcard DNS.** Add an `A` record for `*.shorpin.matthewbalaam.co.uk`
+   pointing at the same public IP as the production domain. Traefik requests a
+   Let's Encrypt certificate per preview host over HTTP-01, so no wildcard
+   certificate is needed.
+5. **Build variable.** Add `BUILD_SCRIPT=build:preview` as a build variable,
+   both for the app itself and under **Environment Variables → Preview
+   Deployments**. The Dockerfile runs `pnpm run "$BUILD_SCRIPT"` (default
+   `build`), so production and staging are unaffected, and the app's own
+   deployment of `main` is a mock-backed demo too.
+6. **Leave Supabase and Sentry unset.** Don't add `VITE_SUPABASE_*` or
+   `VITE_SENTRY_DSN` to this app. A value set on the app wins over the preview
+   defaults (`.env.preview`), so a copied production value would point
+   previews at the real database.
+
+Open a PR to test: Coolify builds it, comments the preview link on the PR, and
+removes the deployment when the PR is closed or merged.
+
+#### Preview behaviour
+
+- `build:preview` builds as usual, then copies `.env.preview` (placeholder
+  Supabase values and `APP_MODE=preview`) to `dist/runtime.env`. The server
+  applies it at startup for anything not already set
+  ([server/env.ts](server/env.ts)). Production builds have no such file.
+- In preview mode the server starts MSW in-process and seeds the same
+  in-memory data as `pnpm dev` ([server/preview.ts](server/preview.ts)). Sign
+  in on `/login` with the quick-login shortcuts (any password works).
+- The server imports `msw` at runtime, so for any `BUILD_SCRIPT` other than
+  `build` the Dockerfile's runtime stage keeps dev dependencies. Production
+  still installs `--prod`.
+- `/health` and `/version` are both public, so either works as the health
+  check.
+- Data resets whenever the container restarts.
+- Live updates work: they're server-sent events from the app's own process,
+  not Supabase Realtime.
+- Each preview is a full Docker build on the Coolify host, so close stale PRs
+  to free memory.

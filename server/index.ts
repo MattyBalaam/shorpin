@@ -90,6 +90,11 @@ app.onError((error, c) => {
   );
 });
 
+if (env.isPreview) {
+  const { startPreviewBackend } = await import("./preview.ts");
+  await startPreviewBackend();
+}
+
 serve({ fetch: app.fetch, port: env.port }, ({ port }) => {
   console.log(`Shorpin listening on http://localhost:${port}`);
 });
