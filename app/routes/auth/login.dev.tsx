@@ -29,7 +29,7 @@ export default function Login({ actionData }: { actionData?: Awaited<ReturnType<
   const { state } = useNavigation();
   // Preview builds with a test project configured offer it beside the mock
   // (see supabase-backend.ts). Quick-login always signs in to the mock.
-  const { canChooseBackend, backend: savedBackend, previewUser } = useLoaderData<typeof loader>();
+  const { canChooseBackend, backend: savedBackend, previewUsers } = useLoaderData<typeof loader>();
   const [backend, setBackend] = useState<Backend>(savedBackend);
   const { form, fields } = useForm(zLogin, {
     lastResult: actionData,
@@ -86,15 +86,25 @@ export default function Login({ actionData }: { actionData?: Awaited<ReturnType<
         <Link to={href("/request-access")}>Request access</Link>
       </div>
 
-      {backend === "test" && previewUser && (
+      {backend === "test" && previewUsers && (
+        // The test project's counterparts of the quick-login users, seeded
+        // with the same lists (app/lib/preview-user.server.ts).
         <div className={devStyles.devSection}>
-          <p className={devStyles.devHeading}>Preview user</p>
-          <form method="POST">
-            <input type="hidden" name="intent" value="preview-user" />
-            <button type="submit" className={devStyles.devButton}>
-              Sign in as preview user <span className={devStyles.devEmail}>{previewUser}</span>
-            </button>
-          </form>
+          <p className={devStyles.devHeading}>Preview users</p>
+          {(
+            [
+              ["owner", "Owner", previewUsers.owner],
+              ["collab", "Collaborator", previewUsers.collab],
+            ] as const
+          ).map(([role, label, email]) => (
+            <form key={role} method="POST">
+              <input type="hidden" name="intent" value="preview-user" />
+              <input type="hidden" name="role" value={role} />
+              <button type="submit" className={devStyles.devButton}>
+                {label} <span className={devStyles.devEmail}>{email}</span>
+              </button>
+            </form>
+          ))}
         </div>
       )}
 

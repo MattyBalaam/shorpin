@@ -24,14 +24,14 @@ const loadPreviewUser = () =>
 
 /**
  * Only login.dev.tsx (mock and preview builds) uses this: the backend the
- * preview will sign in to (see supabase-backend.ts), and the preview user's
- * email when one-click sign-in is set up.
+ * preview will sign in to (see supabase-backend.ts), and the preview users'
+ * emails when one-click sign-in is set up.
  */
 export async function loader({ request }: { request: Request }) {
   return {
     canChooseBackend,
     backend: parseBackend(requestBackend(request)),
-    previewUser: (await loadPreviewUser())?.previewUserEmail(request) ?? null,
+    previewUsers: (await loadPreviewUser())?.previewUsers(request) ?? null,
   };
 }
 
@@ -64,7 +64,8 @@ export async function action({ request, context }: Route.ActionArgs) {
         error: { formErrors: ["Preview user isn't available in this build"] },
       });
     }
-    const { formError, cookieHeaders } = await previewUser.signInAsPreviewUser(request);
+    const role = formData.get("role") === "collab" ? "collab" : "owner";
+    const { formError, cookieHeaders } = await previewUser.signInAsPreviewUser(request, role);
     if (formError) return report(submission, { error: { formErrors: [formError] } });
     throw await signedIn(request, "test", cookieHeaders);
   }

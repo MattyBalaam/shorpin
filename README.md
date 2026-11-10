@@ -575,22 +575,32 @@ builds compile the choice out and use `VITE_SUPABASE_*` as before.
 - **Quick-login is mock-only**: its seeded users don't exist in the test
   project.
 
-#### Preview user
+#### Preview users
 
 With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project also
-shows **Sign in as preview user**. Each preview gets its own user, named after
-its host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
+shows **Preview users**: the test project's counterparts of the mock's
+quick-login users. Each preview gets its own pair, named after its host:
+`<pr>.shorpin…` has `preview-<pr>@test.invalid` (owner) and
+`preview-<pr>-collab@test.invalid` (collaborator).
 
-- [preview-user.server.ts](app/lib/preview-user.server.ts) creates it on first
-  use (`admin.createUser`, already confirmed); the profile trigger adds its
-  profile. It signs in without a password: the admin API generates a
-  magic-link token (nothing is emailed) and `verifyOtp` exchanges it for
-  session cookies.
+- **Seeded like the mock.** The first sign-in creates both users and gives
+  them the mock's lists, items and sharing (the owner's Shopping list is
+  shared with the collaborator). Both seeds read
+  [mocks/seed-data.ts](mocks/seed-data.ts), so they can't drift apart.
+  `lists.slug` is unique across the project, so seeded slugs get the preview's
+  label as a suffix (`shopping-172`). Seeding only happens when the owner is
+  new. If it fails, the new users are deleted again, so the next sign-in
+  starts over instead of finding a half-seeded account.
+- [preview-user.server.ts](app/lib/preview-user.server.ts) creates the users
+  with `admin.createUser` (already confirmed); the profile trigger adds their
+  profiles. Sign-in needs no password: the admin API generates a magic-link
+  token (nothing is emailed) and `verifyOtp` exchanges it for session
+  cookies.
 - The key is only read from `process.env` on the server, and the module is
   only loaded in preview builds that offer the test project.
 - The cleanup workflow (see [Preview behaviour](#preview-behaviour)) deletes
-  the user when its PR closes. The app's own user (`preview-demo@…`) isn't
-  tied to a PR and stays.
+  both users when their PR closes. The app's own pair (`preview-demo@…`)
+  isn't tied to a PR and stays.
 
 #### Preview behaviour
 
@@ -609,8 +619,9 @@ its host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
   to free memory.
 - When a PR closes,
   [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
-  deletes its preview user, `preview-<pr>@test.invalid`, from the e2e test
-  project, if the preview created one. It uses the `E2E_SUPABASE_*` repo
-  secrets, and deleting the user cascades to its profile and lists. It runs
+  deletes its preview users, `preview-<pr>@test.invalid` and
+  `preview-<pr>-collab@test.invalid`, from the e2e test project, if the
+  preview created them. It uses the `E2E_SUPABASE_*` repo secrets, and
+  deleting a user cascades to its profile, lists and memberships. It runs
   on `pull_request_target`, which always uses `main`'s copy of the workflow,
   so it covers PRs from every branch; it checks out no PR code.
