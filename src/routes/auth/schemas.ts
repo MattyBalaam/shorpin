@@ -7,6 +7,12 @@ export const zLogin = v.object({
   password: v.pipe(v.string(), v.minLength(1, "Password is required")),
 });
 
+/** The login form plus, in preview builds, which backend to sign in to. */
+export const zSignIn = v.object({
+  ...zLogin.entries,
+  backend: v.optional(v.picklist(["mock", "test"])),
+});
+
 export const zForgotPassword = v.object({ email });
 
 // The match check is part of the schema, so the form catches a mismatch

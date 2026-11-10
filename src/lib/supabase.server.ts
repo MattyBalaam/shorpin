@@ -3,24 +3,21 @@ import { createServerClient } from "@supabase/ssr";
 import { type AuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { getCookies, setCookie } from "@tanstack/solid-start/server";
 import type { Database } from "./database.types";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY environment variables",
-  );
-}
+import { BACKEND_COOKIE, supabaseConfig } from "./supabase-backend";
 
 /**
  * A Supabase client bound to the current request's cookies. Start keeps the
  * request in async context, so getCookies/setCookie need no request argument,
  * and cookies set here (a token refresh, sign-in, sign-out) are applied to
  * whatever response is being built — an SSR page or a server function call.
+ * Preview builds pick the mock or the test project from BACKEND_COOKIE (see
+ * supabase-backend.ts); each has its own `sb-<ref>-auth-token` session.
+ * Sign-in passes the backend it's switching to, since the request's cookie
+ * still names the old one.
  */
-export function createSupabaseClient() {
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+export function createSupabaseClient(backend = getCookies()[BACKEND_COOKIE]) {
+  const { url, key } = supabaseConfig(backend);
+  return createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return Object.entries(getCookies()).map(([name, value]) => ({ name, value }));

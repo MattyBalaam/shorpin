@@ -15,13 +15,19 @@ const publicOrigins = new Set([
   "https://shorpin.matthewbalaam.co.uk",
   "https://staging.shorpin.matthewbalaam.co.uk",
 ]);
+// Coolify PR previews serve at `<pr>.shorpin.matthewbalaam.co.uk` (README
+// "PR preview deployments"). Only preview builds allow them, and only one
+// label deep.
+const previewOrigin = /^https:\/\/[a-z0-9-]+\.shorpin\.matthewbalaam\.co\.uk$/;
+const isPreviewOrigin = (origin: string) =>
+  import.meta.env.MODE === "preview" && previewOrigin.test(origin);
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 const rejectCrossSiteMutations = createCsrfMiddleware({
   filter: ({ request }) => !safeMethods.has(request.method),
   allowRequestsWithoutOriginCheck: true,
   origin: (origin, { request }) =>
-    publicOrigins.has(origin) || origin === new URL(request.url).origin,
+    publicOrigins.has(origin) || isPreviewOrigin(origin) || origin === new URL(request.url).origin,
 });
 
 // Server errors to Sentry, which instrument.server.mjs set up before the

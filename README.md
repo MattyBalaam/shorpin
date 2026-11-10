@@ -23,7 +23,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 | File                                                  | Mode      | Used by                                         | Notes                                                                                                                   |
 | ----------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `.env.mock`                                           | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
-| `.env.preview`                                        | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
+| `.env.preview`                                        | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview builds (in-process MSW). Optional `VITE_TEST_SUPABASE_*` add the test project.  |
 | `.env.e2e.local` (copy from `.env.e2e.local.example`) | `e2e`     | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
 | `.env` (copy from `.env.example`)                     | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
 
@@ -518,7 +518,53 @@ The image runs `.output/server/index.mjs` (Nitro's Node server, port 3000) with 
 Start's CSRF middleware (`createCsrfMiddleware`, opt-in) runs on every request in [src/start.ts](src/start.ts) and answers a non-GET request with `403` unless it's same-origin. It replaces React Router's origin check (`allowedActionOrigins`).
 
 - **Browsers** are judged by `Sec-Fetch-Site`, which must be `same-origin`. A sibling subdomain (`same-site`) is refused too. Page loads and other GETs aren't checked, so links from other sites still work.
-- **Clients without `Sec-Fetch-Site`** fall back to `Origin`, then `Referer`. Behind the proxy, `request.url` is the container's plain-HTTP address (srvx ignores `X-Forwarded-*` unless trust-proxy is on), so the public and staging origins are allowed by name in `start.ts`. Change them there if a domain changes.
+- **Clients without `Sec-Fetch-Site`** fall back to `Origin`, then `Referer`. Behind the proxy, `request.url` is the container's plain-HTTP address (srvx ignores `X-Forwarded-*` unless trust-proxy is on), so the public and staging origins are allowed by name in `start.ts`. Preview builds also allow any one-label `*.shorpin.matthewbalaam.co.uk` origin, for [PR previews](#pr-preview-deployments). Change them there if a domain changes.
 - **Requests with none of those headers pass.** Browsers always send at least one on a POST, so such a request can't be forged by a page. This lets scripts and health checks through.
 
 [csrf.spec.ts](integration-tests/csrf.spec.ts) covers it. The deploy smoke test in [ci.yml](.github/workflows/ci.yml) POSTs to `/perf` twice: with the public `Origin` (must pass behind the proxy) and with `Sec-Fetch-Site: cross-site` (must get `403`).
+
+### PR preview deployments
+
+Coolify's Preview Deployments build every pull request from the same `Dockerfile` and serve it at `https://<pr>.shorpin.matthewbalaam.co.uk` (wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews default to the in-process mock backend, so they can't touch real data and need no per-PR database. They can also offer the e2e **test** Supabase project, picked on the login page.
+
+#### One-time setup
+
+1. **A separate previews app.** Coolify only builds previews for an app it builds from Git itself. Production and staging pull images CI pushed to GHCR, so leave them alone and add a third application: **Sources → + Add → GitHub App** (a deploy key or public repo URL won't receive PR webhooks), install it on this repo, then create an app from that source with the `Dockerfile` build pack. GitHub must be able to reach the Coolify instance's webhook URL from the internet.
+2. **Enable previews.** In the application's **Advanced** settings, turn on **Preview Deployments**.
+3. **Domains.** Give the app a domain one level under production, e.g. `https://demo.shorpin.matthewbalaam.co.uk`. Under **Preview Deployments**, set the URL template to `{{pr_id}}.shorpin.matthewbalaam.co.uk` rather than the default `{{pr_id}}.{{domain}}`, which would add a second level. The preview origin pattern in [src/start.ts](src/start.ts) matches a single label only; change both together.
+4. **Wildcard DNS.** Add an `A` record for `*.shorpin.matthewbalaam.co.uk` pointing at the same public IP as the production domain. Traefik requests a Let's Encrypt certificate per preview host over HTTP-01, so no wildcard certificate is needed.
+5. **Build variables**, both for the app itself and under **Environment Variables → Preview Deployments**:
+   - `BUILD_SCRIPT=build:preview`. The Dockerfile runs `pnpm run "$BUILD_SCRIPT"` (default `build`), so production and staging are unaffected.
+   - Optional: `VITE_TEST_SUPABASE_URL` and `VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY`, the test project's URL and publishable key (the `E2E_SUPABASE_*` values, never production's). They're public values, baked into the client bundle like the production ones. Without them the login page shows no backend choice.
+   - Optional, with the above: `TEST_SUPABASE_SERVICE_ROLE_KEY` as a **runtime** variable (not a build variable, and never `VITE_`-prefixed), the test project's service role key. It enables the one-click preview user.
+6. **Leave `VITE_SUPABASE_*` and `VITE_SENTRY_DSN` unset.** Vite gives process env precedence over `.env.preview`, so a copied production value would point the mock option at the real database; an unset DSN keeps preview errors out of Sentry.
+7. **Keep fork PR previews off.** The repo is public. With the service role key set, a preview runs its PR's code with a key that bypasses RLS on the test project, so only build previews for PRs from this repo, never from forks.
+
+Open a PR to test: Coolify builds it, comments the preview link on the PR, and removes the deployment when the PR is closed or merged.
+
+#### Choosing the backend
+
+[src/lib/supabase-backend.ts](src/lib/supabase-backend.ts) holds both configs. A preview build with `VITE_TEST_SUPABASE_*` set shows a **Backend** choice on `/login`: **Mock** or **Supabase test project**. Other builds compile the choice out and use `VITE_SUPABASE_*` as before.
+
+- **The choice is a `shorpin-backend` cookie**, set by the sign-in server function. [supabase.server.ts](src/lib/supabase.server.ts) reads it for every request's client, and [supabase.client.ts](src/lib/supabase.client.ts) reads it for realtime, so it isn't `HttpOnly`. Sign-in passes the new backend to the client explicitly, since the request's cookie still names the old one.
+- **Sessions don't mix.** Supabase names its session cookie after the project (`sb-<ref>-auth-token`), so the mock and the test project each keep their own, and a session is only read for the backend the cookie names.
+- **Switching reloads.** Signing in with a different backend from last time does a full page load rather than a client navigation, so the realtime module is evaluated again for the new project.
+- **Quick-login is mock-only.** Its seeded users don't exist in the test project. There, use the preview user or a real test account.
+- **The preview mocks pass the test project through.** The mock handlers match any host (`*/rest/v1/…`), so [preview-mocks.server.ts](src/lib/preview-mocks.server.ts) puts a `passthrough()` handler for the test project's URL first.
+- The test project is shared with `pnpm test:e2e`, whose setup and teardown only create and delete their own user, so preview data and e2e runs don't collide.
+
+#### Preview user
+
+With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project on `/login` also shows **Sign in as preview user**. Each preview gets its own user, named after its host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
+
+- [preview-user.server.ts](src/lib/preview-user.server.ts) creates the user on first use (`admin.createUser`, already confirmed). The profile trigger adds its profile.
+- It signs in without a password: the admin API generates a magic-link token (nothing is emailed), and `verifyOtp` exchanges it for session cookies on the response.
+- The key is only read from `process.env` on the server, and the module is only loaded in preview builds that offer the test project.
+- [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml) deletes the user when its PR closes, using the `E2E_SUPABASE_*` repo secrets. Deleting it cascades to its profile and lists. It runs on `pull_request_target` so secrets are available, and checks out no PR code. The base app's own user (`preview-demo@…`) isn't tied to a PR and stays.
+
+#### Preview behaviour
+
+- `build:preview` starts MSW inside the server ([src/start.ts](src/start.ts), [preview-mocks.server.ts](src/lib/preview-mocks.server.ts)), seeded with the same in-memory data as `pnpm dev`. On the mock, sign in with the quick-login shortcuts (any password works). Mock data resets whenever the container restarts.
+- Nitro traces `msw` into `.output` for preview builds ([vite.config.ts](vite.config.ts)), so the runtime image needs no dev dependencies.
+- Realtime isn't mocked, so collaborative live updates only work on the test project. See [docs/mocking.md](docs/mocking.md).
+- Each preview is a full Docker build on the Coolify host, so close stale PRs to free memory.
