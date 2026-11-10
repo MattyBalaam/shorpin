@@ -553,14 +553,15 @@ Open a PR to test: Coolify builds it, comments the preview link on the PR, and r
 - **The preview mocks pass the test project through.** The mock handlers match any host (`*/rest/v1/…`), so [preview-mocks.server.ts](src/lib/preview-mocks.server.ts) puts a `passthrough()` handler for the test project's URL first.
 - The test project is shared with `pnpm test:e2e`, whose setup and teardown only create and delete their own user, so preview data and e2e runs don't collide.
 
-#### Preview user
+#### Preview users
 
-With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project on `/login` also shows **Sign in as preview user**. Each preview gets its own user, named after its host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
+With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project on `/login` also shows **Preview users**: the test project's counterparts of the mock's quick-login users. Each preview gets its own pair, named after its host: `<pr>.shorpin…` has `preview-<pr>@test.invalid` (owner) and `preview-<pr>-collab@test.invalid` (collaborator).
 
-- [preview-user.server.ts](src/lib/preview-user.server.ts) creates the user on first use (`admin.createUser`, already confirmed). The profile trigger adds its profile.
-- It signs in without a password: the admin API generates a magic-link token (nothing is emailed), and `verifyOtp` exchanges it for session cookies on the response.
+- **Seeded like the mock.** The first sign-in creates both users and gives them the mock's lists, items and sharing (the owner's Shopping list is shared with the collaborator). Both seeds read [mocks/seed-data.ts](mocks/seed-data.ts), so they can't drift apart. `lists.slug` is unique across the project, so seeded slugs get the preview's label as a suffix (`shopping-172`). Seeding only happens when the owner is new. If it fails, the new users are deleted again, so the next sign-in starts over instead of finding a half-seeded account.
+- [preview-user.server.ts](src/lib/preview-user.server.ts) creates the users with `admin.createUser` (already confirmed). The profile trigger adds their profiles.
+- Sign-in needs no password: the admin API generates a magic-link token (nothing is emailed), and `verifyOtp` exchanges it for session cookies on the response.
 - The key is only read from `process.env` on the server, and the module is only loaded in preview builds that offer the test project.
-- [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml) deletes the user when its PR closes, using the `E2E_SUPABASE_*` repo secrets. Deleting it cascades to its profile and lists. It runs on `pull_request_target` so secrets are available, and checks out no PR code. The base app's own user (`preview-demo@…`) isn't tied to a PR and stays.
+- [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml) deletes both users when their PR closes, using the `E2E_SUPABASE_*` repo secrets. Deleting a user cascades to its profile, lists and memberships. It runs on `pull_request_target`, which always uses `main`'s copy of the workflow, so secrets are available, and it checks out no PR code. The base app's own pair (`preview-demo@…`) isn't tied to a PR and stays.
 
 #### Preview behaviour
 

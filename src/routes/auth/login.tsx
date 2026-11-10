@@ -14,8 +14,10 @@ import { zLogin } from "./schemas";
 
 export const Route = createFileRoute("/_auth/login")({
   // Preview builds with a test project configured offer it beside the mock.
-  loader: async (): Promise<{ backend: Backend; previewUser: string | null }> =>
-    canChooseBackend ? getBackend() : { backend: "mock", previewUser: null },
+  loader: async (): Promise<{
+    backend: Backend;
+    previewUsers: { owner: string; collab: string } | null;
+  }> => (canChooseBackend ? getBackend() : { backend: "mock", previewUsers: null }),
   head: () => ({ meta: [{ title: "Sign in | Shorpin" }] }),
   component: Login,
 });
@@ -128,17 +130,32 @@ function Login() {
         <Link to="/request-access">Request access</Link>
       </div>
 
-      <Show when={backend() === "test" ? data().previewUser : undefined}>
-        {(email) => (
+      {/* The test project's counterparts of the quick-login users, seeded
+          with the same lists (preview-user.server.ts). */}
+      <Show when={backend() === "test" ? data().previewUsers : undefined}>
+        {(users) => (
           <div class={devStyles.devSection}>
-            <p class={devStyles.devHeading}>Preview user</p>
-            <button
-              type="button"
-              class={devStyles.devButton}
-              onClick={() => signInWith("test", () => signInAsPreviewUserFn())}
+            <p class={devStyles.devHeading}>Preview users</p>
+            <For
+              each={
+                [
+                  { role: "owner", label: "Owner", email: users().owner },
+                  { role: "collab", label: "Collaborator", email: users().collab },
+                ] as const
+              }
             >
-              Sign in as preview user <span class={devStyles.devEmail}>{email()}</span>
-            </button>
+              {(user) => (
+                <button
+                  type="button"
+                  class={devStyles.devButton}
+                  onClick={() =>
+                    signInWith("test", () => signInAsPreviewUserFn({ data: { role: user.role } }))
+                  }
+                >
+                  {user.label} <span class={devStyles.devEmail}>{user.email}</span>
+                </button>
+              )}
+            </For>
           </div>
         )}
       </Show>

@@ -7,6 +7,7 @@ import {
   parseBackend,
 } from "~/lib/supabase-backend";
 import { createSupabaseClient } from "~/lib/supabase.server";
+import * as v from "valibot";
 import { zSignIn } from "./schemas";
 
 // The preview user helpers need the service role key, so they're only
@@ -18,20 +19,28 @@ const loadPreviewUser = () =>
 
 /**
  * The backend preview builds will sign in to (see supabase-backend.ts), and
- * the preview user's email when one-click sign-in is set up.
+ * the preview users' emails when one-click sign-in is set up.
  */
-export const getBackend = createServerFn({ method: "GET" }).handler(async () => ({
-  backend: parseBackend(getCookie(BACKEND_COOKIE)),
-  previewUser: (await loadPreviewUser())?.previewUserEmail() ?? null,
-}));
-
-/** Signs in as this preview's test-project user, creating it on first use. */
-export const signInAsPreviewUser = createServerFn({ method: "POST" }).handler(async () => {
-  const previewUser = await loadPreviewUser();
-  if (!previewUser) return { formError: "Preview user isn't available in this build" };
-  setCookie(BACKEND_COOKIE, "test", backendCookieOptions);
-  return previewUser.signInAsPreviewUser();
+export const getBackend = createServerFn({ method: "GET" }).handler(async () => {
+  const users = (await loadPreviewUser())?.previewUsers();
+  return {
+    backend: parseBackend(getCookie(BACKEND_COOKIE)),
+    previewUsers: users ? { owner: users.owner, collab: users.collab } : null,
+  };
 });
+
+/**
+ * Signs in as this preview's test-project owner or collaborator, creating
+ * and seeding them like the mock on first use.
+ */
+export const signInAsPreviewUser = createServerFn({ method: "POST" })
+  .validator(v.object({ role: v.picklist(["owner", "collab"]) }))
+  .handler(async ({ data: { role } }) => {
+    const previewUser = await loadPreviewUser();
+    if (!previewUser) return { formError: "Preview users aren't available in this build" };
+    setCookie(BACKEND_COOKIE, "test", backendCookieOptions);
+    return { formError: await previewUser.signInAsPreviewUser(role) };
+  });
 
 /**
  * Signs in and sets the session cookies on the response. Returns a form
