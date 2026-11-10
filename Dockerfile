@@ -25,7 +25,11 @@ ARG VITE_PR_NUMBER
 ARG VITE_BRANCH
 # Coolify PR previews set this to `build:preview`, which runs the MSW mock
 # backend inside the server so previews never touch the real Supabase project.
+# Optional for previews: the e2e test project's URL and publishable key, for
+# app versions that offer it at login beside the mock.
 ARG BUILD_SCRIPT=build
+ARG VITE_TEST_SUPABASE_URL
+ARG VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
 RUN pnpm run "$BUILD_SCRIPT"
 
