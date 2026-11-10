@@ -294,6 +294,15 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     needs: migrate-prod
+    # One production deploy at a time. Every deploy pushes the same `:latest`
+    # tag and triggers the same Coolify app, so two merges close together
+    # raced: production landed on the earlier commit and the later run's smoke
+    # test failed. Queued, the later run deploys after the earlier one.
+    # GitHub keeps one pending run per group, so a third merge replaces the
+    # second's pending run (shown as cancelled) and main's latest still ships.
+    concurrency:
+      group: production
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write

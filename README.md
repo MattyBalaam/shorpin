@@ -450,6 +450,14 @@ Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts
 the container with a Traefik reverse proxy that terminates TLS and forwards
 plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
+Each push to `main` builds `ghcr.io/mattybalaam/shorpin:latest`, triggers the
+production app's Coolify webhook, and waits for `/version` to report the
+commit ([ci.yml](.github/workflows/ci.yml) `deploy`). Production deploys run
+one at a time (`concurrency: production`): they share the `:latest` tag and
+the Coolify app, so two merges close together raced and production could end
+up on the earlier commit. A merge landing while one deploy runs and another
+waits replaces the waiting one, so `main`'s latest commit still ships.
+
 ### Forwarded-proto / action origin validation
 
 React Router 8.3.1 added an action-origin CSRF check: a POST to a UI route is
