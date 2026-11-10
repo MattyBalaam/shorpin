@@ -1,33 +1,23 @@
 {
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/.server/**/*.ts",
-    "**/.server/**/*.tsx",
-    "**/.client/**/*.ts",
-    "**/.client/**/*.tsx",
-    ".react-router/types/**/*"
-  ],
+  "include": ["server", "lib", "client", "mocks", "integration-tests", "e2e", "scripts", "*.ts"],
+  "exclude": ["dist", "client/sw.ts"],
   "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ES2024"],
-    "types": ["@react-router/node", "vite/client", "msw/vite/client"],
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ES2024", "ESNext.Collection"],
+    "types": ["node", "vite/client"],
+    "target": "ES2024",
+    "module": "Preserve",
     "moduleResolution": "Bundler",
+    // The server runs as plain .ts through Node's type stripping: imports
+    // name the real file, and nothing may need emitting (no enums,
+    // namespaces or parameter properties).
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
     "resolveJsonModule": true,
-    "target": "ES2022",
     "strict": true,
-    "allowJs": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "allowImportingTsExtensions": true,
-    "paths": {
-      "~/*": ["./app/*"]
-    },
-    "noEmit": true,
-    "rootDirs": [".", "./.react-router/types"],
-    "plugins": [{ "name": "@react-router/dev" }]
+    "noEmit": true
   }
 }

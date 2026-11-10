@@ -1,0 +1,236 @@
+/*
+ * Styles for what the HTML-first version does with markup and CSS instead of
+ * components: dialogs that work without a script, the ↑/↓ reorder buttons,
+ * swipe-to-delete with scroll snapping, self-dismissing notifications and
+ * animated page-to-page transitions. app.css is the original look, compiled
+ * once from the Vanilla Extract sources.
+ */
+
+/* Components set their own display, which would otherwise beat the
+   browser's [hidden] rule; scripts hide things with the attribute. */
+[hidden] {
+  display: none !important;
+}
+
+/* Cross-document view transitions: a form post and its redirect animate
+   like an in-page update. Rows carry their own view-transition-name (set
+   inline by the server), so a reorder slides them into place. */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
+/* --- Notifications --------------------------------------------------- */
+
+/* Successes clear themselves after 5s; focus in the panel (reading it with
+   a keyboard or screen reader, or reaching for its buttons) pauses both the
+   countdown clock and the dismissal, no script needed. */
+.notifications-panel[data-auto-dismiss] {
+  animation: notifications-auto-dismiss 200ms ease-out 5s forwards;
+}
+
+.notifications-panel:focus-within,
+.notifications-panel:focus-within .notifications-clock {
+  animation-play-state: paused;
+}
+
+@keyframes notifications-auto-dismiss {
+  to {
+    grid-template-rows: 0fr;
+    visibility: hidden;
+  }
+}
+
+/* --- Scroll shadows ----------------------------------------------------- */
+
+/* Where scroll-state() queries aren't supported (Safari, Firefox), the edges
+   fade with a scroll-driven animation instead of the React app's script:
+   in over the first few pixels of scroll, out over the last few. With
+   nothing to scroll the timeline is inactive and they stay hidden. */
+@supports not (container-type: scroll-state) {
+  .scroll-area-inner {
+    scroll-timeline: --scroll-area block;
+  }
+
+  .scroll-area-edge-start,
+  .scroll-area-edge-end {
+    /* Longhands: the minifier collapses a shorthand without a name to none. */
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: --scroll-area;
+  }
+
+  .scroll-area-edge-start {
+    animation-name: scroll-area-edge-in;
+    animation-range: 0 1rem;
+  }
+
+  .scroll-area-edge-end {
+    animation-name: scroll-area-edge-out;
+    animation-range: calc(100% - 1rem) 100%;
+  }
+}
+
+@keyframes scroll-area-edge-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-area-edge-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --- Dialogs ----------------------------------------------------------- */
+
+/* A route dialog without a script is a non-modal dialog[open]: lay it out
+   like the modal, with a backdrop drawn by its shadow. base.ts upgrades it
+   to a real modal (so it takes the top layer and ::backdrop instead). */
+.modal-dialog[open]:not(:modal) {
+  position: fixed;
+  inset-inline: 0;
+  z-index: 10;
+  box-shadow:
+    var(--style-surface-shadow),
+    0 0 0 100vmax var(--style-backdrop);
+}
+
+.item-edit-tag {
+  display: grid;
+  gap: var(--spacing-xs);
+}
+
+.item-edit-tag-input {
+  width: 100%;
+  border: 1px solid var(--palette-chrome);
+}
+
+/* --- Reordering -------------------------------------------------------- */
+
+.reorder {
+  grid-column: drag;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.home-reorder {
+  position: relative;
+  z-index: 1;
+}
+
+.reorder-buttons {
+  display: flex;
+  flex-direction: column;
+}
+
+.reorder-button {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 3px 6px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.reorder-button:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+
+/* The grip only works with reorder.ts, which sets the attribute. Once it
+   has, the ↑/↓ buttons stay as the keyboard route, shown on focus. On touch
+   screens they stay visible: native drag and drop there depends on the
+   browser's long-press support, so the buttons are the dependable route. */
+html:not([data-drag-enabled]) .reorder-grip {
+  display: none;
+}
+
+@media (pointer: fine) {
+  html[data-drag-enabled] .reorder-buttons:not(:focus-within) {
+    position: absolute;
+    transform: scale(0.0001);
+  }
+}
+
+/* The row being dragged stays in the list as a placeholder for where it
+   will land; the ghost (reorder.ts) is what follows the pointer. */
+[data-reorder-id][data-dragging] {
+  opacity: 0.3;
+}
+
+/* Full width and fully opaque, lifted above the list. */
+.reorder-ghost {
+  position: fixed;
+  z-index: 20;
+  margin: 0;
+  list-style: none;
+  pointer-events: none;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.25);
+  scale: 1.02;
+}
+
+/* --- Swipe to delete (touch) -------------------------------------------- */
+
+.item-swipe-track {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.item-swipe-delete {
+  display: none;
+}
+
+/* Each row scrolls sideways onto a Delete button: the native scroller does
+   the gesture, momentum and snapping, and the button is a plain submit. */
+@media (pointer: coarse) {
+  .item-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .item-swipe-track {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+  }
+
+  .item-swipe-delete {
+    display: block;
+    flex: 0 0 6rem;
+    scroll-snap-align: end;
+    border: 0;
+    background: var(--palette-error);
+    color: white;
+    font: inherit;
+  }
+}
+
+/* The undo slot is only there to be swapped; it mustn't take a flex gap. */
+.list-undo-slot {
+  display: contents;
+}
+
+/* --- Pending submissions (submit.ts) ------------------------------------- */
+
+form[aria-busy="true"] [type="submit"] {
+  opacity: 0.6;
+  cursor: progress;
+}

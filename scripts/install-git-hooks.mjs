@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,7 +9,9 @@ const sourcePath = path.join(root, ".githooks", "pre-commit");
 const targetPath = path.join(hooksDir, "pre-commit");
 const marker = "shorpin-managed-hook";
 
-if (!existsSync(gitDir) || !existsSync(sourcePath)) {
+// In a linked worktree `.git` is a file pointing at the main checkout, whose
+// hooks are shared: leave those to the main checkout's install.
+if (!existsSync(gitDir) || !statSync(gitDir).isDirectory() || !existsSync(sourcePath)) {
   process.exit(0);
 }
 

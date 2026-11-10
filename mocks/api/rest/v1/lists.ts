@@ -164,6 +164,8 @@ export const handlers = [
       sort_order?: number;
       updated_at?: number;
       theme_style?: string | null;
+      theme_primary?: string;
+      theme_secondary?: string;
     };
     const idParam = url.searchParams.get("id")?.replace("eq.", "");
     const slugParam = url.searchParams.get("slug")?.replace("eq.", "");
@@ -179,6 +181,17 @@ export const handlers = [
           },
         });
       }
+    }
+
+    // A list's palette, by id (members may: see the policy below).
+    if (idParam && body.theme_primary && body.theme_secondary && user) {
+      const { theme_primary, theme_secondary } = body;
+      await lists.update((q) => q.where({ id: idParam }), {
+        data(draft) {
+          draft.theme_primary = theme_primary;
+          draft.theme_secondary = theme_secondary;
+        },
+      });
     }
 
     // Mirrors the "members can update accessible lists" RLS policy.

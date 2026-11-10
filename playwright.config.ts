@@ -27,8 +27,14 @@ export default defineConfig({
   },
   projects: [
     {
+      // Every core flow with JavaScript off: the app must work as plain HTML.
+      name: "no-js",
+      use: { javaScriptEnabled: false },
+      testMatch: "**/no-js.spec.ts",
+    },
+    {
       name: "desktop",
-      testIgnore: ["**/supabase-*.spec.ts", "**/touch.spec.ts"],
+      testIgnore: ["**/supabase-*.spec.ts", "**/touch.spec.ts", "**/no-js.spec.ts"],
       grepInvert: /@visual/,
     },
     {
@@ -63,38 +69,29 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "node --experimental-strip-types mocks/server.ts",
+      command: "node mocks/server.ts",
       url: `http://localhost:${mockPort}`,
       env: { MOCK_SERVER_PORT: mockPort },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",
     },
-    useDevServer
-      ? {
-          command: `pnpm exec react-router dev --mode mock --port ${appPort}`,
-          url: `http://localhost:${appPort}`,
-          env: {
-            VITE_SUPABASE_URL: `http://localhost:${mockPort}`,
-            VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "test-anon-key",
-          },
-          reuseExistingServer: !process.env.CI,
-          timeout: 120_000,
-          stdout: "pipe",
-          stderr: "pipe",
-        }
-      : {
-          command: `pnpm react-router build --mode mock && pnpm react-router-serve ./build/server/index.js`,
-          url: `http://localhost:${appPort}`,
-          env: {
-            VITE_SUPABASE_URL: `http://localhost:${mockPort}`,
-            VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "test-anon-key",
-            PORT: appPort,
-          },
-          reuseExistingServer: !process.env.CI,
-          timeout: 120_000,
-          stdout: "pipe",
-          stderr: "pipe",
-        },
+    {
+      // `--dev` rebuilds the client on change instead of once.
+      command: useDevServer
+        ? 'concurrently --kill-others "vite build --watch --mode development" "node --watch-path=server --watch-path=lib server/index.ts"'
+        : "pnpm build && node server/index.ts",
+      url: `http://localhost:${appPort}/health`,
+      env: {
+        VITE_SUPABASE_URL: `http://localhost:${mockPort}`,
+        VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "test-anon-key",
+        APP_MODE: "mock",
+        PORT: appPort,
+      },
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
   ],
 });

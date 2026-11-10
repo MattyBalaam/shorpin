@@ -1,0 +1,10 @@
+{
+  // The service worker runs in a worker, not a window: its own lib set.
+  "extends": "../tsconfig.json",
+  "include": ["sw.ts"],
+  "exclude": [],
+  "compilerOptions": {
+    "lib": ["WebWorker", "ES2024"],
+    "types": []
+  }
+}

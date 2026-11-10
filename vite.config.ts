@@ -1,114 +1,27 @@
-import { reactRouter } from "@react-router/dev/vite";
-import { type SentryReactRouterBuildOptions, sentryReactRouter } from "@sentry/react-router/vite";
-import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
-import { visualizer } from "rollup-plugin-visualizer";
-import { msw } from "msw/vite";
 import { defineConfig } from "vite";
-import babel from "@rolldown/plugin-babel";
-import devtoolsJson from "vite-plugin-devtools-json";
-import { VitePWA } from "vite-plugin-pwa";
 
-const sentryConfig: SentryReactRouterBuildOptions = {
-  org: process.env.SENTRY_ORG,
-  project: "shorpin",
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  sourcemaps: {
-    assets: "./build/**",
-    // Without an auth token there's nothing to authenticate the upload with —
-    // skip it locally instead of failing noisily. CI/deploy sets
-    // SENTRY_AUTH_TOKEN, so this stays enabled where it matters.
-    disable: !process.env.SENTRY_AUTH_TOKEN,
-  },
-};
-
-export default defineConfig((config) => {
-  const mode = config.mode;
-
-  return {
-    resolve: {
-      tsconfigPaths: true,
-    },
-    server: {
-      host: true,
-    },
-    build: {
-      // Latest major browsers only (see CLAUDE.md). Vite's default
-      // "widely available" baseline predates light-dark(), so LightningCSS
-      // rewrites it into --lightningcss-light/dark fallbacks that are only
-      // defined where it also rewrites a `color-scheme` declaration — in light
-      // mode every light-dark() colour then computes as invalid. These
-      // versions support light-dark() (Chrome 123, Safari 17.5) and @scope
-      // (Firefox 146), so both pass through untouched.
-      cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes("@supabase/")) return "vendor-supabase";
-            // React and React Router in one chunk of their own. Its hash
-            // only changes when they're upgraded, so an app-only deploy
-            // leaves it cached (HTTP and the service worker's precache) and
-            // returning users re-download just the app's chunks.
-            if (/[\\/]node_modules[\\/](?:react|react-dom|react-router|scheduler)[\\/]/.test(id)) {
-              return "framework";
-            }
-          },
-        },
+// Vite builds browser assets only: one stylesheet and the small enhancement
+// scripts. The server is plain TypeScript run by Node and reads
+// dist/.vite/manifest.json to link the hashed files. The service worker is
+// a second, self-contained build (vite.sw.config.ts) that runs after this.
+export default defineConfig({
+  publicDir: "public",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    manifest: true,
+    // Latest browsers only (see CLAUDE.md): light-dark(), @scope and native
+    // nesting pass through untouched.
+    target: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
+    cssTarget: ["chrome123", "edge123", "firefox146", "safari17.5", "ios17.5"],
+    modulePreload: { polyfill: false },
+    rollupOptions: {
+      input: {
+        styles: "client/styles/index.css",
+        base: "client/enhance/base.ts",
+        home: "client/enhance/home.ts",
+        list: "client/enhance/list.ts",
       },
     },
-    ...(mode === "preview" && {
-      ssr: { noExternal: ["@msw/data"] },
-    }),
-    define: {
-      "import.meta.env.VITE_GIT_HASH": JSON.stringify(process.env.VITE_GIT_HASH ?? "unknown"),
-      "import.meta.env.VITE_GIT_DATE": JSON.stringify(process.env.VITE_GIT_DATE ?? "unknown"),
-      "import.meta.env.VITE_PR_NUMBER": JSON.stringify(process.env.VITE_PR_NUMBER ?? ""),
-      "import.meta.env.VITE_BRANCH": JSON.stringify(process.env.VITE_BRANCH ?? ""),
-    },
-    plugins: [
-      devtoolsJson(),
-      vanillaExtractPlugin(),
-      babel({ plugins: ["babel-plugin-react-compiler"] }),
-      reactRouter(),
-      // Provides `virtual:msw` (used by entry.server.tsx in preview builds).
-      // The worker script is only emitted for client bundles that import it,
-      // which none do, so nothing ships to the browser.
-      msw(),
-      sentryReactRouter(sentryConfig, config),
-      VitePWA({
-        strategies: "injectManifest",
-        srcDir: "app",
-        filename: "sw.ts",
-        outDir: "build/client",
-        injectManifest: {
-          // Hashed JS/CSS/font assets, plus the one static HTML file
-          // (offline.html — the SW's navigation fallback). Never precache
-          // real route HTML more broadly than that: it's per-user/SSR and
-          // would go stale or leak data across accounts (see
-          // app/sw.ts's navigation handler and README.md). Home/list page
-          // HTML is cached separately, at runtime rather than build time
-          // (Workbox NetworkFirst in app/sw.ts, cleared on logout) — that
-          // doesn't belong in globPatterns since it's populated by the SW's
-          // fetch handler, not precached from this build's output.
-          globPatterns: ["**/*.{js,css,woff2}", "offline.html"],
-          // Sentry's setup-verification page/API — reachable, but never part
-          // of the app a user needs offline, so not worth every install's
-          // download.
-          globIgnores: ["**/node_modules/**", "**/*sentry-example-*"],
-        },
-        manifest: false, // public/manifest.webmanifest is already hand-maintained
-        injectRegister: false, // registered manually in root.tsx (needs PROD-only gating)
-        devOptions: { enabled: false }, // don't run under `pnpm dev`/mock — SW only matters for real builds
-      }),
-      ...(mode === "analyse"
-        ? [
-            visualizer({
-              open: true,
-              filename: "dist/stats.html",
-              gzipSize: true,
-              brotliSize: true,
-            }),
-          ]
-        : []),
-    ],
-  };
+  },
 });

@@ -1,43 +1,118 @@
-A todo style app built with React Router SSR Framework mode. Oringally running on Netlify, but now using Coolify.
+A shared shopping-list app. This branch (`spike/html-first`) is an experiment: the same app as `main` (React Router) and `spike/tanstack-solid` (TanStack Start + Solid), rebuilt so the browser gets HTML and CSS, and JavaScript only where it earns its place. Every core flow works with JavaScript turned off; scripts add saves without reloads, live updates, drag to reorder and offline editing.
 
 This is partly for me and my friends to use (product need), but also for me to grow my skills using Agentic AI to assist the build - for now mostly Claude Code.
 
-- **Framework**: React Router v8 (SSR)
-- **Language**: TypeScript
-- **Styling**: Vanilla Extract CSS-in-JS
-- **Build Tool**: Vite
-- **Testing**: Playwright with accessibility testing
+- **Server**: [Hono](https://hono.dev) on Node 24, plain TypeScript run by Node's type stripping (no server build step)
+- **Templates**: Hono's escaping `html` tagged template
+- **Client**: no framework. One stylesheet and three small enhancement scripts, bundled by Vite
+- **Styling**: plain CSS (compiled once from the Vanilla Extract sources)
+- **Data**: Supabase (unchanged schema, RLS and mock server)
+- **Testing**: Playwright (including a JavaScript-disabled project), Vitest
 - **Package Manager**: pnpm
 
 ## Docs
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
+- [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript and testing conventions
+- [docs/migration-review.md](docs/migration-review.md) — what this spike changed and the trade-offs
 - [integration-tests/README.md](integration-tests/README.md) — running integration tests, architecture, CI
 - [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
 
 ## Environment Files
 
-Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
+The server reads its settings from the environment at runtime; nothing is baked into a browser bundle any more. The variable names keep their `VITE_` prefix from the React app so existing `.env` files, CI secrets and Docker build args carry over.
 
-| File                                                    | Mode      | Used by                                         | Notes                                                                                                                   |
-| ------------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
-| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
-| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
-| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
-
-`.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.test.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
+| File                              | Used by                           | Notes                                                                                                       |
+| --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `.env.mock`                       | `pnpm dev`                        | Points at the local mock server (`mocks/server.ts`) and sets `APP_MODE=mock` (dev quick-login). Checked in. |
+| `.env` (copy from `.env.example`) | `pnpm dev:supabase`, `pnpm start` | Real Supabase project credentials.                                                                          |
+| `.env.test.local`                 | `pnpm test:e2e`                   | Your own **test** Supabase project's credentials (gitignored). See [e2e/README.md](e2e/README.md).          |
 
 ## Development Workflow
 
+- `pnpm dev` runs the mock Supabase, Vite rebuilding the browser assets on change, and the server restarting on change (`node --watch`). Open http://localhost:3000.
+- `pnpm build` builds the browser assets into `dist/`; `pnpm start` runs the server.
 - Run `pnpm verify` before opening a PR or asking an agent to commit. It applies formatting, runs lint, runs typecheck, then confirms formatting is clean with `pnpm fmt:check`.
-- `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible.
+- `pnpm install` runs `prepare`, which installs a repo-managed Git pre-commit hook from `.githooks/pre-commit` into `.git/hooks/pre-commit` when possible (not in a linked worktree, whose hooks belong to the main checkout).
 - The installer will not overwrite a non-Shorpin custom pre-commit hook; if you already have one, merge in `pnpm verify` manually.
 - CI uses the same `pnpm verify` command so local checks and pull-request checks stay aligned.
 - **Performance tracking:** a daily workflow benchmarks prod against staging under phone-like throttling, keeps the trend on the `bench-data` branch, and charts it at [mattybalaam.github.io/shorpin/bench](https://mattybalaam.github.io/shorpin/bench/). Run it locally with `pnpm bench`. See [scripts/bench/README.md](scripts/bench/README.md).
 
-## Architecture
+## HTML-first architecture
+
+### The shape of it
+
+- **The server renders every page.** `server/routes/*.ts` are Hono routes; `server/views/` holds the shared markup. There is no client-side rendering and no hydration: the markup is the app.
+- **Every change is a form post.** A `<form method="post">` hits a route, the route does the work and answers `303` back to the page (or re-renders it with errors and a `422`). Messages for the next page ride in a one-shot cookie ([server/flash.ts](server/flash.ts)).
+- **Scripts only enhance.** Each page gets [base.ts](client/enhance/base.ts); home and list add one more. Turn JavaScript off and everything still works, more slowly: the `no-js` Playwright project ([no-js.spec.ts](integration-tests/no-js.spec.ts)) proves the core flows that way.
+- **Vite builds browser assets only** ([vite.config.ts](vite.config.ts), plus [vite.sw.config.ts](vite.sw.config.ts) for the service worker). The server reads `dist/.vite/manifest.json` to link the hashed files ([server/assets.ts](server/assets.ts)).
+
+### What ships
+
+Measured from `pnpm build`, brotli-compressed. The Solid spike's home page loaded 98.3 KB of JS across 31 files (see `spike/tanstack-solid`'s migration review).
+
+| Page           | JS (brotli)      | CSS (brotli) | Without JS |
+| -------------- | ---------------- | ------------ | ---------- |
+| Sign in & auth | 1.8 KB (2 files) | 7.2 KB       | Works      |
+| Home           | 4.4 KB (4 files) | 7.2 KB       | Works      |
+| List           | 4.7 KB (4 files) | 7.2 KB       | Works      |
+| Service worker | 1.4 KB           |              |            |
+
+A list of 30 items is about 110 KB of HTML (7 KB gzipped): each row carries its own small forms and edit dialog, which is what lets it work without a script. Template indentation is collapsed at render ([server/html.ts](server/html.ts)) and the per-row icons come from one SVG sprite.
+
+### Platform features doing the work
+
+| Feature                                    | How                                                                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dialog routes (`/style`, `/config/:list`…) | The parent page rendered with an open `<dialog>`. Without JS it's a non-modal `dialog[open]` styled like the modal; base.ts upgrades it with `showModal()`. Close buttons are invoker commands (`command="close"`). |
+| Edit item, colours                         | A `<dialog>` per row opened by an **invoker command** (`commandfor` + `command="show-modal"`): no script.                                                                                                           |
+| Tag picker                                 | `<input list>` + one shared `<datalist>` of the list's tags, in place of the custom combobox. The server folds the tag into the value (`[tag]`, [lib/item-tag.ts](lib/item-tag.ts)).                                |
+| Reorder                                    | ↑/↓ submit buttons per row (the no-script and keyboard route). With JS, the grip is native HTML drag and drop ([reorder.ts](client/lib/reorder.ts)); the buttons stay visible on touch screens.                     |
+| Swipe to delete                            | Each row is a horizontal `scroll-snap` container onto a Delete submit button (coarse pointers only). The browser does the gesture, momentum and snapping.                                                           |
+| Notifications                              | Server-rendered into a `role="status"` panel. Successes clear themselves with a CSS animation, paused while the panel has focus. Script-made ones (live updates, offline) use the same markup.                      |
+| Page-to-page animation                     | Cross-document view transitions (`@view-transition { navigation: auto }`). Rows have their own `view-transition-name`, so a reorder slides them into place even after a full page load.                             |
+| Scroll shadows                             | `scroll-state()` container queries, with a **scroll-driven animation** fallback (Safari, Firefox) instead of the React app's script.                                                                                |
+| Light/dark                                 | A form post setting a cookie; base.ts applies it in place so it also works offline. All colours are `light-dark()`.                                                                                                 |
+| Open link                                  | Found by linkify on the server; no script ships for it.                                                                                                                                                             |
+| CSRF                                       | Non-GET requests must be `Sec-Fetch-Site: same-origin` (or `none`), so no tokens in forms and no allow-list of origins behind the TLS-terminating proxy.                                                            |
+
+### The scripts
+
+- **No-reload saves** ([submit.ts](client/lib/submit.ts)): forms marked `data-enhance` post with `fetch`. The server answers exactly as it would without a script (a `303`), fetch follows it, and the returned page's `data-swap` regions replace the current ones ([swap.ts](client/lib/swap.ts)) inside a view transition. Focus, scroll and half-typed input stay put. Posts go one at a time, in order. Deletes and adds show at once (a hidden row, a "saving…" placeholder) until the server's page arrives.
+- **Live updates** ([list.ts](client/enhance/list.ts)): an `EventSource` on `/lists/:list/events`. After any change the server publishes to an in-process pub/sub ([server/realtime.ts](server/realtime.ts)); other members' pages re-fetch themselves. The browser no longer loads the Supabase realtime client. One Node process serves the app, so a `Map` is the whole pub/sub; more instances would need a shared channel (Supabase broadcast or Postgres `LISTEN/NOTIFY`) feeding the same `publish()`.
+- **Offline**: see below.
+
+### List mutations: one row per post
+
+`POST /lists/:list/items` takes `op=add|edit|delete|recreate|move|group|palette` and the item it acts on. Each op writes only the rows it names, with direct PostgREST writes under the existing RLS policies. The `mutate_list` RPC is no longer used.
+
+- The RPC soft-deleted whatever was missing from a submitted copy of the whole list. That's why the React app needed a three-way rebase before replaying offline edits, and it would let two people adding at the same moment delete each other's items if the server fed it a freshly read list.
+- Adds carry an id made with the form (a hidden field, renewed by submit.ts), inserted with "ignore duplicates", so posting the same add twice is a no-op.
+- "Recreate last deleted" lives in the URL: a delete redirects to `?deleted=<id>`, which shows the button. A reorder writes only the rows whose position changed; concurrent reorders are last-write-wins per row.
+- Accepted race: an op reads the list, then writes. Two moves at the same instant can interleave; nothing is ever deleted by it.
+
+### Offline
+
+- **Pages**: the service worker ([client/sw.ts](client/sw.ts)) keeps the last good copy of home and each list (network first), plus the hashed assets, and serves `offline.html` for anything else.
+- **Changes**: a list or home post that can't reach the server is kept in IndexedDB ([queue.ts](client/lib/queue.ts)) and replayed in order. With a script the page queues it (whether or not the worker is in control yet), shows the change locally and replays it when the connection returns, retrying with backoff. Without a script the worker queues the post and answers with a short "saved on this device" page. Background Sync replays when no page is open. A replay that meets a lapsed session stops, keeps the queue, and sends the page to sign in.
+- Each queued op is keyed by id and applied to the server's current state, so replays need no rebase and can't clobber other members' changes.
+- Sign-out sends `Clear-Site-Data: "cache", "storage"`, dropping the per-user page cache and queue.
+
+### Styles
+
+`client/styles/app.css` is the React app's Vanilla Extract styles, compiled once with readable names (`item-row`, `--palette-primary`) and checked in as plain CSS; `html-first.css` adds what this version does differently. App styles are still `[data-app-style]` blocks; list palettes are an inline `<style>` setting `--palette-primary`/`--palette-secondary`.
+
+### Known gaps and risks
+
+- **Touch drag and drop is unverified.** It relies on the browser's long-press drag support (iOS Safari 15+, recent Chrome Android), which Playwright can't emulate. The ↑/↓ buttons stay visible on touch screens as the dependable route. Try it on real devices.
+- **No Sentry or performance beacons.** The React app's client and server monitoring isn't ported; `/perf` is gone.
+- **Edits show no "saving…" or "edited" marker**, and there are no FLIP spring animations: rows move with view transitions instead.
+- **Offline edits of a queued add** wait for the sync (the queued row has no edit dialog yet).
+- **The Docker image hasn't been built locally** (no daemon here). CI's deploy job is unchanged apart from paths; build args become runtime env in the image.
+
+## React app architecture (`main`, kept for comparison)
+
+Much of what follows describes the React Router app this spike replaces (routes, components, the offline store, Sentry). It's left in place to compare the two approaches; the section above is what this branch does.
 
 ### Routing Structure
 
@@ -460,6 +535,8 @@ waits replaces the waiting one, so `main`'s latest commit still ships.
 
 ### Forwarded-proto / action origin validation
 
+_On this branch:_ the server checks `Sec-Fetch-Site` instead (see "Platform features doing the work"), which doesn't depend on the scheme or host the proxy forwards, so none of the following applies. Kept for comparison with `main`:
+
 React Router 8.3.1 added an action-origin CSRF check: a POST to a UI route is
 rejected (sanitised `400`) unless its `Origin` header matches the origin of
 `request.url`. The server must therefore reconstruct `request.url` with the
@@ -518,10 +595,9 @@ picked on the login page, with a one-click user per preview.
 3. **Domains.** Give the app a domain one level under production, e.g.
    `https://demo.shorpin.matthewbalaam.co.uk`. Under **Preview Deployments**,
    set the URL template to `{{pr_id}}.shorpin.matthewbalaam.co.uk` rather than
-   the default `{{pr_id}}.{{domain}}`, which would add a second level. The
-   `*.shorpin.matthewbalaam.co.uk` entry in `allowedActionOrigins`
-   (`react-router.config.ts`) matches a single label only; change both
-   together.
+   the default `{{pr_id}}.{{domain}}`, which would add a second level. (On
+   `main`, React Router's `allowedActionOrigins` only accepts one level. This
+   branch checks `Sec-Fetch-Site` instead, which works on any host.)
 4. **Wildcard DNS.** Add an `A` record for `*.shorpin.matthewbalaam.co.uk`
    pointing at the same public IP as the production domain. Traefik requests a
    Let's Encrypt certificate per preview host over HTTP-01, so no wildcard
@@ -532,18 +608,18 @@ picked on the login page, with a one-click user per preview.
    `build`), so production and staging are unaffected, and the app's own
    deployment of `main` is a mock-backed demo too.
 6. **Leave Supabase and Sentry unset.** Don't add `VITE_SUPABASE_*` or
-   `VITE_SENTRY_DSN` to this app. Vite gives process env precedence over
-   `.env.preview`, so a copied production value would point previews at the
-   real database; an unset DSN keeps preview errors out of Sentry.
+   `VITE_SENTRY_DSN` to this app. A value set on the app wins over the preview
+   defaults (`.env.preview`), so a copied production value would point
+   previews at the real database.
 7. **Optional: the test project.** Under **Preview Deployments** (and the
    app itself, if its demo should offer it too), add:
-   - `VITE_TEST_SUPABASE_URL` and `VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
-     as **build** variables: the test project's URL and publishable key (the
-     `E2E_SUPABASE_*` values, never production's). They're public, baked into
-     the client bundle like the production ones.
+   - `VITE_TEST_SUPABASE_URL` and `VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY`:
+     the test project's URL and publishable key (the `E2E_SUPABASE_*` values,
+     never production's). The server reads them at runtime; as build
+     variables, the Dockerfile turns them into image defaults.
    - `TEST_SUPABASE_SERVICE_ROLE_KEY` as a **runtime-only** variable (untick
-     Buildtime, never `VITE_`-prefixed): the test project's service role key,
-     for the one-click preview user.
+     Buildtime): the test project's service role key, for the one-click
+     preview user.
 8. **Keep fork PR previews off.** The repo is public. With the service role
    key set, a preview runs its PR's code with a key that bypasses RLS on the
    test project, so only build previews for PRs from this repo.
@@ -553,64 +629,72 @@ removes the deployment when the PR is closed or merged.
 
 #### Choosing the backend
 
-[app/lib/supabase-backend.ts](app/lib/supabase-backend.ts) holds both
-configs. A preview build with `VITE_TEST_SUPABASE_*` set shows a **Backend**
-choice on the dev login page: **Mock** or **Supabase test project**. Other
-builds compile the choice out and use `VITE_SUPABASE_*` as before.
+With `VITE_TEST_SUPABASE_*` set, `/login` shows a **Backend** choice: **Mock**
+or **Supabase test project** ([server/backend.ts](server/backend.ts)). Other
+deployments don't show it and use `VITE_SUPABASE_*` as before.
 
-- **The choice is a `shorpin-backend` cookie**, set by the login action.
-  [supabase.server.ts](app/lib/supabase.server.ts) reads it for every
-  request's client, and [supabase.client.ts](app/lib/supabase.client.ts) for
-  realtime, so it isn't `HttpOnly`. The action signs in with a client for the
-  chosen backend, since the request's cookie still names the old one.
+- **The choice is an `HttpOnly` `shorpin-backend` cookie**, set on sign-in.
+  `createSupabase` reads it for every request. Sign-in passes the chosen
+  backend explicitly, since the request's cookie still names the old one.
 - **Sessions don't mix.** Supabase names its session cookie after the project
-  (`sb-<ref>-auth-token`), so each backend keeps its own, and the middleware
+  (`sb-<ref>-auth-token`), so each backend keeps its own, and `requireAuth`
   only reads the one for the backend the cookie names.
-- **Switching reloads.** Signing in to a different backend from last time
-  answers with `redirectDocument`, so the realtime module is evaluated again
-  for the new project.
-- **The mocks pass the test project through.** The mock handlers match any
-  host (`*/rest/v1/…`), so `entry.server.tsx` puts a `passthrough()` handler
-  for the test project's URL first.
-- **Quick-login is mock-only**: its seeded users don't exist in the test
-  project.
+- **No JS needed.** CSS `:has()` on the checked radio shows the quick-login
+  shortcuts for the mock and the preview users for the test project.
+  Quick-login posts no backend, so it always signs in to the mock.
+- **The mock passes the test project through.** The mock handlers match any
+  host (`*/rest/v1/…`), so [server/preview.ts](server/preview.ts) puts a
+  `passthrough()` handler for the test project's URL first.
 
-#### Preview user
+#### Preview users
 
-With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project also
-shows **Sign in as preview user**. Each preview gets its own user, named after
-its host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
+With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project shows
+**Preview users**: the test project's counterparts of the mock's quick-login
+users. Each preview gets its own pair, named after its host: `<pr>.shorpin…`
+has `preview-<pr>@test.invalid` (owner) and `preview-<pr>-collab@test.invalid`
+(collaborator).
 
-- [preview-user.server.ts](app/lib/preview-user.server.ts) creates it on first
-  use (`admin.createUser`, already confirmed); the profile trigger adds its
-  profile. It signs in without a password: the admin API generates a
-  magic-link token (nothing is emailed) and `verifyOtp` exchanges it for
-  session cookies.
-- The key is only read from `process.env` on the server, and the module is
-  only loaded in preview builds that offer the test project.
+- **Seeded like the mock.** The first sign-in creates both users and gives
+  them the mock's lists, items and sharing (the owner's Shopping list is
+  shared with the collaborator). Both seeds read
+  [mocks/seed-data.ts](mocks/seed-data.ts), so they can't drift apart.
+  `lists.slug` is unique across the project, so seeded slugs get the preview's
+  label as a suffix (`shopping-172`). Seeding only happens when the owner is
+  new. If it fails, the new users are deleted again, so the next sign-in
+  starts over instead of finding a half-seeded account.
+- [server/preview-user.ts](server/preview-user.ts) creates the users with
+  `admin.createUser` (already confirmed); the profile trigger adds their
+  profiles. Sign-in needs no password: the admin API generates a magic-link
+  token (nothing is emailed) and `verifyOtp` exchanges it for session
+  cookies.
 - The cleanup workflow (see [Preview behaviour](#preview-behaviour)) deletes
-  the user when its PR closes. The app's own user (`preview-demo@…`) isn't
-  tied to a PR and stays.
+  both users when their PR closes. The app's own pair (`preview-demo@…`)
+  isn't tied to a PR and stays.
 
 #### Preview behaviour
 
-- `build:preview` starts MSW inside the server (`entry.server.tsx`), which
-  seeds the same in-memory data as `pnpm dev`. Sign in on `/login` with the
-  quick-login shortcuts (any password works).
+- `build:preview` builds as usual, then copies `.env.preview` (placeholder
+  Supabase values and `APP_MODE=preview`) to `dist/runtime.env`. The server
+  applies it at startup for anything not already set
+  ([server/env.ts](server/env.ts)). Production builds have no such file.
+- In preview mode the server starts MSW in-process and seeds the same
+  in-memory data as `pnpm dev` ([server/preview.ts](server/preview.ts)). Sign
+  in on `/login` with the quick-login shortcuts (any password works).
 - The server imports `msw` at runtime, so for any `BUILD_SCRIPT` other than
   `build` the Dockerfile's runtime stage keeps dev dependencies. Production
   still installs `--prod`.
-- Point the app's health check at `/version`. `/health` is behind the auth
-  middleware and redirects to `/login`, which Coolify counts as unhealthy.
-- Data resets whenever the container restarts.
-- Realtime is not mocked, so collaborative live updates only work on the
-  test project. See [docs/mocking.md](docs/mocking.md).
+- `/health` and `/version` are both public, so either works as the health
+  check.
+- Mock data resets whenever the container restarts.
+- Live updates work: they're server-sent events from the app's own process,
+  not Supabase Realtime.
 - Each preview is a full Docker build on the Coolify host, so close stale PRs
   to free memory.
 - When a PR closes,
   [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
-  deletes its preview user, `preview-<pr>@test.invalid`, from the e2e test
-  project, if the preview created one. It uses the `E2E_SUPABASE_*` repo
-  secrets, and deleting the user cascades to its profile and lists. It runs
+  deletes its preview users, `preview-<pr>@test.invalid` and
+  `preview-<pr>-collab@test.invalid`, from the e2e test project, if the
+  preview created them. It uses the `E2E_SUPABASE_*` repo secrets, and
+  deleting a user cascades to its profile, lists and memberships. It runs
   on `pull_request_target`, which always uses `main`'s copy of the workflow,
   so it covers PRs from every branch; it checks out no PR code.

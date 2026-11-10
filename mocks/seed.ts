@@ -1,4 +1,5 @@
 import { listItems, listMembers, lists, users, waitlist } from "./db.ts";
+import { collabLists, ownerLists } from "./seed-data.ts";
 
 async function createListWithItems(
   ownerId: string,
@@ -47,63 +48,19 @@ export async function seed(
     email: collabEmail,
   });
 
-  // Owner gets 2 lists: one long enough to scroll (30 items), one empty.
-  // Some items carry a trailing `[tag]` (see app/lib/item-tag.ts); Milk,
-  // Bread and Eggs stay untagged as the tests' everyday fixtures.
-  const ownerList = await createListWithItems(
-    owner.id,
-    "Shopping",
-    "shopping",
-    [
-      "Milk",
-      "Bread",
-      "Eggs",
-      "Butter",
-      "Cheese [dairy]",
-      "Bananas [fruit]",
-      "Apples [fruit]",
-      "Yogurt [dairy]",
-      "Orange juice",
-      "Coffee",
-      "Tea",
-      "Sugar",
-      "Rice",
-      "Pasta",
-      "Tomatoes [veg]",
-      "Onions [veg]",
-      "Garlic",
-      "Potatoes",
-      "Carrots [veg]",
-      "Chicken [meat]",
-      "Olive oil",
-      "Flour",
-      "Cereal",
-      "Peanut butter",
-      "Honey",
-      "Lettuce",
-      "Cucumber",
-      "Peppers",
-      "Washing-up liquid [household]",
-      "Toilet roll [household]",
-    ],
-    0,
-  );
-  await createListWithItems(owner.id, "Owner Empty", "owner-empty", [], 1);
+  // The lists are in seed-data.ts, shared with the preview users' seed.
+  const ownerListIds: string[] = [];
+  for (const [i, { name, slug, items }] of ownerLists.entries()) {
+    ownerListIds.push((await createListWithItems(owner.id, name, slug, items, i)).id);
+  }
+  for (const [i, { name, slug, items }] of collabLists.entries()) {
+    await createListWithItems(collab.id, name, slug, items, i);
+  }
 
-  // Collab gets 2 lists: one with 6 items, one empty
-  await createListWithItems(
-    collab.id,
-    "Collab Shopping",
-    "collab-shopping",
-    ["Coffee", "Tea", "Sugar", "Cream [dairy]", "Honey", "Jam [spreads]"],
-    0,
-  );
-  await createListWithItems(collab.id, "Collab Empty", "collab-empty", [], 1);
-
-  // Collab is also a member of the owner's Shopping list
+  // Collab is also a member of the owner's first list (Shopping)
   await listMembers.create({
     id: crypto.randomUUID(),
-    list_id: ownerList.id,
+    list_id: ownerListIds[0] ?? "",
     user_id: collab.id,
   });
 
