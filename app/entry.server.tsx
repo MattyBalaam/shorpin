@@ -18,8 +18,21 @@ if (import.meta.env.MODE === "preview") {
   const { handlers } = await import("../mocks/handlers.ts");
   const { seed } = await import("../mocks/seed");
   const { waitlist } = await import("../mocks/db");
+  const { http, passthrough } = await import("msw");
+  const { canChooseBackend, supabaseConfig } = await import("./lib/supabase-backend");
 
-  network.configure({ handlers, onUnhandledFrame: "bypass" });
+  // The mock handlers match any host (`*/rest/v1/…`), so a preview signed in
+  // to the test project (see supabase-backend.ts) would get mock answers.
+  // MSW uses the first matching handler, so this one, listed first, sends
+  // everything for the test project to the real Supabase.
+  const testProjectPassthrough = canChooseBackend
+    ? [http.all(`${supabaseConfig("test").url}/*`, () => passthrough())]
+    : [];
+
+  network.configure({
+    handlers: [...testProjectPassthrough, ...handlers],
+    onUnhandledFrame: "bypass",
+  });
   await network.enable();
 
   await seed();

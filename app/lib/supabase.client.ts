@@ -1,14 +1,16 @@
 import { RealtimeClient } from "@supabase/realtime-js";
+import { BACKEND_COOKIE, supabaseConfig } from "./supabase-backend";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+// Preview builds follow the backend chosen at login (supabase-backend.ts).
+// Signing in with a different backend reloads the page, so this module is
+// evaluated again rather than keeping the old project's client.
+const { url, key } = supabaseConfig(
+  document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(`${BACKEND_COOKIE}=`))
+    ?.slice(BACKEND_COOKIE.length + 1),
+);
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY environment variables",
-  );
-}
-
-export const realtimeClient = new RealtimeClient(`${supabaseUrl}/realtime/v1`, {
-  params: { apikey: supabaseAnonKey, eventsPerSecond: 10 },
+export const realtimeClient = new RealtimeClient(`${url}/realtime/v1`, {
+  params: { apikey: key, eventsPerSecond: 10 },
 });

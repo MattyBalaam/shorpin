@@ -1,5 +1,6 @@
 import { useForm } from "@conform-to/react/future";
-import { Form, href, useNavigation } from "react-router";
+import { useState } from "react";
+import { Form, href, useLoaderData, useNavigation } from "react-router";
 import { Button } from "~/components/button/button";
 import { Link } from "~/components/link/link";
 // Intentionally NOT importing from ./+types/login.dev or ./+types/login.
@@ -8,13 +9,14 @@ import { Link } from "~/components/link/link";
 // in production mode. No generated file exists in both modes simultaneously.
 // Types are derived from react-router and login.server directly instead.
 import type { MetaFunction } from "react-router";
-import type { action } from "./login.server";
+import type { action, loader } from "./login.server";
+import type { Backend } from "~/lib/supabase-backend";
 import { AuthField } from "./auth-field";
 import * as styles from "./auth-field.css";
 import * as devStyles from "./login.dev.css";
 import { zLogin } from "./schemas";
 
-export { action } from "./login.server";
+export { action, loader } from "./login.server";
 
 export const meta: MetaFunction = () => [{ title: "Sign in | Shorpin" }];
 
@@ -25,6 +27,10 @@ const DEV_USERS = [
 
 export default function Login({ actionData }: { actionData?: Awaited<ReturnType<typeof action>> }) {
   const { state } = useNavigation();
+  // Preview builds with a test project configured offer it beside the mock
+  // (see supabase-backend.ts). Quick-login always signs in to the mock.
+  const { canChooseBackend, backend: savedBackend, previewUser } = useLoaderData<typeof loader>();
+  const [backend, setBackend] = useState<Backend>(savedBackend);
   const { form, fields } = useForm(zLogin, {
     lastResult: actionData,
     shouldValidate: "onBlur",
@@ -38,6 +44,32 @@ export default function Login({ actionData }: { actionData?: Awaited<ReturnType<
         {form.errors?.map((error, i) => (
           <p key={i}>{error}</p>
         ))}
+        {canChooseBackend && (
+          <fieldset className={devStyles.backend}>
+            <legend className={devStyles.devHeading}>Backend</legend>
+            <label className={devStyles.backendOption}>
+              <input
+                type="radio"
+                name="backend"
+                value="mock"
+                checked={backend === "mock"}
+                onChange={() => setBackend("mock")}
+              />
+              Mock <span className={devStyles.devEmail}>in-memory, resets on deploy</span>
+            </label>
+            <label className={devStyles.backendOption}>
+              <input
+                type="radio"
+                name="backend"
+                value="test"
+                checked={backend === "test"}
+                onChange={() => setBackend("test")}
+              />
+              Supabase test project{" "}
+              <span className={devStyles.devEmail}>real auth and realtime</span>
+            </label>
+          </fieldset>
+        )}
         <AuthField meta={fields.email} label="Email" type="email" autoComplete="email" />
         <AuthField
           meta={fields.password}
@@ -54,18 +86,32 @@ export default function Login({ actionData }: { actionData?: Awaited<ReturnType<
         <Link to={href("/request-access")}>Request access</Link>
       </div>
 
-      <div className={devStyles.devSection}>
-        <p className={devStyles.devHeading}>Dev quick-login</p>
-        {DEV_USERS.map(({ email, label }) => (
-          <form key={email} method="POST">
-            <input type="hidden" name="email" value={email} />
-            <input type="hidden" name="password" value="password" />
+      {backend === "test" && previewUser && (
+        <div className={devStyles.devSection}>
+          <p className={devStyles.devHeading}>Preview user</p>
+          <form method="POST">
+            <input type="hidden" name="intent" value="preview-user" />
             <button type="submit" className={devStyles.devButton}>
-              {label} <span className={devStyles.devEmail}>{email}</span>
+              Sign in as preview user <span className={devStyles.devEmail}>{previewUser}</span>
             </button>
           </form>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {backend === "mock" && (
+        <div className={devStyles.devSection}>
+          <p className={devStyles.devHeading}>Dev quick-login</p>
+          {DEV_USERS.map(({ email, label }) => (
+            <form key={email} method="POST">
+              <input type="hidden" name="email" value={email} />
+              <input type="hidden" name="password" value="password" />
+              <button type="submit" className={devStyles.devButton}>
+                {label} <span className={devStyles.devEmail}>{email}</span>
+              </button>
+            </form>
+          ))}
+        </div>
+      )}
     </>
   );
 }

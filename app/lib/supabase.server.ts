@@ -3,21 +3,27 @@ import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@s
 import { type AuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { redirect, href } from "react-router";
 import type { Database } from "./database.types";
+import { BACKEND_COOKIE, supabaseConfig } from "./supabase-backend";
 import { SupaBaseContext } from "./supabase.middleware";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY environment variables",
-  );
+/** The request's BACKEND_COOKIE value (see supabase-backend.ts). */
+export function requestBackend(request: Request) {
+  return parseCookieHeader(request.headers.get("Cookie") ?? "").find(
+    (c) => c.name === BACKEND_COOKIE,
+  )?.value;
 }
 
-export function createSupabaseClient(request: Request) {
+/**
+ * A Supabase client bound to the request's cookies. Preview builds pick the
+ * mock or the test project from BACKEND_COOKIE (see supabase-backend.ts);
+ * each has its own `sb-<ref>-auth-token` session. Sign-in passes the backend
+ * it's switching to, since the request's cookie still names the old one.
+ */
+export function createSupabaseClient(request: Request, backend = requestBackend(request)) {
   const cookieHeaders = new Headers();
+  const { url, key } = supabaseConfig(backend);
 
-  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return parseCookieHeader(request.headers.get("Cookie") ?? "").filter(
