@@ -545,3 +545,10 @@ removes the deployment when the PR is closed or merged.
   there. See [docs/mocking.md](docs/mocking.md).
 - Each preview is a full Docker build on the Coolify host, so close stale PRs
   to free memory.
+- When a PR closes,
+  [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
+  deletes its preview user, `preview-<pr>@test.invalid`, from the e2e test
+  project, if the preview created one. It uses the `E2E_SUPABASE_*` repo
+  secrets, and deleting the user cascades to its profile and lists. It runs
+  on `pull_request_target`, which always uses `main`'s copy of the workflow,
+  so it covers PRs from every branch; it checks out no PR code.
