@@ -568,9 +568,10 @@ report the branch's commit.
 
 Coolify's Preview Deployments build every pull request from the same
 `Dockerfile` and serve it at `https://<pr>.shorpin.matthewbalaam.co.uk`
-(wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews use
-the mock backend rather than a Supabase project, so they can't touch real data
-and need no per-PR database or Auth redirect setup.
+(wildcard DNS `*.shorpin.matthewbalaam.co.uk` → the Coolify host). Previews default
+to the mock backend, so they can't touch real data and need no per-PR database
+or Auth redirect setup. They can also offer the e2e **test** Supabase project,
+picked on the login page, with a one-click user per preview.
 
 #### One-time setup
 
@@ -602,9 +603,57 @@ and need no per-PR database or Auth redirect setup.
    `VITE_SENTRY_DSN` to this app. A value set on the app wins over the preview
    defaults (`.env.preview`), so a copied production value would point
    previews at the real database.
+7. **Optional: the test project.** Under **Preview Deployments** (and the
+   app itself, if its demo should offer it too), add:
+   - `VITE_TEST_SUPABASE_URL` and `VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY`:
+     the test project's URL and publishable key (the `E2E_SUPABASE_*` values,
+     never production's). The server reads them at runtime; as build
+     variables, the Dockerfile turns them into image defaults.
+   - `TEST_SUPABASE_SERVICE_ROLE_KEY` as a **runtime-only** variable (untick
+     Buildtime): the test project's service role key, for the one-click
+     preview user.
+8. **Keep fork PR previews off.** The repo is public. With the service role
+   key set, a preview runs its PR's code with a key that bypasses RLS on the
+   test project, so only build previews for PRs from this repo.
 
 Open a PR to test: Coolify builds it, comments the preview link on the PR, and
 removes the deployment when the PR is closed or merged.
+
+#### Choosing the backend
+
+With `VITE_TEST_SUPABASE_*` set, `/login` shows a **Backend** choice: **Mock**
+or **Supabase test project** ([server/backend.ts](server/backend.ts)). Other
+deployments don't show it and use `VITE_SUPABASE_*` as before.
+
+- **The choice is an `HttpOnly` `shorpin-backend` cookie**, set on sign-in.
+  `createSupabase` reads it for every request. Sign-in passes the chosen
+  backend explicitly, since the request's cookie still names the old one.
+- **Sessions don't mix.** Supabase names its session cookie after the project
+  (`sb-<ref>-auth-token`), so each backend keeps its own, and `requireAuth`
+  only reads the one for the backend the cookie names.
+- **No JS needed.** CSS `:has()` on the checked radio shows the quick-login
+  shortcuts for the mock and the preview user for the test project.
+  Quick-login posts no backend, so it always signs in to the mock.
+- **The mock passes the test project through.** The mock handlers match any
+  host (`*/rest/v1/…`), so [server/preview.ts](server/preview.ts) puts a
+  `passthrough()` handler for the test project's URL first.
+
+#### Preview user
+
+With `TEST_SUPABASE_SERVICE_ROLE_KEY` set, choosing the test project shows
+**Sign in as preview user**. Each preview gets its own user, named after its
+host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
+
+- [server/preview-user.ts](server/preview-user.ts) creates it on first use
+  (`admin.createUser`, already confirmed); the profile trigger adds its
+  profile. It signs in without a password: the admin API generates a
+  magic-link token (nothing is emailed) and `verifyOtp` exchanges it for
+  session cookies.
+- [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
+  deletes the user when its PR closes, using the `E2E_SUPABASE_*` repo
+  secrets; that cascades to its profile and lists. It runs on
+  `pull_request_target` so secrets are available, and checks out no PR code.
+  The app's own user (`preview-demo@…`) isn't tied to a PR and stays.
 
 #### Preview behaviour
 
@@ -620,7 +669,7 @@ removes the deployment when the PR is closed or merged.
   still installs `--prod`.
 - `/health` and `/version` are both public, so either works as the health
   check.
-- Data resets whenever the container restarts.
+- Mock data resets whenever the container restarts.
 - Live updates work: they're server-sent events from the app's own process,
   not Supabase Realtime.
 - Each preview is a full Docker build on the Coolify host, so close stale PRs

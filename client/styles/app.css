@@ -1054,6 +1054,28 @@
   font-size: var(--font-size-xs);
 }
 
+/* Previews with a test project (server/backend.ts): the checked backend
+   decides which shortcut shows, with no JS. */
+.login-backend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-md);
+  border: 1px dashed var(--palette-chrome-light);
+  border-radius: var(--style-control-radius);
+}
+.login-backend-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+.auth-layout:has(.login-backend input[value="test"]:checked) .login-quick-login,
+.auth-layout:has(.login-backend input[value="mock"]:checked) .login-preview-user {
+  display: none;
+}
+
 .delete-form {
   grid-row: content;
   grid-column: content;

@@ -6,7 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import type { Context, MiddlewareHandler } from "hono";
 import type { Database } from "../lib/database.types.ts";
-import { env } from "./env.ts";
+import { type Backend, requestBackend, supabaseConfig } from "./backend.ts";
 
 export type Supabase = SupabaseClient<Database>;
 
@@ -21,10 +21,14 @@ export interface AppEnv {
 /**
  * A request-scoped client. Session cookies it refreshes (or clears on sign
  * out) are appended to the response through Hono's context, so they ride
- * along with whatever the handler returns, redirects included.
+ * along with whatever the handler returns, redirects included. Previews pick
+ * the mock or the test project from the backend cookie (backend.ts); each
+ * has its own `sb-<ref>-auth-token` session. Sign-in passes the backend it's
+ * switching to, since the request's cookie still names the old one.
  */
-export function createSupabase(c: Context): Supabase {
-  return createServerClient<Database>(env.supabaseUrl, env.supabaseKey, {
+export function createSupabase(c: Context, backend: Backend = requestBackend(c)): Supabase {
+  const { url, key } = supabaseConfig(backend);
+  return createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return parseCookieHeader(c.req.header("Cookie") ?? "").filter(
@@ -50,10 +54,13 @@ export function isTransientAuthError(error: AuthError | null | undefined) {
   return isAuthRetryableFetchError(error) || error.status === 429 || (error.status ?? 0) >= 500;
 }
 
-const storageKey = `sb-${new URL(env.supabaseUrl).hostname.split(".")[0]}-auth-token`;
+// Per request: previews can switch project (backend.ts).
+function storageKey(backend: Backend) {
+  return `sb-${new URL(supabaseConfig(backend).url).hostname.split(".")[0]}-auth-token`;
+}
 
 /** Seconds until the access token expires, or null when it can't be read. */
-function tokenSecondsLeft(cookieHeader: string): number | null {
+function tokenSecondsLeft(cookieHeader: string, storageKey: string): number | null {
   const cookie = parseCookieHeader(cookieHeader).find(
     ({ name, value }) => (name === storageKey || name === `${storageKey}.0`) && value,
   );
@@ -94,7 +101,7 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   const cookie = c.req.header("Cookie") ?? "";
   if (!cookie.includes("sb-")) return toLogin(c);
 
-  const secondsLeft = tokenSecondsLeft(cookie);
+  const secondsLeft = tokenSecondsLeft(cookie, storageKey(requestBackend(c)));
   if (secondsLeft === null || secondsLeft <= 60) {
     const {
       data: { session },

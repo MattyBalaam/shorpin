@@ -37,6 +37,25 @@ export const env = {
   isPreview: mode === "preview",
   // Mock and preview builds show the dev quick-login and test aids.
   isMock: mode === "mock" || mode === "preview",
+  /**
+   * Previews only: the e2e test project, offered on the login page beside
+   * the mock (server/backend.ts). Its publishable key is safe in an image.
+   */
+  testSupabase:
+    mode === "preview" &&
+    process.env.VITE_TEST_SUPABASE_URL &&
+    process.env.VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+      ? {
+          url: process.env.VITE_TEST_SUPABASE_URL,
+          key: process.env.VITE_TEST_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
+        }
+      : null,
+  /**
+   * Previews only: the test project's service role key, for the one-click
+   * preview user (server/preview-user.ts). A runtime variable only: it
+   * bypasses RLS, so it must never be a build arg baked into the image.
+   */
+  testServiceRoleKey: (mode === "preview" && process.env.TEST_SUPABASE_SERVICE_ROLE_KEY) || null,
   gitHash: process.env.VITE_GIT_HASH || "unknown",
   gitDate: process.env.VITE_GIT_DATE || "unknown",
   prNumber: process.env.VITE_PR_NUMBER || null,

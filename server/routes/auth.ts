@@ -3,11 +3,18 @@ import { Hono } from "hono";
 import * as v from "valibot";
 import { serializeAppStyleCookie } from "../../lib/app-style.ts";
 import { zForgotPassword, zLogin, zRequestAccess, zSetPassword } from "../../lib/auth-schemas.ts";
+import {
+  type Backend,
+  canChooseBackend,
+  parseBackend,
+  requestBackend,
+  setBackendCookie,
+} from "../backend.ts";
 import { env } from "../env.ts";
 import { redirectWithFlash } from "../flash.ts";
 import { type Html, html } from "../html.ts";
 import { renderPage } from "../page.ts";
-import type { AppEnv } from "../supabase.ts";
+import { type AppEnv, createSupabase } from "../supabase.ts";
 import { notifications } from "../views/components.ts";
 
 export const auth = new Hono<AppEnv>();
@@ -104,13 +111,50 @@ const DEV_USERS = [
   { email: "collab@test.com", label: "Collaborator" },
 ];
 
-function loginPage(c: Parameters<typeof renderPage>[0], state: FormState = {}, status?: 200 | 422) {
+// Previews with a test project offer it beside the mock (backend.ts). CSS
+// (:has on the checked radio) shows quick-login for the mock and the
+// preview user for the test project, so it works without JS too.
+function backendPicker(backend: Backend) {
+  const option = (value: Backend, label: string, note: string) =>
+    html`<label class="login-backend-option">
+      <input type="radio" name="backend" value="${value}" ${backend === value ? "checked" : ""} />
+      ${label} <span class="login-dev-email">${note}</span>
+    </label>`;
+  return html`<fieldset class="login-backend">
+    <legend class="login-dev-heading">Backend</legend>
+    ${option("mock", "Mock", "in-memory, resets on deploy")}
+    ${option("test", "Supabase test project", "real auth")}
+  </fieldset>`;
+}
+
+async function previewUserSection(c: Parameters<typeof renderPage>[0]) {
+  if (!canChooseBackend) return "";
+  const { previewUserEmail } = await import("../preview-user.ts");
+  const email = previewUserEmail(c);
+  if (!email) return "";
+  return html`<div class="login-dev-section login-preview-user">
+    <p class="login-dev-heading">Preview user</p>
+    <form method="post">
+      <input type="hidden" name="intent" value="preview-user" />
+      <button type="submit" class="login-dev-button">
+        Sign in as preview user <span class="login-dev-email">${email}</span>
+      </button>
+    </form>
+  </div>`;
+}
+
+async function loginPage(
+  c: Parameters<typeof renderPage>[0],
+  state: FormState = {},
+  status?: 200 | 422,
+) {
+  const backend = parseBackend(state.values?.backend ?? requestBackend(c));
   return authPage(
     c,
     "Sign in",
     html`<h1>Sign in${env.isMock ? " (Dev Mode)" : ""}</h1>
       <form method="post" class="auth-field-form">
-        ${formErrors(state)}
+        ${formErrors(state)} ${canChooseBackend ? backendPicker(backend) : ""}
         ${field({ name: "email", label: "Email", type: "email", autocomplete: "email", state })}
         ${field({ name: "password", label: "Password", type: "password", autocomplete: "current-password", state })}
         ${submitButton("Sign in")}
@@ -119,9 +163,10 @@ function loginPage(c: Parameters<typeof renderPage>[0], state: FormState = {}, s
         <a class="button-link" href="/forgot-password">Forgot password?</a>
         <a class="button-link" href="/request-access">Request access</a>
       </div>
+      ${await previewUserSection(c)}
       ${
         env.isMock
-          ? html`<div class="login-dev-section">
+          ? html`<div class="login-dev-section login-quick-login">
               <p class="login-dev-heading">Dev quick-login</p>
               ${DEV_USERS.map(
                 ({ email, label }) =>
@@ -144,12 +189,26 @@ auth.get("/login", (c) => loginPage(c));
 
 auth.post("/login", async (c) => {
   const values = await readForm(c.req.parseBody());
+
+  if (values.intent === "preview-user" && canChooseBackend) {
+    const { signInAsPreviewUser } = await import("../preview-user.ts");
+    const error = await signInAsPreviewUser(c);
+    if (error) return loginPage(c, { values: { backend: "test" }, formErrors: [error] }, 422);
+    setBackendCookie(c, "test");
+    return redirectWithFlash(c, "/", "success", "Welcome back!");
+  }
+
   const result = v.safeParse(zLogin, values);
   if (!result.success) {
     return loginPage(c, { values, fieldErrors: toFieldErrors(result.issues) }, 422);
   }
-  const { error } = await c.get("supabase").auth.signInWithPassword(result.output);
+  // Previews that offer the test project sign in to the chosen one. Quick-
+  // login posts no backend, so it's always the mock.
+  const backend = canChooseBackend ? parseBackend(values.backend) : null;
+  const supabase = backend ? createSupabase(c, backend) : c.get("supabase");
+  const { error } = await supabase.auth.signInWithPassword(result.output);
   if (error) return loginPage(c, { values, formErrors: [error.message] }, 422);
+  if (backend) setBackendCookie(c, backend);
   return redirectWithFlash(c, "/", "success", "Welcome back!");
 });
 
