@@ -36,3 +36,20 @@ export const devEmail = style({
   color: vars.palette.chrome,
   fontSize: vars.fontSize.xs,
 });
+
+export const backend = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: vars.spacing.sm,
+  margin: 0,
+  padding: vars.spacing.md,
+  border: `1px dashed ${vars.palette.chromeLight}`,
+  borderRadius: vars.style.controlRadius,
+});
+
+export const backendOption = style({
+  display: "flex",
+  alignItems: "baseline",
+  gap: vars.spacing.sm,
+  fontSize: vars.fontSize.sm,
+});

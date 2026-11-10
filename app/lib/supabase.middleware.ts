@@ -4,11 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MiddlewareFunction } from "react-router";
 import { createContext, href, redirect } from "react-router";
 import type { Database, Tables } from "./database.types";
+import { supabaseConfig } from "./supabase-backend";
 import {
   authUnavailable,
   createSupabaseClient,
   isTransientAuthError,
   logAuthRedirect,
+  requestBackend,
 } from "./supabase.server";
 
 export type SupaBaseContext = SupabaseClient<Database>;
@@ -39,12 +41,15 @@ async function runListViewsSchemaCheck(supabase: SupaBaseContext) {
   console.warn("[Startup check] Unable to verify list_views migration state:", error);
 }
 
-const supabaseStorageKey = `sb-${new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split(".")[0]}-auth-token`;
+// Per request: preview builds can switch project (supabase-backend.ts).
+function supabaseStorageKey(backend: string | undefined) {
+  return `sb-${new URL(supabaseConfig(backend).url).hostname.split(".")[0]}-auth-token`;
+}
 
-function tokenSecondsLeft(cookieHeader: string): number | null {
+function tokenSecondsLeft(cookieHeader: string, storageKey: string): number | null {
   const cookies = parseCookieHeader(cookieHeader);
   const authCookie = cookies.find(
-    (c) => (c.name === supabaseStorageKey || c.name === `${supabaseStorageKey}.0`) && c.value,
+    (c) => (c.name === storageKey || c.name === `${storageKey}.0`) && c.value,
   );
   if (!authCookie?.value) return null;
   try {
@@ -116,7 +121,7 @@ export const supabaseMiddleware: MiddlewareFunction<Response> = async (
       throw redirect(href("/login"), { headers: cookieHeaders });
     }
 
-    const secs = tokenSecondsLeft(cookie);
+    const secs = tokenSecondsLeft(cookie, supabaseStorageKey(requestBackend(request)));
 
     logger(
       `token ${secs === null ? "unreadable" : secs > 0 ? `expires in ${Math.floor(secs / 60)}m ${secs % 60}s` : `expired ${-secs}s ago`}`,
