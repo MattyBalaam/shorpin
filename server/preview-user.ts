@@ -1,43 +1,129 @@
-// A throwaway test-project user per preview, for the login page's one-click
-// sign-in. Needs TEST_SUPABASE_SERVICE_ROLE_KEY at runtime (env.ts).
-// .github/workflows/preview-user-cleanup.yml deletes the user when its PR
-// closes; deleting it cascades to its lists and profile.
-import { createClient } from "@supabase/supabase-js";
+// Throwaway test-project users per preview, for the login page's one-click
+// sign-in: an owner and a collaborator, seeded with the same demo data as the
+// mock (mocks/seed-data.ts). Needs TEST_SUPABASE_SERVICE_ROLE_KEY at runtime
+// (env.ts). .github/workflows/preview-user-cleanup.yml deletes both when the
+// PR closes; that cascades to their lists, items and memberships.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Context } from "hono";
+import type { Database } from "../lib/database.types.ts";
+import { collabLists, ownerLists, type SeedList } from "../mocks/seed-data.ts";
 import { supabaseConfig } from "./backend.ts";
 import { env } from "./env.ts";
 import { createSupabase } from "./supabase.ts";
 
+export type PreviewRole = "owner" | "collab";
+
+type Admin = SupabaseClient<Database>;
+
 /**
- * One user per preview host: `<pr>.shorpin.matthewbalaam.co.uk` gives
- * `preview-<pr>@test.invalid`. The cleanup workflow builds the same address
- * from the PR number. Null when there's no service role key.
+ * Names the preview's users after its host: `<pr>.shorpin.matthewbalaam.co.uk`
+ * gives `preview-<pr>@test.invalid` and `preview-<pr>-collab@test.invalid`.
+ * The cleanup workflow builds the same addresses from the PR number. The
+ * label also suffixes the seeded slugs, which are unique across the project.
+ * Null when there's no service role key.
  */
-export function previewUserEmail(c: Context): string | null {
+export function previewUsers(c: Context) {
   if (!env.testServiceRoleKey) return null;
   // Behind Coolify's proxy the Host header is the container's.
   const host = c.req.header("X-Forwarded-Host") ?? c.req.header("Host") ?? "local";
-  const label = (host.split(/[.:]/)[0] ?? "").replace(/[^a-z0-9-]/gi, "").toLowerCase();
-  return `preview-${label || "local"}@test.invalid`;
+  const label = (host.split(/[.:]/)[0] ?? "").replace(/[^a-z0-9-]/gi, "").toLowerCase() || "local";
+  return {
+    label,
+    owner: `preview-${label}@test.invalid`,
+    collab: `preview-${label}-collab@test.invalid`,
+  };
+}
+
+/** The user's id, creating it (already confirmed) if needed. */
+async function ensureUser(admin: Admin, email: string) {
+  const created = await admin.auth.admin.createUser({ email, email_confirm: true });
+  if (!created.error) return { id: created.data.user.id, isNew: true };
+  if (created.error.code !== "email_exists") throw created.error;
+  // The profile trigger mirrors auth.users, and the admin API can't look a
+  // user up by email.
+  const { data, error } = await admin.from("profiles").select("id").eq("email", email).single();
+  if (error) throw error;
+  return { id: data.id, isNew: false };
+}
+
+async function insertLists(admin: Admin, userId: string, lists: SeedList[], label: string) {
+  const ids: string[] = [];
+  for (const [sortOrder, { name, slug, items }] of lists.entries()) {
+    const now = Date.now();
+    const { data, error } = await admin
+      .from("lists")
+      .insert({ name, slug: `${slug}-${label}`, sort_order: sortOrder, user_id: userId })
+      .select("id")
+      .single();
+    if (error) throw error;
+    ids.push(data.id);
+    if (items.length === 0) continue;
+    const { error: itemsError } = await admin.from("list_items").insert(
+      items.map((value, i) => ({
+        list_id: data.id,
+        value,
+        sort_order: i,
+        updated_at: now,
+        updated_by: userId,
+      })),
+    );
+    if (itemsError) throw itemsError;
+  }
+  return ids;
 }
 
 /**
- * Creates the preview user if it doesn't exist yet, then signs in as it with
- * a magic-link token generated (not emailed) by the admin API, so there's no
- * password to store. The session cookies go on the response. Returns an
- * error message, or null when signed in.
+ * Both users, seeded like the mock the first time the owner is created. A
+ * failed seed deletes the new users again, so the next sign-in retries it
+ * rather than leaving a half-seeded account.
  */
-export async function signInAsPreviewUser(c: Context): Promise<string | null> {
-  const email = previewUserEmail(c);
-  if (!env.testServiceRoleKey || !email) return "Preview user isn't configured";
+async function ensurePreviewUsers(
+  admin: Admin,
+  users: NonNullable<ReturnType<typeof previewUsers>>,
+) {
+  const owner = await ensureUser(admin, users.owner);
+  const collab = await ensureUser(admin, users.collab);
+  if (!owner.isNew) return;
 
-  const admin = createClient(supabaseConfig("test").url, env.testServiceRoleKey, {
+  try {
+    const [sharedListId] = await insertLists(admin, owner.id, ownerLists, users.label);
+    await insertLists(admin, collab.id, collabLists, users.label);
+    if (sharedListId) {
+      const { error } = await admin
+        .from("list_members")
+        .insert({ list_id: sharedListId, user_id: collab.id });
+      if (error) throw error;
+    }
+  } catch (error) {
+    await admin.auth.admin.deleteUser(owner.id);
+    if (collab.isNew) await admin.auth.admin.deleteUser(collab.id);
+    throw error;
+  }
+}
+
+/**
+ * Signs in as one of the preview's users, creating and seeding them on first
+ * use. The session comes from a magic-link token generated (not emailed) by
+ * the admin API, so there's no password to store; its cookies go on the
+ * response. Returns an error message, or null when signed in.
+ */
+export async function signInAsPreviewUser(c: Context, role: PreviewRole): Promise<string | null> {
+  const users = previewUsers(c);
+  if (!env.testServiceRoleKey || !users) return "Preview users aren't configured";
+
+  const admin = createClient<Database>(supabaseConfig("test").url, env.testServiceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const created = await admin.auth.admin.createUser({ email, email_confirm: true });
-  if (created.error && created.error.code !== "email_exists") return created.error.message;
+  try {
+    await ensurePreviewUsers(admin, users);
+  } catch (error) {
+    // PostgREST and auth errors are plain objects with a message.
+    const message = (error as { message?: unknown } | null)?.message;
+    return typeof message === "string" ? message : "Couldn't set up the preview users";
+  }
 
+  const email = role === "collab" ? users.collab : users.owner;
   const link = await admin.auth.admin.generateLink({ type: "magiclink", email });
   if (link.error) return link.error.message;
 

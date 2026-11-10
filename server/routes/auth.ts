@@ -127,19 +127,24 @@ function backendPicker(backend: Backend) {
   </fieldset>`;
 }
 
+// The test project's counterparts of the mock's quick-login users, seeded
+// with the same lists (server/preview-user.ts).
 async function previewUserSection(c: Parameters<typeof renderPage>[0]) {
   if (!canChooseBackend) return "";
-  const { previewUserEmail } = await import("../preview-user.ts");
-  const email = previewUserEmail(c);
-  if (!email) return "";
-  return html`<div class="login-dev-section login-preview-user">
-    <p class="login-dev-heading">Preview user</p>
-    <form method="post">
+  const { previewUsers } = await import("../preview-user.ts");
+  const users = previewUsers(c);
+  if (!users) return "";
+  const button = (role: "owner" | "collab", label: string, email: string) =>
+    html`<form method="post">
       <input type="hidden" name="intent" value="preview-user" />
+      <input type="hidden" name="role" value="${role}" />
       <button type="submit" class="login-dev-button">
-        Sign in as preview user <span class="login-dev-email">${email}</span>
+        ${label} <span class="login-dev-email">${email}</span>
       </button>
-    </form>
+    </form>`;
+  return html`<div class="login-dev-section login-preview-user">
+    <p class="login-dev-heading">Preview users</p>
+    ${button("owner", "Owner", users.owner)} ${button("collab", "Collaborator", users.collab)}
   </div>`;
 }
 
@@ -192,7 +197,7 @@ auth.post("/login", async (c) => {
 
   if (values.intent === "preview-user" && canChooseBackend) {
     const { signInAsPreviewUser } = await import("../preview-user.ts");
-    const error = await signInAsPreviewUser(c);
+    const error = await signInAsPreviewUser(c, values.role === "collab" ? "collab" : "owner");
     if (error) return loginPage(c, { values: { backend: "test" }, formErrors: [error] }, 422);
     setBackendCookie(c, "test");
     return redirectWithFlash(c, "/", "success", "Welcome back!");
