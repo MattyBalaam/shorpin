@@ -525,6 +525,14 @@ Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts
 the container with a Traefik reverse proxy that terminates TLS and forwards
 plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
+Each push to `main` builds `ghcr.io/mattybalaam/shorpin:latest`, triggers the
+production app's Coolify webhook, and waits for `/version` to report the
+commit ([ci.yml](.github/workflows/ci.yml) `deploy`). Production deploys run
+one at a time (`concurrency: production`): they share the `:latest` tag and
+the Coolify app, so two merges close together raced and production could end
+up on the earlier commit. A merge landing while one deploy runs and another
+waits replaces the waiting one, so `main`'s latest commit still ships.
+
 ### Forwarded-proto / action origin validation
 
 _On this branch:_ the server checks `Sec-Fetch-Site` instead (see "Platform features doing the work"), which doesn't depend on the scheme or host the proxy forwards, so none of the following applies. Kept for comparison with `main`:
@@ -649,11 +657,9 @@ host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
   profile. It signs in without a password: the admin API generates a
   magic-link token (nothing is emailed) and `verifyOtp` exchanges it for
   session cookies.
-- [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
-  deletes the user when its PR closes, using the `E2E_SUPABASE_*` repo
-  secrets; that cascades to its profile and lists. It runs on
-  `pull_request_target` so secrets are available, and checks out no PR code.
-  The app's own user (`preview-demo@…`) isn't tied to a PR and stays.
+- The cleanup workflow (see [Preview behaviour](#preview-behaviour)) deletes
+  the user when its PR closes. The app's own user (`preview-demo@…`) isn't
+  tied to a PR and stays.
 
 #### Preview behaviour
 
@@ -674,3 +680,10 @@ host: `<pr>.shorpin…` signs in as `preview-<pr>@test.invalid`.
   not Supabase Realtime.
 - Each preview is a full Docker build on the Coolify host, so close stale PRs
   to free memory.
+- When a PR closes,
+  [preview-user-cleanup.yml](.github/workflows/preview-user-cleanup.yml)
+  deletes its preview user, `preview-<pr>@test.invalid`, from the e2e test
+  project, if the preview created one. It uses the `E2E_SUPABASE_*` repo
+  secrets, and deleting the user cascades to its profile and lists. It runs
+  on `pull_request_target`, which always uses `main`'s copy of the workflow,
+  so it covers PRs from every branch; it checks out no PR code.
