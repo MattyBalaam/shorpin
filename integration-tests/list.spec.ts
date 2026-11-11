@@ -939,6 +939,107 @@ test("a failed fresh-data fetch on reconnect never syncs against stale cached da
   }
 });
 
+// A backgrounded tab misses broadcasts, and every submit sends the whole
+// items[] array (mutate_list deletes whatever is missing from it), so adding
+// from a list that never showed another device's item deleted that item.
+test("coming back to the app refetches the list, so an add keeps items added elsewhere", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    // The owner's realtime connection never opens, as for a suspended tab.
+    await ownerPage.routeWebSocket(/\/realtime\//, () => {});
+    await openList(ownerPage, "shopping");
+
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+
+    await expect(ownerPage.getByLabel("Edit Margarine")).not.toBeVisible();
+
+    // Headless pages are always visible, so stage the hide/show.
+    await ownerPage.evaluate(() => {
+      const setVisibility = (state: DocumentVisibilityState) => {
+        Object.defineProperty(document, "visibilityState", { value: state, configurable: true });
+        document.dispatchEvent(new Event("visibilitychange"));
+      };
+      setVisibility("hidden");
+      setVisibility("visible");
+    });
+    await expect(ownerPage.getByLabel("Edit Margarine").first()).toBeVisible();
+
+    await ownerPage.getByLabel("New item").fill("Bread");
+    await ownerPage.getByRole("button", { name: "Add" }).click();
+    await expect(ownerPage.getByLabel("Edit Bread").first()).toBeVisible();
+
+    await openList(collabPage, "shopping");
+    await expect(collabPage.getByLabel("Edit Bread").first()).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
+test("a realtime reconnect refetches the list, so broadcasts missed meanwhile aren't lost", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    // Proxy the owner's realtime socket so the test can drop what the server
+    // sends and then cut the connection.
+    let dropIncoming = false;
+    const sockets: Array<{ close: () => Promise<void> }> = [];
+    await ownerPage.routeWebSocket(/\/realtime\//, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((message) => {
+        if (!dropIncoming) ws.send(message);
+      });
+      sockets.push(ws);
+    });
+    await openList(ownerPage, "shopping");
+    await expect.poll(() => sockets.length).toBeGreaterThan(0);
+
+    dropIncoming = true;
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Margarine")).not.toBeVisible();
+
+    const socketsBefore = sockets.length;
+    dropIncoming = false;
+    await sockets.at(-1)?.close();
+    await expect.poll(() => sockets.length).toBeGreaterThan(socketsBefore);
+
+    await expect(ownerPage.getByLabel("Edit Margarine").first()).toBeVisible({ timeout: 15000 });
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
 test("own changes do not trigger the updated-by-another-user notification", async ({
   browser,
   ctx,
