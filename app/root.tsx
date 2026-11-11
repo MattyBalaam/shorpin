@@ -13,12 +13,14 @@ import {
   useLocation,
   useNavigation,
   useRouteError,
+  useRouteLoaderData,
 } from "react-router";
 import { getToast, toastMiddleware } from "remix-toast/middleware";
 import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.client";
 import { toast } from "~/lib/toast";
 import { reportError } from "~/lib/monitoring.client";
 import { isNetworkOrServerError } from "~/lib/network-error";
+import { mocksEnabled } from "~/lib/supabase-backend";
 import { supabaseContext, supabaseMiddleware } from "~/lib/supabase.middleware";
 import {
   APP_STYLE_ATTRIBUTE,
@@ -72,6 +74,8 @@ export const loader = async ({ context, request }: Route.LoaderArgs) => {
   const toast = getToast(context);
   const cookieHeader = request.headers.get("Cookie");
   const colorScheme = parseColorScheme(cookieHeader);
+  // Preview builds on the in-process mock show a banner (see Layout).
+  const mocks = mocksEnabled(cookieHeader);
 
   // The cookie caches the account's style (see app/lib/app-style.ts). Home
   // always consults the profile too, so a change made on another device
@@ -81,14 +85,16 @@ export const loader = async ({ context, request }: Route.LoaderArgs) => {
   // Single-fetch data requests arrive as `/_.data` for home, `<path>.data`
   // otherwise.
   const pathname = new URL(request.url).pathname.replace(/_?\.data$/, "");
-  if (cached && pathname !== href("/")) return { toast, colorScheme, appStyle: cached };
+  if (cached && pathname !== href("/"))
+    return { toast, colorScheme, mocksEnabled: mocks, appStyle: cached };
 
   const accountStyle = await readAccountAppStyle(context.get(supabaseContext));
-  if (!accountStyle) return { toast, colorScheme, appStyle: cached ?? DEFAULT_APP_STYLE };
-  if (accountStyle === cached) return { toast, colorScheme, appStyle: cached };
+  if (!accountStyle)
+    return { toast, colorScheme, mocksEnabled: mocks, appStyle: cached ?? DEFAULT_APP_STYLE };
+  if (accountStyle === cached) return { toast, colorScheme, mocksEnabled: mocks, appStyle: cached };
 
   return data(
-    { toast, colorScheme, appStyle: accountStyle },
+    { toast, colorScheme, mocksEnabled: mocks, appStyle: accountStyle },
     { headers: { "Set-Cookie": serializeAppStyleCookie(accountStyle) } },
   );
 };
@@ -106,6 +112,7 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
       return {
         toast: undefined,
         colorScheme: parseColorScheme(document.cookie),
+        mocksEnabled: mocksEnabled(document.cookie),
         appStyle: parseAppStyle(document.cookie),
       };
     }
@@ -131,6 +138,8 @@ export const meta: Route.MetaFunction = () => {
 export function Layout({ children }: LayoutRouteProps) {
   const appStyle = useEffectiveAppStyle();
   const colorScheme = useColorScheme();
+  // Absent when the root loader failed (the error boundary renders here too).
+  const showMocksBanner = useRouteLoaderData<typeof loader>("root")?.mocksEnabled ?? false;
 
   return (
     <html
@@ -155,6 +164,7 @@ export function Layout({ children }: LayoutRouteProps) {
       </head>
       <body>
         <div aria-hidden className={styles.statusBarBackdrop} />
+        {showMocksBanner && <p className={styles.mocksBanner}>Mocks enabled</p>}
         {children}
         <ScrollRestoration />
         <Scripts />

@@ -55,3 +55,28 @@ export const statusBarBackdrop = style({
     },
   },
 });
+
+// Preview builds on the in-process mock (root loader's `mocksEnabled`), so a
+// deployed preview can't be mistaken for one on real data. A small pill over
+// the top edge: clicks pass through to the header under it, and its colours
+// are fixed rather than themed, so it reads the same in every app style.
+export const mocksBanner = style({
+  position: "fixed",
+  insetBlockStart: "env(safe-area-inset-top)",
+  insetInlineStart: "50%",
+  translate: "-50% 0",
+  zIndex: 2,
+  margin: 0,
+  paddingBlock: "2px",
+  paddingInline: vars.spacing.sm,
+  borderEndStartRadius: vars.spacing.sm,
+  borderEndEndRadius: vars.spacing.sm,
+  background: "oklch(0.85 0.17 85)",
+  color: "black",
+  fontSize: vars.fontSize.xs,
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+});

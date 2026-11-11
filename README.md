@@ -574,6 +574,13 @@ builds compile the choice out and use `VITE_SUPABASE_*` as before.
   for the test project's URL first.
 - **Quick-login is mock-only**: its seeded users don't exist in the test
   project.
+- **"Mocks enabled" banner.** While a preview build answers from the mock, a
+  small fixed pill at the top of every page says so, so a deployed preview
+  can't be mistaken for real data. The root loader works it out from the
+  backend cookie (`mocksEnabled` in
+  [supabase-backend.ts](app/lib/supabase-backend.ts)). It ignores clicks, and
+  its colours are fixed rather than themed. Local mock builds (`pnpm dev`, the
+  integration tests) don't show it, so the visual snapshots don't change.
 
 #### Preview users
 

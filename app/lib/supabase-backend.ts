@@ -39,6 +39,21 @@ export function parseBackend(value: string | undefined): Backend {
   return canChooseBackend && value === "test" ? "test" : "mock";
 }
 
+/**
+ * True when a preview build is answering from the in-process mock rather than
+ * the test project, so the page can say so (the "Mocks enabled" banner).
+ * Other builds never show it: production and staging use a real project, and
+ * local mock builds (`pnpm dev`, the integration tests) don't need telling.
+ */
+export function mocksEnabled(cookieHeader: string | null): boolean {
+  if (import.meta.env.MODE !== "preview") return false;
+  const value = cookieHeader
+    ?.split(/;\s*/)
+    .find((cookie) => cookie.startsWith(`${BACKEND_COOKIE}=`))
+    ?.slice(BACKEND_COOKIE.length + 1);
+  return parseBackend(value) === "mock";
+}
+
 /** URL and publishable key for the backend a BACKEND_COOKIE value names. */
 export function supabaseConfig(cookieValue: string | undefined): SupabaseConfig {
   const chosen = parseBackend(cookieValue) === "test" ? testConfig : defaultConfig;
