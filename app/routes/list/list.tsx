@@ -361,18 +361,15 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         .then(({ realtimeClient }) => {
           if (cancelled) return;
 
-          // The callback runs again with SUBSCRIBED each time the channel
-          // rejoins after a dropped connection; anything broadcast while it
-          // was down was lost, so refetch then (but not on the first join —
-          // the loader has only just run).
-          let hasJoined = false;
+          // SUBSCRIBED fires on the first join and again each time the
+          // channel rejoins after a dropped connection. Anything broadcast
+          // before then was missed, including between the loader's fetch
+          // and this lazily-loaded channel's first join, so refetch each time.
           const channel = realtimeClient
             .channel(`list-${listId}`)
             .on("broadcast", { event: "changed" }, ({ payload }) => onBroadcastChanged(payload))
             .subscribe((status) => {
-              if (status !== "SUBSCRIBED") return;
-              if (hasJoined) refreshFromServer();
-              hasJoined = true;
+              if (status === "SUBSCRIBED") refreshFromServer();
             });
 
           cleanup = () => realtimeClient.removeChannel(channel);

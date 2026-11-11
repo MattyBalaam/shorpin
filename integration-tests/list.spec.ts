@@ -156,9 +156,13 @@ test("'Recreate last deleted' explains why it can't run while a change is saving
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
-  // Keeps the delete in flight long enough to click Recreate during it.
+  // Keeps the delete in flight long enough to click Recreate during it. Only
+  // the POST: a revalidation GET caught here can be aborted while it waits,
+  // and continuing an aborted request throws.
   await page.route(/\/lists\/shopping/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (route.request().method() === "POST") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
     await route.continue();
   });
 
@@ -1010,16 +1014,23 @@ test("a realtime reconnect refetches the list, so broadcasts missed meanwhile ar
     // Proxy the owner's realtime socket so the test can drop what the server
     // sends and then cut the connection.
     let dropIncoming = false;
+    let listJoins = 0;
     const sockets: Array<{ close: () => Promise<void> }> = [];
     await ownerPage.routeWebSocket(/\/realtime\//, (ws) => {
       const server = ws.connectToServer();
       server.onMessage((message) => {
-        if (!dropIncoming) ws.send(message);
+        if (dropIncoming) return;
+        // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
+        const [, , topic, event] = JSON.parse(String(message)) as unknown[];
+        if (event === "phx_reply" && String(topic).includes("list-")) listJoins += 1;
+        ws.send(message);
       });
       sockets.push(ws);
     });
     await openList(ownerPage, "shopping");
-    await expect.poll(() => sockets.length).toBeGreaterThan(0);
+    // Only start dropping once the channel has joined, so the reconnect
+    // below is a genuine rejoin.
+    await expect.poll(() => listJoins).toBeGreaterThan(0);
 
     dropIncoming = true;
     await openList(collabPage, "shopping");
