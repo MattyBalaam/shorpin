@@ -642,6 +642,12 @@ deployments don't show it and use `VITE_SUPABASE_*` as before.
 - **No JS needed.** CSS `:has()` on the checked radio shows the quick-login
   shortcuts for the mock and the preview users for the test project.
   Quick-login posts no backend, so it always signs in to the mock.
+- **"Mocks enabled" banner.** While a preview answers from the mock, a small
+  fixed pill at the top of every page says so, so a deployed preview can't be
+  mistaken for real data ([server/page.ts](server/page.ts) `mocksEnabled`).
+  It ignores clicks, and its colours are fixed rather than themed. Local mock
+  builds (`pnpm dev`, the integration tests) don't show it, so the visual
+  snapshots don't change.
 - **The mock passes the test project through.** The mock handlers match any
   host (`*/rest/v1/…`), so [server/preview.ts](server/preview.ts) puts a
   `passthrough()` handler for the test project's URL first.

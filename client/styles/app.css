@@ -994,6 +994,31 @@
   }
 }
 
+/* Previews on the in-process mock (server/page.ts `mocksEnabled`), so a
+   deployed preview can't be mistaken for one on real data. A small pill over
+   the top edge: clicks pass through to the header under it, and its colours
+   are fixed rather than themed, so it reads the same in every app style. */
+.mocks-banner {
+  position: fixed;
+  inset-block-start: env(safe-area-inset-top);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  z-index: 2;
+  margin: 0;
+  padding-block: 2px;
+  padding-inline: var(--spacing-sm);
+  border-end-start-radius: var(--spacing-sm);
+  border-end-end-radius: var(--spacing-sm);
+  background: oklch(0.85 0.17 85);
+  color: black;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .auth-field-form {
   display: flex;
   flex-direction: column;

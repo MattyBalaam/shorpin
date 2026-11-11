@@ -14,6 +14,8 @@ export interface DocumentOptions {
   head?: Html;
   /** Enhancement scripts beyond base, which every page gets. */
   scripts?: ScriptEntry[];
+  /** A preview answering from the in-process mock: shows the banner. */
+  mocksEnabled?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export function document({
   body,
   head,
   scripts = [],
+  mocksEnabled = false,
 }: DocumentOptions) {
   const entries: ScriptEntry[] = ["base", ...scripts];
   const preloads = [...new Set(entries.flatMap(importedChunks))];
@@ -65,6 +68,7 @@ export function document({
       </head>
       <body>
         <div aria-hidden="true" class="status-bar-backdrop"></div>
+        ${mocksEnabled ? html`<p class="mocks-banner">Mocks enabled</p>` : ""}
         <main class="page">${body}</main>
       </body>
     </html>`;

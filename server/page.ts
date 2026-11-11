@@ -7,6 +7,8 @@ import {
   serializeAppStyleCookie,
 } from "../lib/app-style.ts";
 import { type ColorScheme, parseColorScheme } from "../lib/color-scheme.ts";
+import { requestBackend } from "./backend.ts";
+import { env } from "./env.ts";
 import { type Flash, takeFlash } from "./flash.ts";
 import type { Html } from "./html.ts";
 import type { AppEnv, Supabase } from "./supabase.ts";
@@ -81,6 +83,9 @@ export async function renderPage(
     appStyle,
     colorScheme,
     path: new URL(c.req.url).pathname,
+    // Previews on the in-process mock say so (the "Mocks enabled" banner).
+    // Local mock builds don't: they're never mistaken for real data.
+    mocksEnabled: env.isPreview && requestBackend(c) === "mock",
     body: body({ appStyle, colorScheme, flash }),
   });
   return c.html(page, status);
