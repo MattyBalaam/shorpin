@@ -3,14 +3,16 @@ import {
   createRootRoute,
   HeadContent,
   Outlet,
+  rootRouteId,
   Scripts,
+  useLoaderData,
   useRouter,
   useRouterState,
 } from "@tanstack/solid-router";
 import { isServer } from "@solidjs/web";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeader } from "@tanstack/solid-start/server";
-import { createEffect, type Element, Loading, onSettled } from "solid-js";
+import { createEffect, type Element, Loading, onSettled, Show } from "solid-js";
 import { useEffectiveAppStyle } from "~/components/app-style/use-app-style";
 import { useColorScheme } from "~/components/color-scheme/color-scheme";
 import { ErrorState } from "~/components/error-state/error-state";
@@ -20,6 +22,7 @@ import { getAccountAppStyle } from "~/lib/app-style.functions";
 import { initMonitoring, reportError } from "~/lib/monitoring.browser";
 import { isNetworkOrServerError } from "~/lib/network-error";
 import { activateWaitingWorker, watchForUpdates } from "~/lib/service-worker.browser";
+import { mocksEnabled } from "~/lib/supabase-backend";
 import { toast } from "~/lib/toast";
 import { COLOR_SCHEME_ATTRIBUTE, parseColorScheme } from "~/lib/color-scheme";
 import "~/styles/reset.css";
@@ -52,6 +55,8 @@ export const Route = createRootRoute({
     return {
       colorScheme: parseColorScheme(cookieHeader),
       appStyle: appStyle ?? DEFAULT_APP_STYLE,
+      // Previews on the in-process mock show a banner (see RootDocument).
+      mocksEnabled: mocksEnabled(cookieHeader),
     };
   },
   // A match that stays on screen only reloads when it's invalidated, so
@@ -104,6 +109,7 @@ function RootError(props: { error: unknown; reset?: () => void }) {
 function RootDocument(props: { children?: Element }) {
   const appStyle = useEffectiveAppStyle();
   const colorScheme = useColorScheme();
+  const rootData = useLoaderData({ from: rootRouteId });
 
   return (
     <html
@@ -119,6 +125,9 @@ function RootDocument(props: { children?: Element }) {
       </head>
       <body>
         <div aria-hidden="true" class={styles.statusBarBackdrop} />
+        <Show when={rootData()?.mocksEnabled}>
+          <p class={styles.mocksBanner}>Mocks enabled</p>
+        </Show>
         {props.children}
         <Scripts />
       </body>

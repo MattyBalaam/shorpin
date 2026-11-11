@@ -550,6 +550,7 @@ Open a PR to test: Coolify builds it, comments the preview link on the PR, and r
 - **Sessions don't mix.** Supabase names its session cookie after the project (`sb-<ref>-auth-token`), so the mock and the test project each keep their own, and a session is only read for the backend the cookie names.
 - **Switching reloads.** Signing in with a different backend from last time does a full page load rather than a client navigation, so the realtime module is evaluated again for the new project.
 - **Quick-login is mock-only.** Its seeded users don't exist in the test project. There, use the preview user or a real test account.
+- **"Mocks enabled" banner.** While a preview build answers from the mock, a small fixed pill at the top of every page says so, so a deployed preview can't be mistaken for real data. The root loader works it out from the backend cookie (`mocksEnabled` in [supabase-backend.ts](src/lib/supabase-backend.ts)), on the server and in the browser. It ignores clicks, and its colours are fixed rather than themed. Local mock builds (`pnpm dev`, the integration tests) don't show it, so the visual snapshots don't change.
 - **The preview mocks pass the test project through.** The mock handlers match any host (`*/rest/v1/…`), so [preview-mocks.server.ts](src/lib/preview-mocks.server.ts) puts a `passthrough()` handler for the test project's URL first.
 - The test project is shared with `pnpm test:e2e`, whose setup and teardown only create and delete their own user, so preview data and e2e runs don't collide.
 
