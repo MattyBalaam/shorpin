@@ -36,6 +36,25 @@ function queuedMutationCount(page: Page) {
   );
 }
 
+/**
+ * Counts the page's realtime join replies for list channels. The channel joins
+ * lazily after render, so a test that expects a broadcast must wait for the
+ * join first, or the broadcast can go out before anyone is listening.
+ */
+async function trackListChannelJoins(page: Page) {
+  let joins = 0;
+  await page.routeWebSocket(/\/realtime\//, (ws) => {
+    const server = ws.connectToServer();
+    server.onMessage((message) => {
+      // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
+      const [, , topic, event] = JSON.parse(String(message)) as unknown[];
+      if (event === "phx_reply" && String(topic).includes("list-")) joins += 1;
+      ws.send(message);
+    });
+  });
+  return () => joins;
+}
+
 test("list shows all items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -1065,13 +1084,20 @@ test("own changes do not trigger the updated-by-another-user notification", asyn
     await login(collabPage, ctx.collabEmail);
 
     await openList(ownerPage, "shopping");
+    const collabJoins = await trackListChannelJoins(collabPage);
     await openList(collabPage, "shopping");
+    await expect.poll(collabJoins).toBeGreaterThan(0);
 
     await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Anchor timing on actual broadcast delivery: the collaborator sees it...
-    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
+    // The panel shows only the newest notification, and the service
+    // worker's "Offline support ready" can land on top; it clears itself
+    // after AUTO_DISMISS_MS (5s), so wait past that.
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible({
+      timeout: 10_000,
+    });
     // ...while the owner — whose clientId matches the broadcast — must not.
     await expect(ownerPage.getByText("List updated by another user")).not.toBeVisible();
   } finally {
@@ -1165,14 +1191,21 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
 
     // Both navigate to the owner's Shopping list (collab is a member)
     await openList(ownerPage, "shopping");
+    const collabJoins = await trackListChannelJoins(collabPage);
     await openList(collabPage, "shopping");
+    await expect.poll(collabJoins).toBeGreaterThan(0);
 
     // Owner adds a new item
     await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Collab should receive the broadcast and see the notification
-    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
+    // The panel shows only the newest notification, and the service
+    // worker's "Offline support ready" can land on top; it clears itself
+    // after AUTO_DISMISS_MS (5s), so wait past that.
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible({
+      timeout: 10_000,
+    });
     // And the new item should appear after revalidation
     await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
   } finally {
