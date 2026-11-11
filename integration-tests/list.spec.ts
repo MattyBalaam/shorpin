@@ -1,6 +1,6 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { expectPageSnapshot, login } from "./helpers";
+import { expectPageSnapshot, login, type TestContext } from "./helpers";
 
 const baseURL = `http://localhost:${process.env.APP_SERVER_PORT ?? "5174"}`;
 
@@ -962,9 +962,8 @@ test("a failed fresh-data fetch on reconnect never syncs against stale cached da
   }
 });
 
-// A backgrounded tab misses broadcasts, and every submit sends the whole
-// items[] array (mutate_list deletes whatever is missing from it), so adding
-// from a list that never showed another device's item deleted that item.
+// A backgrounded tab misses broadcasts, so it showed a list without another
+// device's item until something refetched it.
 test("coming back to the app refetches the list, so an add keeps items added elsewhere", async ({
   browser,
   ctx,
@@ -1068,6 +1067,91 @@ test("a realtime reconnect refetches the list, so broadcasts missed meanwhile ar
     await ownerContext.close();
     await collabContext.close();
   }
+});
+
+/**
+ * Opens the shopping list for the owner with realtime blocked (as for a
+ * backgrounded tab that missed broadcasts), then has the collaborator add
+ * Margarine, which the owner's page never shows.
+ */
+async function withStaleOwnerList(
+  browser: Browser,
+  ctx: TestContext,
+  run: (pages: { ownerPage: Page; collabPage: Page }) => Promise<void>,
+) {
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    await ownerPage.routeWebSocket(/\/realtime\//, () => {});
+    await openList(ownerPage, "shopping");
+
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Margarine")).not.toBeVisible();
+
+    await run({ ownerPage, collabPage });
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+}
+
+// mutate_list used to delete every row missing from the submitted items[],
+// so any submit from a list that hadn't seen another device's item deleted it.
+test("an add from a stale list keeps items it hasn't seen", async ({ browser, ctx }) => {
+  await withStaleOwnerList(browser, ctx, async ({ ownerPage, collabPage }) => {
+    await ownerPage.getByLabel("New item").fill("Bread rolls");
+    await ownerPage.getByRole("button", { name: "Add" }).click();
+    await expect(ownerPage.getByLabel("Edit Bread rolls").first()).toBeVisible();
+
+    await openList(collabPage, "shopping");
+    await expect(collabPage.getByLabel("Edit Bread rolls").first()).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+  });
+});
+
+test("a delete from a stale list deletes only that item", async ({ browser, ctx }) => {
+  await withStaleOwnerList(browser, ctx, async ({ ownerPage, collabPage }) => {
+    const deleted = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+    );
+    await ownerPage.getByRole("button", { name: "Delete Milk" }).click();
+    await deleted;
+
+    await openList(collabPage, "shopping");
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Milk")).not.toBeVisible();
+  });
+});
+
+// A page from an older build has no explicitDeletes field, so the server
+// still infers its deletions from what items[] leaves out.
+test("a submission without explicitDeletes still deletes what it leaves out", async ({
+  page,
+  ctx,
+}) => {
+  await login(page, ctx.ownerEmail);
+  await openList(page, "shopping");
+  await page.locator('input[name="explicitDeletes"]').evaluate((input) => input.remove());
+
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes("/lists/shopping.data") && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Delete Milk" }).click();
+  await deleted;
+
+  await openList(page, "shopping");
+  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
+  await expect(page.getByLabel("Edit Bread")).toBeVisible();
 });
 
 test("own changes do not trigger the updated-by-another-user notification", async ({

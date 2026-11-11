@@ -29,7 +29,10 @@ const zMutateListRpcResult = v.union([
  * 20261011000000) instead of a duplicate. No migration needed: `new` stays
  * the fallback for any client that doesn't send an id.
  */
-function toIdempotentAdd({ newId, ...payload }: v.InferOutput<typeof zList>) {
+function toIdempotentAdd({
+  newId,
+  ...payload
+}: Omit<v.InferOutput<typeof zList>, "explicitDeletes" | "deletedIds">) {
   if (!payload.new || !newId || payload.newItems.length !== payload.newItemIds.length) {
     return payload;
   }
@@ -39,6 +42,22 @@ function toIdempotentAdd({ newId, ...payload }: v.InferOutput<typeof zList>) {
     newItems: [...payload.newItems, payload.new],
     newItemIds: [...payload.newItemIds, newId],
   };
+}
+
+/**
+ * Builds mutate_list's payload. `deletedIds` goes along only for a client
+ * that sends explicit deletions (`explicitDeletes`): its presence tells
+ * mutate_list to delete just those ids and keep rows the client hasn't seen
+ * (migration 20261111000000). Without it, mutate_list infers deletions from
+ * whatever `items` omits, which an older client's deletes still rely on.
+ */
+export function toRpcPayload({
+  explicitDeletes,
+  deletedIds,
+  ...payload
+}: v.InferOutput<typeof zList>) {
+  const idempotent = toIdempotentAdd(payload);
+  return explicitDeletes ? { ...idempotent, deletedIds } : idempotent;
 }
 
 export async function loader({ request, params: { list }, context }: Route.LoaderArgs) {
@@ -161,7 +180,7 @@ export async function action({ request, params: { list }, context }: Route.Actio
 
   const { data: rpcData, error: rpcError } = await supabase.rpc("mutate_list", {
     p_list_slug: list,
-    p_payload: toIdempotentAdd(result.output),
+    p_payload: toRpcPayload(result.output),
     p_mutated_at: updatedAt,
   });
 

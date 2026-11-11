@@ -60,11 +60,36 @@ test("supabase smoke", async ({ page }) => {
     await expect(listRow.getByText("unread")).not.toBeVisible();
   });
 
-  await test.step("delete the item", async () => {
+  await test.step("an add from a stale page keeps items it hasn't seen", async () => {
+    // A second tab whose realtime never connects, so it misses the add below.
+    const stalePage = await page.context().newPage();
+    await stalePage.routeWebSocket(/\/realtime\//, () => {});
+    await stalePage.goto(`/lists/${listSlug}`);
+    await expect(stalePage.getByLabel("Edit Test item")).toBeVisible();
+
     await page.getByRole("link", { name: listName }).click();
     await page.waitForURL(`/lists/${listSlug}`);
+    await page.getByLabel("New item").fill("Unseen item");
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByLabel("Edit Unseen item")).toBeVisible();
+
+    await stalePage.getByLabel("New item").fill("Stale add");
+    await stalePage.getByRole("button", { name: "Add" }).click();
+    await expect(stalePage.getByLabel("Edit Stale add")).toBeVisible();
+    await stalePage.close();
+
+    await page.reload();
+    await expect(page.getByLabel("Edit Unseen item")).toBeVisible();
+    await expect(page.getByLabel("Edit Stale add")).toBeVisible();
+  });
+
+  await test.step("delete the item", async () => {
     await page.getByRole("button", { name: "Delete Test item" }).click();
     await expect(page.getByLabel("Edit Test item")).not.toBeVisible();
+
+    await page.reload();
+    await expect(page.getByLabel("Edit Test item")).not.toBeVisible();
+    await expect(page.getByLabel("Edit Unseen item")).toBeVisible();
   });
 
   await test.step("clean up: delete the list", async () => {
