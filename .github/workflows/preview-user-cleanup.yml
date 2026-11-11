@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Preview User Cleanup
 
-# Deletes the PR preview's test-project user (preview-user.server.ts)
-# once the PR closes. Deleting it cascades to its profile and lists.
+# Deletes the PR preview's test-project users (owner and collaborator, see
+# the preview user module) once the PR closes. Deleting them cascades to
+# their profiles, lists, items and memberships.
 # pull_request_target so the secrets are available; it checks out no PR code,
 # only uses the PR number.
 on:
@@ -15,21 +16,24 @@ jobs:
   delete-preview-user:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete preview-<pr>@test.invalid
+      - name: Delete preview-<pr>@ and preview-<pr>-collab@test.invalid
         env:
           SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           SERVICE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
-          EMAIL: preview-${{ github.event.pull_request.number }}@test.invalid
+          LABEL: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           auth=(-H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY")
-          # profiles mirrors auth.users (id, email), and the admin API can't
-          # look a user up by email.
-          id=$(curl -fsS "${auth[@]}" \
-            "$SUPABASE_URL/rest/v1/profiles?select=id&email=eq.$EMAIL" | jq -r '.[0].id // empty')
-          if [ -z "$id" ]; then
-            echo "No preview user $EMAIL"
-            exit 0
-          fi
-          curl -fsS -X DELETE "${auth[@]}" "$SUPABASE_URL/auth/v1/admin/users/$id" > /dev/null
-          echo "Deleted $EMAIL"
+          # The preview's owner and collaborator (older previews only have
+          # the owner). profiles mirrors auth.users (id, email), and the
+          # admin API can't look a user up by email.
+          for email in "preview-$LABEL@test.invalid" "preview-$LABEL-collab@test.invalid"; do
+            id=$(curl -fsS "${auth[@]}" \
+              "$SUPABASE_URL/rest/v1/profiles?select=id&email=eq.$email" | jq -r '.[0].id // empty')
+            if [ -z "$id" ]; then
+              echo "No preview user $email"
+              continue
+            fi
+            curl -fsS -X DELETE "${auth[@]}" "$SUPABASE_URL/auth/v1/admin/users/$id" > /dev/null
+            echo "Deleted $email"
+          done
