@@ -315,6 +315,39 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     }
   });
 
+  // Broadcasts sent while this page couldn't receive them (a backgrounded or
+  // suspended tab, a dropped socket) are never redelivered, so the list on
+  // screen can silently miss other devices' changes. Every submit sends the
+  // whole items[] array and mutate_list deletes whatever is missing from it,
+  // so acting on that stale list would delete those changes. Refetch
+  // whenever we may have missed something.
+  const refreshFromServer = useEffectEvent(() => {
+    if (navigator.onLine) revalidate();
+  });
+
+  useEffect(function refreshOnResume() {
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        if (document.visibilityState === "visible") refreshFromServer();
+      },
+      { signal },
+    );
+    // Restored from the back/forward cache: no visibilitychange, no loader.
+    window.addEventListener(
+      "pageshow",
+      (event) => {
+        if (event.persisted) refreshFromServer();
+      },
+      { signal },
+    );
+
+    return () => controller.abort();
+  }, []);
+
   // Subscribe to broadcast for real-time updates
   useEffect(
     function subscribeToBroadcast() {
@@ -328,10 +361,16 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         .then(({ realtimeClient }) => {
           if (cancelled) return;
 
+          // SUBSCRIBED fires on the first join and again each time the
+          // channel rejoins after a dropped connection. Anything broadcast
+          // before then was missed, including between the loader's fetch
+          // and this lazily-loaded channel's first join, so refetch each time.
           const channel = realtimeClient
             .channel(`list-${listId}`)
             .on("broadcast", { event: "changed" }, ({ payload }) => onBroadcastChanged(payload))
-            .subscribe();
+            .subscribe((status) => {
+              if (status === "SUBSCRIBED") refreshFromServer();
+            });
 
           cleanup = () => realtimeClient.removeChannel(channel);
         })

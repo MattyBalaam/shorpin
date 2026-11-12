@@ -36,6 +36,25 @@ function queuedMutationCount(page: Page) {
   );
 }
 
+/**
+ * Counts the page's realtime join replies for list channels. The channel joins
+ * lazily after render, so a test that expects a broadcast must wait for the
+ * join first, or the broadcast can go out before anyone is listening.
+ */
+async function trackListChannelJoins(page: Page) {
+  let joins = 0;
+  await page.routeWebSocket(/\/realtime\//, (ws) => {
+    const server = ws.connectToServer();
+    server.onMessage((message) => {
+      // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
+      const [, , topic, event] = JSON.parse(String(message)) as unknown[];
+      if (event === "phx_reply" && String(topic).includes("list-")) joins += 1;
+      ws.send(message);
+    });
+  });
+  return () => joins;
+}
+
 test("list shows all items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -156,9 +175,13 @@ test("'Recreate last deleted' explains why it can't run while a change is saving
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
-  // Keeps the delete in flight long enough to click Recreate during it.
+  // Keeps the delete in flight long enough to click Recreate during it. Only
+  // the POST: a revalidation GET caught here can be aborted while it waits,
+  // and continuing an aborted request throws.
   await page.route(/\/lists\/shopping/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (route.request().method() === "POST") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
     await route.continue();
   });
 
@@ -939,6 +962,114 @@ test("a failed fresh-data fetch on reconnect never syncs against stale cached da
   }
 });
 
+// A backgrounded tab misses broadcasts, and every submit sends the whole
+// items[] array (mutate_list deletes whatever is missing from it), so adding
+// from a list that never showed another device's item deleted that item.
+test("coming back to the app refetches the list, so an add keeps items added elsewhere", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    // The owner's realtime connection never opens, as for a suspended tab.
+    await ownerPage.routeWebSocket(/\/realtime\//, () => {});
+    await openList(ownerPage, "shopping");
+
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+
+    await expect(ownerPage.getByLabel("Edit Margarine")).not.toBeVisible();
+
+    // Headless pages are always visible, so stage the hide/show.
+    await ownerPage.evaluate(() => {
+      const setVisibility = (state: DocumentVisibilityState) => {
+        Object.defineProperty(document, "visibilityState", { value: state, configurable: true });
+        document.dispatchEvent(new Event("visibilitychange"));
+      };
+      setVisibility("hidden");
+      setVisibility("visible");
+    });
+    await expect(ownerPage.getByLabel("Edit Margarine").first()).toBeVisible();
+
+    await ownerPage.getByLabel("New item").fill("Bread");
+    await ownerPage.getByRole("button", { name: "Add" }).click();
+    await expect(ownerPage.getByLabel("Edit Bread").first()).toBeVisible();
+
+    await openList(collabPage, "shopping");
+    await expect(collabPage.getByLabel("Edit Bread").first()).toBeVisible();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
+test("a realtime reconnect refetches the list, so broadcasts missed meanwhile aren't lost", async ({
+  browser,
+  ctx,
+}, testInfo) => {
+  testInfo.slow();
+
+  const ownerContext = await browser.newContext({ baseURL });
+  const collabContext = await browser.newContext({ baseURL });
+  try {
+    const ownerPage = await ownerContext.newPage();
+    const collabPage = await collabContext.newPage();
+
+    await login(ownerPage, ctx.ownerEmail);
+    await login(collabPage, ctx.collabEmail);
+
+    // Proxy the owner's realtime socket so the test can drop what the server
+    // sends and then cut the connection.
+    let dropIncoming = false;
+    let listJoins = 0;
+    const sockets: Array<{ close: () => Promise<void> }> = [];
+    await ownerPage.routeWebSocket(/\/realtime\//, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((message) => {
+        if (dropIncoming) return;
+        // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
+        const [, , topic, event] = JSON.parse(String(message)) as unknown[];
+        if (event === "phx_reply" && String(topic).includes("list-")) listJoins += 1;
+        ws.send(message);
+      });
+      sockets.push(ws);
+    });
+    await openList(ownerPage, "shopping");
+    // Only start dropping once the channel has joined, so the reconnect
+    // below is a genuine rejoin.
+    await expect.poll(() => listJoins).toBeGreaterThan(0);
+
+    dropIncoming = true;
+    await openList(collabPage, "shopping");
+    await collabPage.getByLabel("New item").fill("Margarine");
+    await collabPage.getByRole("button", { name: "Add" }).click();
+    await expect(collabPage.getByLabel("Edit Margarine").first()).toBeVisible();
+    await expect(ownerPage.getByLabel("Edit Margarine")).not.toBeVisible();
+
+    const socketsBefore = sockets.length;
+    dropIncoming = false;
+    await sockets.at(-1)?.close();
+    await expect.poll(() => sockets.length).toBeGreaterThan(socketsBefore);
+
+    await expect(ownerPage.getByLabel("Edit Margarine").first()).toBeVisible({ timeout: 15000 });
+  } finally {
+    await ownerContext.close();
+    await collabContext.close();
+  }
+});
+
 test("own changes do not trigger the updated-by-another-user notification", async ({
   browser,
   ctx,
@@ -953,13 +1084,20 @@ test("own changes do not trigger the updated-by-another-user notification", asyn
     await login(collabPage, ctx.collabEmail);
 
     await openList(ownerPage, "shopping");
+    const collabJoins = await trackListChannelJoins(collabPage);
     await openList(collabPage, "shopping");
+    await expect.poll(collabJoins).toBeGreaterThan(0);
 
     await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Anchor timing on actual broadcast delivery: the collaborator sees it...
-    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
+    // The panel shows only the newest notification, and the service
+    // worker's "Offline support ready" can land on top; it clears itself
+    // after AUTO_DISMISS_MS (5s), so wait past that.
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible({
+      timeout: 10_000,
+    });
     // ...while the owner — whose clientId matches the broadcast — must not.
     await expect(ownerPage.getByText("List updated by another user")).not.toBeVisible();
   } finally {
@@ -1053,14 +1191,21 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
 
     // Both navigate to the owner's Shopping list (collab is a member)
     await openList(ownerPage, "shopping");
+    const collabJoins = await trackListChannelJoins(collabPage);
     await openList(collabPage, "shopping");
+    await expect.poll(collabJoins).toBeGreaterThan(0);
 
     // Owner adds a new item
     await ownerPage.getByLabel("New item").fill("Margarine");
     await ownerPage.getByRole("button", { name: "Add" }).click();
 
     // Collab should receive the broadcast and see the notification
-    await expect(collabPage.getByText("List updated by another user")).toBeVisible();
+    // The panel shows only the newest notification, and the service
+    // worker's "Offline support ready" can land on top; it clears itself
+    // after AUTO_DISMISS_MS (5s), so wait past that.
+    await expect(collabPage.getByText("List updated by another user")).toBeVisible({
+      timeout: 10_000,
+    });
     // And the new item should appear after revalidation
     await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
   } finally {
