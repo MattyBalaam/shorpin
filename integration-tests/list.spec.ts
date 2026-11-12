@@ -1247,7 +1247,18 @@ test("new item is marked in the list since last opening", async ({ browser, ctx 
     await collabPage.getByRole("button", { name: "Add" }).click();
     await expect(collabPage.getByLabel("Edit Margarine")).toBeVisible();
 
+    // The realtime channel's first join refetches the list, after the open
+    // has recorded the view. The markers must outlast that refetch.
+    const joinRefetch = ownerPage.waitForResponse(
+      (response) =>
+        response.url().includes("/lists/shopping.data") && response.request().method() === "GET",
+    );
     await openList(ownerPage, "shopping");
+    await (await joinRefetch).finished();
+    // Let React render what the refetch returned.
+    await ownerPage.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
     await expect(
       ownerPage
         .locator('[data-new="true"]')
