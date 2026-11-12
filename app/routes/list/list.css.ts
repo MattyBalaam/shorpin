@@ -10,16 +10,10 @@ export const form = style({
   overflow: "hidden",
 });
 
-export const undoButton = style({
+export const binLink = style({
   gridColumnStart: "input",
   gridColumnEnd: "done",
   marginLeft: "auto",
-});
-
-export const undoIcon = style({
-  display: "block",
-  width: "18px",
-  height: "18px",
 });
 
 export const actions = style({

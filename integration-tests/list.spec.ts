@@ -8,9 +8,8 @@ const listPath = (slug: string) => `/lists/${slug}`;
 
 /**
  * Navigate straight to the list route and wait for client hydration.
- * The delete-capture and "Recreate last deleted" affordances are driven by
- * client-side React state, so tests must not interact until the route has
- * hydrated (signalled by root.tsx setting data-hydrated-path).
+ * Deletes and reorders are driven by client-side React state, so tests must
+ * not interact until the route has hydrated (signalled by root.tsx setting data-hydrated-path).
  */
 async function openList(page: Page, slug: string) {
   await page.goto(listPath(slug));
@@ -133,74 +132,6 @@ test("item with a URL shows a single open-link control", async ({ page, ctx }) =
   await expect(itemRow.getByRole("link")).toHaveCount(1);
 });
 
-test("deleting an item reveals a browser-only 'Recreate last deleted' button", async ({
-  page,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  // No recreate affordance until something has been deleted this session
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Delete Milk" }).click();
-
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
-  // Deliberately not an undo — no server undelete round-trip
-  await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
-});
-
-test("'Recreate last deleted' re-adds the deleted value as a fresh item", async ({ page, ctx }) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-
-  await page.getByRole("button", { name: "Delete Milk" }).click();
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-
-  // Retried: while the delete is still saving, a click only explains why it
-  // can't run yet (see the next test).
-  await expect(async () => {
-    await page.getByRole("button", { name: "Recreate last deleted" }).click();
-    // Milk returns (as a freshly-added item at the end of the list)
-    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
-  }).toPass();
-  // The affordance clears once the value has been recreated
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
-});
-
-test("'Recreate last deleted' explains why it can't run while a change is saving", async ({
-  page,
-  ctx,
-}) => {
-  await login(page, ctx.ownerEmail);
-  await openList(page, "shopping");
-  // Keeps the delete in flight long enough to click Recreate during it. Only
-  // the POST: a revalidation GET caught here can be aborted while it waits,
-  // and continuing an aborted request throws.
-  await page.route(/\/lists\/shopping/, async (route) => {
-    if (route.request().method() === "POST") {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    await route.continue();
-  });
-
-  await page.getByRole("button", { name: "Delete Milk" }).click();
-  const recreate = page.getByRole("button", { name: "Recreate last deleted" });
-  // Never disabled: clicking says why instead.
-  await expect(recreate).toBeEnabled();
-  await recreate.click();
-  await expect(page.getByText("Still saving - try again in a moment")).toBeVisible();
-  await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-
-  // Once the delete has saved, the same click works.
-  await page.unrouteAll({ behavior: "wait" });
-  await expect(async () => {
-    await recreate.click();
-    await expect(page.getByLabel("Edit Milk")).toBeVisible({ timeout: 1000 });
-  }).toPass();
-});
-
 /**
  * Drags a row horizontally from its drag handle, the gesture that both
  * reorders (vertical) and swipe-deletes (horizontal) list items.
@@ -234,7 +165,6 @@ test("swiping an item far enough deletes it and persists", async ({ page, ctx })
   await swipeHandle(page, "Reorder Milk", { distance: -200, steps: 20, holdBeforeRelease: 200 });
 
   await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
 
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
@@ -282,7 +212,6 @@ test("a slow short swipe springs the item back instead of deleting", async ({ pa
   await expect(row).toBeVisible();
   // Settles back to rest with no leftover offset or lift.
   await expect(row).toHaveCSS("transform", "none");
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
 test("editing an item in the modal saves the new value", async ({ page, ctx }) => {
@@ -427,7 +356,7 @@ test("grouping by tag gathers tagged items and saves the order", async ({ page, 
   ];
 
   const grouped = shoppingSaved(page);
-  await page.getByRole("button", { name: "Group by tag" }).click();
+  await page.getByRole("button", { name: "Group" }).click();
   await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
   await grouped;
   expect((await editLabels())[0]).toBe("Edit Milk");
@@ -435,7 +364,7 @@ test("grouping by tag gathers tagged items and saves the order", async ({ page, 
   await openList(page, "shopping");
   await expect.poll(async () => (await editLabels()).slice(-10)).toEqual(groupedTail);
 
-  await page.getByRole("button", { name: "Group by tag" }).click();
+  await page.getByRole("button", { name: "Group" }).click();
   await expect(page.getByText("Already grouped by tag")).toBeVisible();
 });
 

@@ -157,7 +157,6 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     newItemIds: items
       .filter(({ state, updatedAt }) => state === "active" && updatedAt > lastViewedAt)
       .map(({ id }) => id),
-    lastDeleted: items.filter(({ state }) => state === "deleted").at(-1),
   };
 }
 
@@ -233,7 +232,6 @@ export async function action({ request, params: { list }, context }: Route.Actio
   void channel.httpSend("changed", { clientId }).finally(() => supabase.removeChannel(channel));
 
   return {
-    lastDeleted: sortData(allItems.filter(({ state }) => state === "deleted")).at(-1),
     lastResult: report(submission, {
       reset: toAdd && Boolean(result.output.new),
       targetValue: {

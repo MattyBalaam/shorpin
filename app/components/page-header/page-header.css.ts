@@ -17,7 +17,7 @@ const thresholds = {
   // Home's pending sign-ups and Sign out (about 14.4rem in brutalist; most
   // styles need about 12rem).
   "15rem": createContainer(),
-  // The list's Style, Colours and Group by tag (about 26.3rem in brutalist;
+  // The list's Style, Colours and Group (measured as Group by tag: about 26.3rem in brutalist;
   // most styles need about 22rem).
   "27rem": createContainer(),
 };

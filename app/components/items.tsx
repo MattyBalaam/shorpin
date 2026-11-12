@@ -12,7 +12,6 @@ function ReorderableItem({
   index,
   edited,
   isNew,
-  onDelete,
   onRemove,
   reorderable,
   startDrag,
@@ -25,7 +24,6 @@ function ReorderableItem({
   index: number;
   edited: boolean;
   isNew: boolean;
-  onDelete?: (value: string) => void;
   onRemove: (index: number) => void;
   reorderable?: boolean;
   startDrag: (event: PointerEvent<HTMLElement>, options?: StartDragOptions) => void;
@@ -42,7 +40,6 @@ function ReorderableItem({
   // while its inputs are still mounted, and mutate_list writes each submitted
   // row's value and position, so it relies on the items array being right.
   function commitRemoval() {
-    onDelete?.(item.getFieldset().value.defaultValue ?? "");
     onRemove(index);
   }
 
@@ -97,7 +94,6 @@ interface ItemsProps {
   pendingItem?: { id: string; value: string } | null;
   onReorder?: (itemIds: string[]) => void;
   onReorderComplete?: (itemIds: string[]) => void;
-  onDelete?: (value: string) => void;
   onRemove: (index: number) => void;
   /** The list's tags, offered when editing an item's tag. */
   tags?: string[];
@@ -111,7 +107,6 @@ export function Items({
   pendingItem,
   onReorder,
   onReorderComplete,
-  onDelete,
   onRemove,
   tags = [],
   reorderable,
@@ -154,7 +149,6 @@ export function Items({
           index={itemRecord[itemId].index}
           edited={edited.includes(itemId)}
           isNew={newItemSet.has(itemId)}
-          onDelete={onDelete}
           onRemove={onRemove}
           reorderable={reorderable}
           startDrag={startDrag}

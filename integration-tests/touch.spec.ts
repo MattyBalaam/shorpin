@@ -102,7 +102,6 @@ test("swiping an item far enough deletes it and persists", async ({ page, ctx })
   });
 
   await expect(page.getByLabel("Edit Milk")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toBeVisible();
 
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toHaveCount(0);
@@ -133,7 +132,6 @@ test("a slow short swipe springs the item back instead of deleting", async ({ pa
   const row = page.locator("li").filter({ has: page.getByLabel("Edit Eggs") });
   await expect(row).toBeVisible();
   await expect(row).toHaveCSS("transform", "none");
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
 test("vertical touch drag reorders list items without scrolling the page", async ({
@@ -232,7 +230,6 @@ test("a swipe that drifts a full row vertically reorders instead of deleting", a
 
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
   await expect.poll(() => itemOrder(page)).toEqual(["Bread", "Milk", "Eggs"]);
-  await expect(page.getByRole("button", { name: "Recreate last deleted" })).toHaveCount(0);
 });
 
 test("tapping the edge of the edit button opens the editor, not a drag", async ({ page, ctx }) => {

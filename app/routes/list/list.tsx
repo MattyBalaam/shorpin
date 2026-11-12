@@ -447,7 +447,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // the queue is only dropped once the response arrives, so a reload while
   // the request is in flight replays additions the server already applied —
   // the stable id makes that replay a no-op instead of a duplicate.
-  // `new` (the single-value field the live add-input and recreateLastDeleted
+  // `new` (the single-value field the live add-input and the bin's undelete
   // use) is explicitly cleared here — offline additions are carried through
   // `newItems` instead, and leaving `new` untouched would resubmit whatever
   // happens to be sitting in the live add-input's DOM snapshot as a phantom
@@ -703,22 +703,13 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
     formRef,
   });
 
-  // Browser-only "recreate last deleted": we keep the recreate affordance
-  // client-side rather than round-tripping the server's soft-deleted row. The
-  // deleted value is captured directly in commitRemoval (items.tsx), which
-  // fires for both the real click and the swipe path — see Items `onDelete`.
-  const [lastDeletedValue, setLastDeletedValue] = useState<string | null>(null);
-
-  // Recreate re-adds the captured value through the normal add path, so it
-  // returns as a fresh item at the end of the list — hence "recreate", not "undo".
-  // Guarded against firing while the triggering delete's own submission is
-  // still in flight: two overlapping navigations to the same route race,
-  // and the delete's stale response can land after recreate's and wipe the
-  // recreated item back out (see integration-tests/list.spec.ts's recreate test).
-  //
-  // The bin (routes/list/bin.tsx) undeletes through here too, via the
-  // Outlet's context: the list form carries the page's current items, which
-  // mutate_list needs.
+  // Undelete from the bin (routes/list/bin.tsx), lent through the Outlet's
+  // context: it re-adds the value through the normal add path, with the list
+  // form's current items. So the value returns as a fresh item at the end of
+  // the list.
+  // Guarded against firing while another save is in flight: two overlapping
+  // navigations to the same route race, and the earlier one's stale response
+  // can land after the undelete's and wipe the re-added item back out.
   function readd(value: string) {
     const formElement = formRef.current;
     if (!formElement) return;
@@ -727,23 +718,18 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       return;
     }
 
-    const recreateData = new FormData(formElement);
-    recreateData.set(fields.new.name, value);
-    recreateData.set(fields.newId.name, crypto.randomUUID());
-    recreateData.set(SUBMIT_ACTION, "recreate");
-    submit(recreateData, { method: "POST" });
-    if (value === lastDeletedValue) setLastDeletedValue(null);
-  }
-
-  function recreateLastDeleted() {
-    if (lastDeletedValue) readd(lastDeletedValue);
+    const undeleteData = new FormData(formElement);
+    undeleteData.set(fields.new.name, value);
+    undeleteData.set(fields.newId.name, crypto.randomUUID());
+    undeleteData.set(SUBMIT_ACTION, "undelete");
+    submit(undeleteData, { method: "POST" });
   }
 
   // Spans the add's action and the revalidation after it, not just
   // "submitting": Items keeps the placeholder until the saved row arrives.
   const submitAction = state === "idle" ? null : formData?.get(SUBMIT_ACTION);
   const pendingAdd =
-    submitAction === "add" || submitAction === "recreate"
+    submitAction === "add" || submitAction === "undelete"
       ? {
           id: String(formData?.get(fields.newId.name) ?? ""),
           value: String(formData?.get(fields.new.name) ?? ""),
@@ -769,12 +755,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           <Theme.Button key="colours" formId={form.id} />,
           <Button key="group" variant="outline" type="button" onClick={groupItemsByTag}>
             <GroupIcon />
-            <ActionLabel>Group by tag</ActionLabel>
+            <ActionLabel>Group</ActionLabel>
           </Button>,
-          <Link key="bin" variant="outline" to={href("/lists/:list/bin", { list: params.list })}>
-            <BinIcon />
-            <ActionLabel>Bin</ActionLabel>
-          </Link>,
         ]}
       />
 
@@ -822,7 +804,6 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             pendingItem={pendingAdd}
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
-            onDelete={setLastDeletedValue}
             onRemove={onRemove}
             tags={tags}
             reorderable
@@ -867,27 +848,14 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
               Add
             </Button>
 
-            {lastDeletedValue ? (
-              <Button variant="outline" onClick={recreateLastDeleted} className={styles.undoButton}>
-                <VisuallyHidden>Recreate last deleted</VisuallyHidden>
-                <svg aria-hidden className={styles.undoIcon} viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M9 14L4 9L9 4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M4 9H14.5C17.5376 9 20 11.4624 20 14.5C20 17.5376 17.5376 20 14.5 20H11"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </Button>
-            ) : null}
+            <Link
+              variant="outline"
+              to={href("/lists/:list/bin", { list: params.list })}
+              className={styles.binLink}
+            >
+              <BinIcon />
+              <VisuallyHidden>Bin</VisuallyHidden>
+            </Link>
           </div>
         </Actions>
       </Form>
