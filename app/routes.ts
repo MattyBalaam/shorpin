@@ -25,7 +25,10 @@ export default [
       route("config/:list", "routes/list/config.tsx"),
       route("style", "routes/home/style.tsx"),
     ]),
-    route("lists/:list", "routes/list/list.tsx", [route("style", "routes/list/style.tsx")]),
+    route("lists/:list", "routes/list/list.tsx", [
+      route("style", "routes/list/style.tsx"),
+      route("bin", "routes/list/bin.tsx"),
+    ]),
     route("lists/:list/confirm-delete", "routes/delete.tsx"),
     // Manual testing aid, only in the mock and preview builds.
     ...(import.meta.env.MODE === "mock" || import.meta.env.MODE === "preview"

@@ -85,7 +85,7 @@ for f in "${STAGED[@]}"; do
     app/components/app-style/* | app/lib/app-style.ts) add_specs app-style.spec.ts home.spec.ts ;;
     app/components/color-scheme/* | app/lib/color-scheme.ts) add_specs color-scheme.spec.ts ;;
     app/components/notifications/* | app/lib/toast.ts) add_specs notifications.spec.ts auth.spec.ts list.spec.ts ;;
-    app/routes/list/*) add_specs list.spec.ts delete.spec.ts config.spec.ts offline.spec.ts ;;
+    app/routes/list/*) add_specs list.spec.ts delete.spec.ts config.spec.ts offline.spec.ts bin.spec.ts ;;
     app/routes/delete*) add_specs delete.spec.ts ;;
     app/routes/auth/*) add_specs auth.spec.ts ;;
     app/routes/sign-ups*) add_specs sign-ups.spec.ts ;;

@@ -17,7 +17,7 @@ import { breadcrumb } from "~/components/breadcrumbs/breadcrumbs";
 import { Form } from "~/components/form/form";
 import { Items } from "~/components/items";
 import { Link } from "~/components/link/link";
-import { BrushIcon, GroupIcon } from "~/components/icon/icons";
+import { BinIcon, BrushIcon, GroupIcon } from "~/components/icon/icons";
 import { ActionLabel, PageHeader } from "~/components/page-header/page-header";
 import { removeViaConform, reorderViaConform } from "~/components/reorderable/reorder-strategies";
 import { formDataToPairs } from "~/lib/form-data-codec";
@@ -34,6 +34,7 @@ import {
 } from "~/lib/offline-store.client";
 import { withStaleVersionRetry } from "~/lib/version-guard.client";
 import type { Route } from "./+types/list";
+import type { BinOutletContext } from "./bin";
 import { zList } from "./data";
 
 export { action, loader } from "./list.server";
@@ -714,20 +715,28 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   // still in flight: two overlapping navigations to the same route race,
   // and the delete's stale response can land after recreate's and wipe the
   // recreated item back out (see integration-tests/list.spec.ts's recreate test).
-  function recreateLastDeleted() {
+  //
+  // The bin (routes/list/bin.tsx) undeletes through here too, via the
+  // Outlet's context: the list form carries the page's current items, which
+  // mutate_list needs.
+  function readd(value: string) {
     const formElement = formRef.current;
-    if (!formElement || !lastDeletedValue) return;
+    if (!formElement) return;
     if (state !== "idle") {
       toast.info("Still saving - try again in a moment");
       return;
     }
 
     const recreateData = new FormData(formElement);
-    recreateData.set(fields.new.name, lastDeletedValue);
+    recreateData.set(fields.new.name, value);
     recreateData.set(fields.newId.name, crypto.randomUUID());
     recreateData.set(SUBMIT_ACTION, "recreate");
     submit(recreateData, { method: "POST" });
-    setLastDeletedValue(null);
+    if (value === lastDeletedValue) setLastDeletedValue(null);
+  }
+
+  function recreateLastDeleted() {
+    if (lastDeletedValue) readd(lastDeletedValue);
   }
 
   // Spans the add's action and the revalidation after it, not just
@@ -762,6 +771,10 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
             <GroupIcon />
             <ActionLabel>Group by tag</ActionLabel>
           </Button>,
+          <Link key="bin" variant="outline" to={href("/lists/:list/bin", { list: params.list })}>
+            <BinIcon />
+            <ActionLabel>Bin</ActionLabel>
+          </Link>,
         ]}
       />
 
@@ -878,8 +891,9 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           </div>
         </Actions>
       </Form>
-      {/* The style dialog (routes/list/style.tsx), outside the list form. */}
-      <Outlet />
+      {/* The style and bin dialogs (routes/list/style.tsx, bin.tsx), outside
+          the list form. */}
+      <Outlet context={{ readd } satisfies BinOutletContext} />
     </Theme>
   );
 }
