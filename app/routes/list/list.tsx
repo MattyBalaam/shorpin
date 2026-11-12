@@ -251,6 +251,26 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   const { state, formData } = useNavigation();
   const isAdding = useIsSubmitting("add");
 
+  // The "new" markers last the whole visit. Opening the list records the
+  // view, so any reload after that (the realtime channel's join, a save,
+  // another member's change) finds nothing newer than the open itself and
+  // would clear them. Each load can only add markers; another list, or
+  // coming back to this one, starts afresh.
+  const [visitNewItems, setVisitNewItems] = useState(() => ({
+    slug,
+    loaded: loaderData.newItemIds,
+    ids: loaderData.newItemIds,
+  }));
+  if (visitNewItems.slug !== slug) {
+    setVisitNewItems({ slug, loaded: loaderData.newItemIds, ids: loaderData.newItemIds });
+  } else if (visitNewItems.loaded !== loaderData.newItemIds) {
+    setVisitNewItems({
+      slug,
+      loaded: loaderData.newItemIds,
+      ids: [...new Set([...visitNewItems.ids, ...loaderData.newItemIds])],
+    });
+  }
+
   const { revalidate } = useRevalidator();
   const [clientId] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
@@ -785,7 +805,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           <Items
             fieldMetadata={fields.items}
             edited={edited}
-            newItems={loaderData.newItemIds}
+            newItems={visitNewItems.ids}
             pendingItem={pendingAdd}
             onReorder={reorder.onReorder}
             onReorderComplete={reorder.onComplete}
