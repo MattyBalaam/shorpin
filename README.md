@@ -46,6 +46,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 ```
 / (home)                              → app/routes/home.tsx
 /lists/:list                          → app/routes/list/list.tsx
+/lists/:list/bin                      → app/routes/list/bin.tsx (dialog over the list)
 /lists/:list/confirm-delete           → app/routes/delete.tsx
 ```
 
@@ -186,6 +187,8 @@ Instead:
 
 - It never calls `intent.remove()` until the row's own exit animation has actually finished (the delete button's collapse and a swipe's fly-out both animate first, then commit in the animation's completion callback) — the array only shrinks once the node is already invisible.
 - There is no separate exit animation after removal: once the array shrinks, React unmounts the row in the same commit, so a stale, soon-to-be-renumbered node is never kept mounted alongside its renumbered sibling.
+
+**Bin:** `/lists/:list/bin` lists the list's deleted items, newest first, for any member. There's no paging: `mutate_list` keeps only the 10 most recently deleted rows per list. Undelete works like "Recreate last deleted": it re-adds the value as a new item rather than reviving the deleted row, so it needs no migration. The re-add goes through the list page's own form (`readd`, passed down by `<Outlet context>`), not an action of the bin's own, because `mutate_list` takes the whole list and a submission without the page's current items would delete them. That submission navigates to the list, which closes the dialog, and the list loader doesn't count it as a visit. Since the deleted row stays behind, the bin's loader leaves out values that are on the list again and shows each value once.
 
 **Editing:** item values are shown as plain text and submitted from a hidden `items[n].value` input. They're no longer inline textareas, which were easy to focus by accident while scrolling or dragging. The row's edit button opens a `<dialog>` with a textarea. Saving writes the new value into the hidden input, dispatches `input` so Conform's `useFormData` updates `edited` and the shown text, and submits the list form.
 

@@ -33,7 +33,9 @@ export const handlers = [
       items = [...items].sort((a, b) => b.updated_at - a.updated_at);
     }
 
-    return HttpResponse.json(items.map((item) => ({ id: item.id })));
+    // Whole rows rather than just the selected columns: a superset of any
+    // `select`, which callers read by name (the bin reads value).
+    return HttpResponse.json(items);
   }),
 
   http.post("*/rest/v1/rpc/mutate_list", async ({ request }) => {

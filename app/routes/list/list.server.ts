@@ -105,9 +105,14 @@ export async function loader({ request, params: { list }, context }: Route.Loade
     }
 
     try {
-      // Includes the style dialog, a child route: saving there isn't a visit.
+      // Includes the style and bin dialogs, child routes: saving there (an
+      // undelete from the bin) isn't a visit.
       const listPath = href("/lists/:list", { list });
-      return [listPath, href("/lists/:list/style", { list })].includes(new URL(referer).pathname);
+      return [
+        listPath,
+        href("/lists/:list/style", { list }),
+        href("/lists/:list/bin", { list }),
+      ].includes(new URL(referer).pathname);
     } catch {
       return false;
     }
