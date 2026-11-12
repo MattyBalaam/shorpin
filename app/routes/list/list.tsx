@@ -317,10 +317,10 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
   // Broadcasts sent while this page couldn't receive them (a backgrounded or
   // suspended tab, a dropped socket) are never redelivered, so the list on
-  // screen can silently miss other devices' changes. Every submit sends the
-  // whole items[] array and mutate_list deletes whatever is missing from it,
-  // so acting on that stale list would delete those changes. Refetch
-  // whenever we may have missed something.
+  // screen can silently miss other devices' changes. Every submit writes the
+  // value and position of each row it sends, so acting on that stale list
+  // would overwrite their edits and reorders. Refetch whenever we may have
+  // missed something.
   const refreshFromServer = useEffectEvent(() => {
     if (navigator.onLine) revalidate();
   });
@@ -449,8 +449,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
       // The fetch can fail just after reconnecting (the connection is still
       // settling) while the submit a moment later succeeds. clientLoader then
       // hands back the cached list, and rebasing onto that would submit a
-      // snapshot missing everything other devices added meanwhile — which
-      // mutate_list's diff-based delete would wipe. Retry with backoff instead.
+      // snapshot that undoes other devices' edits and reorders made
+      // meanwhile. Retry with backoff instead.
       if (freshData.fromCache) {
         const retry = syncRetryRef.current;
         window.clearTimeout(retry.timer);
@@ -477,6 +477,8 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
         const baselineIds = new Set(baseline.map((item) => item.id));
         const additions = desired.filter((item) => !baselineIds.has(item.id));
+        const desiredIds = new Set(desired.map((item) => item.id));
+        const deletions = baseline.filter((item) => !desiredIds.has(item.id));
         const rebased = rebaseListItems({ baseline, desired, fresh: freshItems });
 
         // Update Conform's local state for immediate visual feedback, but
@@ -495,7 +497,7 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
 
         const syncData = new FormData(formRef.current);
         for (const key of Array.from(syncData.keys())) {
-          if (/^items\[\d+\]\.(id|value)$/.test(key)) {
+          if (/^items\[\d+\]\.(id|value)$|^deletedIds\[\d+\]$/.test(key)) {
             syncData.delete(key);
           }
         }
@@ -507,6 +509,9 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
         additions.forEach((item, index) => {
           syncData.append(`newItems[${index}]`, item.value);
           syncData.append(`newItemIds[${index}]`, item.id);
+        });
+        deletions.forEach((item, index) => {
+          syncData.append(`deletedIds[${index}]`, item.id);
         });
 
         try {
@@ -667,18 +672,17 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
   }
 
   // Delete shrinks the items field (once the row's exit animation finishes —
-  // see items.tsx) then submits; the server infers "delete" from whichever
-  // id is now missing from the submitted array (see mutate_list).
+  // see items.tsx) then submits, naming the removed id in deletedIds.
   const onRemove = removeViaConform({
     fieldName: fields.items.name,
+    deletedIdsFieldName: fields.deletedIds.name,
     items: defaultValue.items,
     intent,
     submit,
     formRef,
   });
 
-  // Browser-only "recreate last deleted": deletion itself is inferred
-  // server-side from the submitted array, so we keep the recreate affordance
+  // Browser-only "recreate last deleted": we keep the recreate affordance
   // client-side rather than round-tripping the server's soft-deleted row. The
   // deleted value is captured directly in commitRemoval (items.tsx), which
   // fires for both the real click and the swipe path — see Items `onDelete`.
@@ -766,6 +770,10 @@ export default function listNew({ actionData, loaderData, params }: Route.Compon
           type="hidden"
         />
         <input name="clientId" value={clientId} type="hidden" />
+        {/* Every submission names its deletions in deletedIds, so the server
+            keeps rows this page hasn't seen rather than reading them as
+            deleted (see toRpcPayload in list.server.ts). */}
+        <input name={fields.explicitDeletes.name} value="true" type="hidden" />
         <Theme.Fields
           fieldNames={{
             primary: fields.themePrimary.name,

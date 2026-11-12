@@ -39,8 +39,8 @@ function ReorderableItem({
   // Only shrink Conform's tracked array (which renumbers every later item's
   // field name) once this row's exit animation has actually finished. Doing it
   // any earlier would let a sibling get renumbered into this row's field name
-  // while its inputs are still mounted — see mutate_list's diff-based delete,
-  // which relies on the submitted items array being trustworthy.
+  // while its inputs are still mounted, and mutate_list writes each submitted
+  // row's value and position, so it relies on the items array being right.
   function commitRemoval() {
     onDelete?.(item.getFieldset().value.defaultValue ?? "");
     onRemove(index);

@@ -7,11 +7,10 @@ export interface ListItemRef {
  * Rebases locally-queued list edits onto freshly-fetched server state, so
  * concurrent changes from other devices survive reconnect sync instead of
  * being silently overwritten by a stale full-array replay. mutate_list (the
- * Postgres RPC list mutations go through) diffs the *entire submitted
- * items[] array* against live DB rows — anything active in the DB but
- * missing from what we submit gets soft-deleted — so resubmitting a snapshot
- * captured before we went offline would resurrect-delete anything added
- * concurrently.
+ * Postgres RPC list mutations go through) writes every row in the submitted
+ * items[] array, so resubmitting a snapshot captured before we went offline
+ * would undo other devices' edits and reorders. (It used to delete anything
+ * missing from the array too; deletions are now named in `deletedIds`.)
  *
  * Bounded: we only assert authority over ids we ourselves touched (deleted,
  * edited, added, or reordered). Anything we didn't touch defers to `fresh`.

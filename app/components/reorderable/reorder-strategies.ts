@@ -72,12 +72,15 @@ interface RemoveIntent {
  */
 export function removeViaConform({
   fieldName,
+  deletedIdsFieldName,
   items,
   intent,
   submit,
   formRef,
 }: {
   fieldName: string;
+  /** Where the removed row's id is sent, so the server deletes only it. */
+  deletedIdsFieldName: string;
   items: Array<{ id: string; value: string }>;
   intent: RemoveIntent;
   submit: SubmitFunction;
@@ -110,6 +113,8 @@ export function removeViaConform({
       formData.append(`${fieldName}[${position}].value`, liveValues[i]);
       position += 1;
     });
+    const removed = items[index];
+    if (removed) formData.append(`${deletedIdsFieldName}[0]`, removed.id);
 
     submit(formData, { method: "POST" });
   };

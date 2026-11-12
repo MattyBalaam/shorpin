@@ -48,6 +48,7 @@ export const handlers = [
         new?: string;
         newItems?: string[];
         newItemIds?: string[];
+        deletedIds?: string[];
         items?: Array<{ id: string; value: string }>;
         themePrimary?: string;
         themeSecondary?: string;
@@ -93,13 +94,39 @@ export const handlers = [
       hasItemMutation = true;
     }
 
-    // Anything active in the mock DB but missing from the submitted array was
-    // removed client-side (see Item's delete button) — mark it deleted. This
-    // must run before the add-insert below: the newly-added item obviously
-    // isn't in the submitted array either, and would otherwise look deleted
-    // in the very same request that created it.
     const activeItems = listItems.findMany((q) => q.where({ list_id: list.id, state: "active" }));
-    const removedItems = activeItems.filter((item) => !submittedIds.has(item.id));
+    const { deletedIds } = body.p_payload;
+    let removedItems: typeof activeItems;
+
+    if (deletedIds !== undefined) {
+      // Mirrors mutate_list's explicit deletions (migration 20261111000000):
+      // delete only the named ids, and keep unsubmitted rows, which the
+      // client hasn't seen yet, after the submitted ones.
+      const toDelete = new Set(Array.isArray(deletedIds) ? deletedIds : []);
+      removedItems = activeItems.filter((item) => toDelete.has(item.id));
+
+      if (submittedIds.size > 0) {
+        const unseen = activeItems
+          .filter((item) => !submittedIds.has(item.id) && !toDelete.has(item.id))
+          .sort((a, b) => a.sort_order - b.sort_order || a.updated_at - b.updated_at);
+        for (const [index, item] of unseen.entries()) {
+          const sortOrder = submittedIds.size + index;
+          if (item.sort_order === sortOrder) continue;
+          await listItems.update((q) => q.where({ id: item.id }), {
+            data(draft) {
+              draft.sort_order = sortOrder;
+            },
+          });
+        }
+      }
+    } else {
+      // Legacy clients: anything active in the mock DB but missing from the
+      // submitted array was removed client-side. This must run before the
+      // add-insert below: the newly-added item isn't in the submitted array
+      // either, and would otherwise look deleted in the very same request
+      // that created it.
+      removedItems = activeItems.filter((item) => !submittedIds.has(item.id));
+    }
 
     if (removedItems.length > 0) {
       for (const item of removedItems) {

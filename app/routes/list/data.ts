@@ -34,6 +34,14 @@ export const zList = v.object({
   // list.server.ts's toIdempotentAdd.
   newId: v.optional(v.pipe(v.string(), v.uuid())),
   items: v.optional(v.array(zItem), []),
+  // Set by a hidden input on every submission from a client that names its
+  // deletions in `deletedIds`. Without it the submission is from an older
+  // client, whose deletions mutate_list still infers from what's missing
+  // from `items` (see list.server.ts's toRpcPayload).
+  explicitDeletes: v.optional(v.literal("true")),
+  // Ids this submission deletes. Rows missing from `items` are otherwise
+  // kept: they're ones this client hasn't seen yet (migration 20261111000000).
+  deletedIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
   themePrimary: v.optional(v.string()),
   themeSecondary: v.optional(v.string()),
 });
