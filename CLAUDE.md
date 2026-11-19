@@ -4,7 +4,7 @@ Follow the code patterns defined in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Stack
 
-React Router v7 SSR · TypeScript · Vanilla Extract · Playwright · pnpm · Supabase
+pnpm workspaces monorepo (README "Monorepo"): `apps/react-router` (React Router SSR · Vanilla Extract) plus other implementations of the same app, sharing `packages/specs` (Playwright), `packages/mocks` and one Supabase schema · TypeScript
 
 ## Communication
 
@@ -31,7 +31,7 @@ A `PreToolUse` hook (`.claude/hooks/pre-commit-checks.sh`) runs before a Bash co
 
 - **Stage and commit in separate Bash calls.** A command that stages (`git add`, `stash`, `reset`, `commit -a`…) and commits is refused, because the checks would miss what actually gets committed.
 - It formats the staged files and re-stages only those. A staged file that also has unstaged changes isn't re-staged; if it needs formatting, the commit is refused so you can fix it.
-- It runs the integration specs that the staged files map to (the `case` block in the script is the source of truth). Any file without a mapping runs the full suite. Tests run with one retry; a test that only passed on retry is named in the result instead of blocking the commit.
+- It runs the integration specs that the staged files map to, once for each app they affect (the `case` block in the script is the source of truth). A shared spec or package runs for every app in `deploy/apps.json`; any file without a mapping runs every app's full suite. Tests run with one retry; a test that only passed on retry is named in the result instead of blocking the commit.
 - On failure, the reason names the failing tests and the path to the full log.
 
 Typecheck, lint and the format check run in the repo-managed Git pre-commit hook (`.githooks/pre-commit`, installed by `pnpm install`). It only checks and never rewrites files, and its format check covers staged files only.
@@ -43,7 +43,7 @@ pnpm typecheck           # fix any type errors first
 pnpm lint                # fix any lint errors
 pnpm fmt                 # format changed files
 git add <changed files>  # re-stage if fmt modified anything
-pnpm test:integration    # run appropriate integration tests
+APP=<app> pnpm test:integration  # run appropriate integration tests, per app
 ```
 
 Do not commit if tests are failing or if the user has indicated the work is incomplete. Before creating a commit or PR, run `pnpm verify` even if earlier tool hooks appeared to pass.

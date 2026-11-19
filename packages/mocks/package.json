@@ -1,0 +1,29 @@
+{
+  "name": "@shorpin/mocks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MSW mock of the Supabase API, shared by every app's dev loop, preview builds and integration specs.",
+  "type": "module",
+  "exports": {
+    "./db": "./db.ts",
+    "./handlers": "./handlers.ts",
+    "./seed": "./seed.ts",
+    "./seed-data": "./seed-data.ts"
+  },
+  "scripts": {
+    "start": "node server.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@msw/data": "catalog:",
+    "msw": "catalog:",
+    "valibot": "catalog:",
+    "ws": "catalog:"
+  },
+  "devDependencies": {
+    "@shorpin/database": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/ws": "catalog:",
+    "typescript": "catalog:"
+  }
+}

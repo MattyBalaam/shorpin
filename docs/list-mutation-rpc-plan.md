@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reduce branching and multi-step mutation orchestration in `app/routes/list/list.server.ts` by moving list mutation logic into a single transactional Supabase/Postgres RPC.
+Reduce branching and multi-step mutation orchestration in `apps/react-router/app/routes/list/list.server.ts` by moving list mutation logic into a single transactional Supabase/Postgres RPC.
 
 ## Plan
 
