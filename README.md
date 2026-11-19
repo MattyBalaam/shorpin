@@ -34,7 +34,7 @@ deploy/apps.json       each app's subdomain, image and Coolify webhook
 - **One database.** Every app reads and writes the same Supabase project, so `supabase/migrations` must stay compatible with all of them. The mock is shared for the same reason.
 - **Shared versions.** Dependencies used by more than one package are pinned once in the `catalog:` of [pnpm-workspace.yaml](pnpm-workspace.yaml).
 - **One Dockerfile.** The root [Dockerfile](Dockerfile) builds the app named by the `APP` build argument and copies just that package and its dependencies into the image with `pnpm deploy`.
-- **Subdomains.** React Router stays on `shorpin.matthewbalaam.co.uk`. Other apps get a subdomain under it, for example `html.` and `solid.`, listed in [deploy/apps.json](deploy/apps.json). CI's integration and e2e jobs run once per app there, and `deploy` ships every app marked `deploy: true` (see [Deployment](#deployment)).
+- **Subdomains.** React Router stays on `shorpin.matthewbalaam.co.uk`. Other apps get a subdomain under it, for example `html.` and `solid.`, listed in [deploy/apps.json](deploy/apps.json). CI's integration and e2e jobs run once per app there, and `deploy` ships every app marked `deploy: true` (see [Deployment](#deployment)). Branch protection requires `integration` and `e2e-supabase`; those are gate jobs that pass only when every app's run passed, so adding an app needs no settings change.
 
 Root scripts (`pnpm dev`, `pnpm build`, `pnpm test:integration`) default to React Router. For other apps, use `pnpm --filter @shorpin/<app> <script>`, or set `APP=<app>` for the specs.
 

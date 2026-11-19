@@ -161,7 +161,8 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   # The shared suite, once per app (packages/specs, README "Monorepo").
-  integration:
+  integration-app:
+    name: integration (${{ matrix.app }})
     if: github.event_name == 'pull_request'
     needs: [apps, playwright-version]
     runs-on: ubuntu-latest
@@ -212,7 +213,8 @@ jobs:
         if: failure()
         run: echo "### [View Playwright Report (${{ matrix.app }})](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ matrix.app }}/)" >> $GITHUB_STEP_SUMMARY
 
-  e2e-supabase:
+  e2e-supabase-app:
+    name: e2e-supabase (${{ matrix.app }})
     if: github.event_name == 'pull_request'
     needs: [apps, playwright-version]
     runs-on: ubuntu-latest
@@ -287,6 +289,24 @@ jobs:
           name: playwright-report-supabase-${{ matrix.app }}
           path: packages/specs/playwright-report/
           retention-days: 7
+
+  # Branch protection requires `integration` and `e2e-supabase` by name. A
+  # matrix job reports one check per app instead, so these gates report the
+  # whole matrix under the required names and adding an app needs no
+  # settings change.
+  integration:
+    if: always() && github.event_name == 'pull_request'
+    needs: integration-app
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.integration-app.result }}" = success
+
+  e2e-supabase:
+    if: always() && github.event_name == 'pull_request'
+    needs: e2e-supabase-app
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.e2e-supabase-app.result }}" = success
 
   migrate-prod:
     runs-on: ubuntu-latest
