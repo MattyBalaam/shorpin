@@ -6,7 +6,7 @@ Planned. Follows the list-page change that queues item edits when the request fa
 
 ## Problem
 
-[`app/routes/home/client-action.ts`](../../app/routes/home/client-action.ts) chooses its path before sending anything. If `navigator.onLine` is true it calls `serverAction`; otherwise it queues. On mobile, `navigator.onLine` stays true for several seconds after the connection drops. Creating, reordering or starring a list in that window throws "Load failed", and the error boundary shows the "You're offline." modal. Nothing is queued.
+[`apps/react-router/app/routes/home/client-action.ts`](../../apps/react-router/app/routes/home/client-action.ts) chooses its path before sending anything. If `navigator.onLine` is true it calls `serverAction`; otherwise it queues. On mobile, `navigator.onLine` stays true for several seconds after the connection drops. Creating, reordering or starring a list in that window throws "Load failed", and the error boundary shows the "You're offline." modal. Nothing is queued.
 
 Falling back to the queue on any network error fixes the modal but adds a new risk. The server may have created the list and only the response was lost. The queued copy then replays on reconnect. Slugs are made unique server-side, so the replay creates a second list called `<name>-2`.
 
@@ -37,11 +37,11 @@ No migration should be needed. `lists.id` is a uuid primary key, and the insert 
      - If no row is visible, the id belongs to another user's list. RLS hides it, and with uuids this should never happen. Return the existing "Failed to create list" error.
    - If `newListId` is absent (older clients), keep the current behaviour.
 
-5. **Mocks** (`mocks/api/rest/v1/lists.ts`). Use `body.id ?? crypto.randomUUID()` when inserting. Return `23505` with `lists_pkey` in the message when the id already exists, matching Postgres. Support the `id=eq.` lookup the server uses after a failed insert (a lookup already exists for the launch redirect; check it covers lists in any state).
+5. **Mocks** (`packages/mocks/api/rest/v1/lists.ts`). Use `body.id ?? crypto.randomUUID()` when inserting. Return `23505` with `lists_pkey` in the message when the id already exists, matching Postgres. Support the `id=eq.` lookup the server uses after a failed insert (a lookup already exists for the launch redirect; check it covers lists in any state).
 
 6. **Replay paths.** Home's `syncPendingQueue` and the service worker's `drainSimpleMutations` resend the stored form fields as they are, so `newListId` goes along without changes. A replayed create that was already applied gets a redirect to the existing list. `isSuccessfulReplay` already counts any redirect other than one to `/login` as delivered.
 
-## Tests (`integration-tests/home.spec.ts` or `offline.spec.ts`)
+## Tests (`packages/specs/integration-tests/home.spec.ts` or `offline.spec.ts`)
 
 - **Connection drops before the browser notices.** Route `**/*.data*` POSTs to `abort("internetdisconnected")` without calling `setOffline`. Create a list. Expect a pending row, no "Retry" modal, and a queued mutation. Remove the route and trigger a sync (go offline then online, or reload). Expect exactly one list with that name.
 - **Response lost after the server applied it.** In the route handler, `await route.fetch()`, then `route.abort()`. Create a list, let the queue drain, and expect exactly one list with that name and no `-2` copy.

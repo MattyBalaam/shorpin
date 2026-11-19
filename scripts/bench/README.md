@@ -31,7 +31,7 @@ The workflow shares the staging deploy's concurrency group, so a deploy can't la
 
 It signs in with the `BENCH_PROD_*` and `BENCH_STAGING_*` repo secrets. The Pages site is public, so the dashboard is too. It shows only timings and the two sites' public URLs.
 
-A failed CI run publishes its test report over the whole `gh-pages` branch, which removes the dashboard until the next benchmark run restores it. The history on `bench-data` is unaffected.
+A failed CI run publishes its test report to `reports/<app>/` on the `gh-pages` branch, leaving `/bench/` in place.
 
 To preview the dashboard locally, put a `history.json` beside `dashboard/index.html` (`node scripts/bench/history.ts <results.json> scripts/bench/dashboard/history.json`) and serve the folder.
 

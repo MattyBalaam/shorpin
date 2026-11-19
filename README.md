@@ -12,20 +12,42 @@ This is partly for me and my friends to use (product need), but also for me to g
 ## Docs
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — TypeScript, React, and testing conventions
-- [integration-tests/README.md](integration-tests/README.md) — running integration tests, architecture, CI
-- [e2e/README.md](e2e/README.md) — running e2e tests against real Supabase
+- [integration-tests/README.md](packages/specs/integration-tests/README.md) — running integration tests, architecture, CI
+- [e2e/README.md](packages/specs/e2e/README.md) — running e2e tests against real Supabase
 - [docs/mocking.md](docs/mocking.md) — mock server and MSW strategy
+
+## Monorepo
+
+The repo holds several implementations of the same app, so they can be compared like for like. They share one test suite, one mock backend and one database. Plain pnpm workspaces, no task runner:
+
+```
+apps/react-router/     React Router SSR: production, documented in the rest of this README
+packages/specs/        Playwright suites (integration-tests/, e2e/), run against any app
+  apps/<app>.ts        each app's adapter: how to serve it, its wire format, its parity gaps
+packages/mocks/        MSW mock of the Supabase API: dev loops, preview builds, specs
+packages/database/     types generated from the shared schema
+supabase/              the shared schema's migrations
+deploy/apps.json       each app's subdomain, image and Coolify webhook
+```
+
+- **One suite, many apps.** `APP=<name> pnpm test:integration` runs the shared specs against one app (React Router by default). Specs describe what a user sees: roles, labels and URLs, which every app must share. When a test has to touch the wire (wait for a save, cut the network to one endpoint, fake a redirect), it asks the app's adapter by intent, e.g. `isPost(app.requests.list("shopping"))`, rather than matching React Router's `.data` URLs. A spec an app doesn't pass yet goes in that adapter's `parityGaps`, which marks it `test.fixme` with a reason, so the gap shows in every report instead of being deleted. Visual baselines are per app (`<spec>-snapshots/<app>/`), since each app renders its own pixels.
+- **One database.** Every app reads and writes the same Supabase project, so `supabase/migrations` must stay compatible with all of them. The mock is shared for the same reason.
+- **Shared versions.** Dependencies used by more than one package are pinned once in the `catalog:` of [pnpm-workspace.yaml](pnpm-workspace.yaml).
+- **One Dockerfile.** The root [Dockerfile](Dockerfile) builds the app named by the `APP` build argument and copies just that package and its dependencies into the image with `pnpm deploy`.
+- **Subdomains.** React Router stays on `shorpin.matthewbalaam.co.uk`. Other apps get a subdomain under it, for example `html.` and `solid.`, listed in [deploy/apps.json](deploy/apps.json). CI's integration and e2e jobs run once per app there, and `deploy` ships every app marked `deploy: true` (see [Deployment](#deployment)).
+
+Root scripts (`pnpm dev`, `pnpm build`, `pnpm test:integration`) default to React Router. For other apps, use `pnpm --filter @shorpin/<app> <script>`, or set `APP=<app>` for the specs.
 
 ## Environment Files
 
-Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
+These live in each app's folder ([apps/react-router/](apps/react-router/) for the files below). Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to plain `.env` for anything the mode file doesn't set). Each file below only matters for the commands that use its mode — you don't need all of them at once.
 
-| File                                                    | Mode      | Used by                                         | Notes                                                                                                                   |
-| ------------------------------------------------------- | --------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop. |
-| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                      |
-| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](e2e/README.md).     |
-| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.            |
+| File                                                    | Mode      | Used by                                         | Notes                                                                                                                              |
+| ------------------------------------------------------- | --------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.mock`                                             | `mock`    | `pnpm dev`, `pnpm test:integration`             | Points at the local mock server (`packages/mocks/server.ts`); checked in, no setup needed — this is the default day-to-day loop.   |
+| `.env.preview`                                          | `preview` | `pnpm build:preview`                            | Placeholder Supabase values for preview/deploy-preview builds where the mock server isn't running.                                 |
+| `.env.test.local` (copy from `.env.test.local.example`) | `test`    | `pnpm dev:e2e`, `pnpm test:e2e`                 | Your own **test** Supabase project's real credentials (gitignored). Full details in [e2e/README.md](packages/specs/e2e/README.md). |
+| `.env` (copy from `.env.example`)                       | none set  | `pnpm dev:supabase`, `pnpm build`, `pnpm start` | Real Supabase project credentials for running against an actual backend instead of mocks, or for production.                       |
 
 `.env.mock`/`.env.preview` are checked into the repo (no real secrets, just enough to point at a mock/placeholder backend). `.env` and `.env.test.local` are gitignored — copy the matching `.example` file and fill in real values from your Supabase project's **Settings → API** page.
 
@@ -41,7 +63,7 @@ Vite loads `.env.<mode>` for whatever `--mode` a script passes (falling back to 
 
 ### Routing Structure
 
-The app uses React Router 7's file-based routing with explicit route definitions in [app/routes.ts](app/routes.ts):
+The app uses React Router 7's file-based routing with explicit route definitions in [app/routes.ts](apps/react-router/app/routes.ts):
 
 ```
 / (home)                              → app/routes/home.tsx
@@ -52,7 +74,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 
 **Route Hierarchy:**
 
-- Root Layout: [app/root.tsx](app/root.tsx) - Provides main container (max-width: 60ch), toast notifications, and breadcrumbs
+- Root Layout: [app/root.tsx](apps/react-router/app/root.tsx) - Provides main container (max-width: 60ch), toast notifications, and breadcrumbs
 - Flat routing structure with one level of nesting for the delete confirmation modal
 - Dynamic route parameter `:list` maps to list slugs in the database
 
@@ -65,7 +87,7 @@ The app uses React Router 7's file-based routing with explicit route definitions
 
 ### UI & Layout Patterns
 
-**Root Layout** ([app/root.tsx](app/root.tsx)):
+**Root Layout** ([app/root.tsx](apps/react-router/app/root.tsx)):
 
 - Single `<main>` container with centered max-width
 - Page header with the breadcrumbs and the page's actions (see [Page header](#page-header))
@@ -76,24 +98,24 @@ The app uses React Router 7's file-based routing with explicit route definitions
 The layout is a fixed-height app shell, so it has to shrink above the on-screen keyboard to keep the add-item bar in view.
 
 - The viewport meta sets `interactive-widget=resizes-content`, and `<main>` falls back to `height: 100%`, which follows the resized viewport. This is the CSS-only path and works in Chrome and Firefox on Android.
-- iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll. Modal dialogs use it too, so they centre above the keyboard rather than behind it.
+- iOS Safari doesn't support `interactive-widget` yet. It keeps the layout full-height and scrolls the page, which pushes the header off-screen and exposes blank space under the layout. As a temporary workaround, `trackKeyboardViewport` in [app/root.tsx](apps/react-router/app/root.tsx) writes `visualViewport.height` to `--visual-viewport-height` and resets the scroll. Modal dialogs use it too, so they centre above the keyboard rather than behind it.
 - **Remove the workaround once Safari ships `interactive-widget`.** WebKit added it in August 2026, and it's behind a flag in Safari Technology Preview 252. A monthly workflow ([safari-interactive-widget.yml](.github/workflows/safari-interactive-widget.yml), running [scripts/check-interactive-widget.mjs](scripts/check-interactive-widget.mjs)) checks MDN's browser-compat-data and opens an issue once iOS Safari ships it. It can also be run by hand from the Actions tab. Then delete the effect, drop the `var()`s in `root.css.ts` and `modal.css.ts` and confirm on a device.
 
 **Top edge on iOS:**
 
 `viewport-fit=cover` runs the page under the status bar, so `<main>` pads its top by `env(safe-area-inset-top)`. Since iOS 26/27, home-screen apps also get a progressive blur over the top edge, which reaches past the inset and blurs the header. No CSS property or meta tag turns it off. `theme-color` is ignored, and the status-bar style made no difference here: the app has always used `default`.
 
-WebKit skips the blur when a `position: fixed` box with a background spans the top edge, and tints the status bar from that box instead. Reports put the threshold at about 6px tall, at least 80-90% of the width, and within 4px of the top. `statusBarBackdrop` in [app/root.css.ts](app/root.css.ts) is that box: a real element rendered first in `<body>` (pseudo-elements aren't sampled), at least 11px tall so WebKit reads its colour from style rather than sampling pixels, in `Canvas` to match the page. It only shows in standalone mode on iOS (`@supports (-webkit-touch-callout: none)`).
+WebKit skips the blur when a `position: fixed` box with a background spans the top edge, and tints the status bar from that box instead. Reports put the threshold at about 6px tall, at least 80-90% of the width, and within 4px of the top. `statusBarBackdrop` in [app/root.css.ts](apps/react-router/app/root.css.ts) is that box: a real element rendered first in `<body>` (pseudo-elements aren't sampled), at least 11px tall so WebKit reads its colour from style rather than sampling pixels, in `Canvas` to match the page. It only shows in standalone mode on iOS (`@supports (-webkit-touch-callout: none)`).
 
 In standalone mode, `prefers-color-scheme` is frozen for the life of the process, so after an OS light/dark switch the status bar keeps its old colour until the app is relaunched. The rest of the page is frozen the same way, so they still match. Drop the strip once WebKit gives web apps control over the edge effect.
 
 **Modal dialogs:**
 
-Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
+Every dialog uses [modal.css.ts](apps/react-router/app/components/modal/modal.css.ts): `dialog` > `content` > heading, `body`, `actions`. The open dialog is a flex column capped at the visible viewport and never scrolls itself. Only `body` scrolls (`Modal.Body` in route modals), so the heading and actions stay in view however long the content gets or however small the screen. `body` is padded and pulled back by the same amount so focus rings inside it aren't clipped by the scroll container. The open dialog's `display: flex` is set only under `[open]`, because setting it unconditionally would override the browser's hiding of a closed `<dialog>`.
 
 **Scroll indicators:**
 
-[ScrollArea](app/components/scroll-area/scroll-area.tsx) shows a soft shade on an edge only when there's more content past it. Each edge is a zero-height sticky strip with a shadow, at `opacity: 0` until shown, with a 150ms fade. The shadow is the text colour in light mode and black in dark mode, where the text is light and would lighten the content instead of shading it. The scroller is a `scroll-state` container, and `scroll-state(scrollable: top | bottom)` queries reveal the strips; no JS runs where those are supported. Browsers without them (WebKit, so iOS, and Firefox at the time of writing) get a fallback: `trackScrollEdges`, a ref callback on the scroller, mirrors the same state as `data-scrollable-top` / `data-scrollable-bottom` from scroll events and a `ResizeObserver` on the scroller and its content, and attribute selectors set the same opacity. Scroll-driven animations (`animation-timeline: scroll()`) were used before, but are deliberately not: one approach plus one fallback is simpler than layering two CSS mechanisms. Once every target browser has scroll-state queries, delete `trackScrollEdges` and the attribute selectors; nothing else depends on them.
+[ScrollArea](apps/react-router/app/components/scroll-area/scroll-area.tsx) shows a soft shade on an edge only when there's more content past it. Each edge is a zero-height sticky strip with a shadow, at `opacity: 0` until shown, with a 150ms fade. The shadow is the text colour in light mode and black in dark mode, where the text is light and would lighten the content instead of shading it. The scroller is a `scroll-state` container, and `scroll-state(scrollable: top | bottom)` queries reveal the strips; no JS runs where those are supported. Browsers without them (WebKit, so iOS, and Firefox at the time of writing) get a fallback: `trackScrollEdges`, a ref callback on the scroller, mirrors the same state as `data-scrollable-top` / `data-scrollable-bottom` from scroll events and a `ResizeObserver` on the scroller and its content, and attribute selectors set the same opacity. Scroll-driven animations (`animation-timeline: scroll()`) were used before, but are deliberately not: one approach plus one fallback is simpler than layering two CSS mechanisms. Once every target browser has scroll-state queries, delete `trackScrollEdges` and the attribute selectors; nothing else depends on them.
 
 **Component Structure:**
 
@@ -106,9 +128,9 @@ Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > 
 **Vanilla Extract** (`@vanilla-extract/css`):
 
 - All styles in `.css.ts` files (zero-runtime CSS-in-JS), with no plain `.css` files. Global rules use `globalStyle`.
-- Theme system with CSS variables via [app/styles/theme.css.ts](app/styles/theme.css.ts); app styles are applied with `createGlobalTheme` (see "App styles" below)
-- CSS layers for cascade control ([layers.css.ts](app/styles/layers.css.ts)): `reset`, then `app` (typography). Every global element rule sits in one of them, so any component class overrides it without extra specificity. Component styles stay unlayered.
-- Per-variant values are `createVar`s that a shared base reads, composed with `style([...])`/`styleVariants`, rather than functions spread into each variant. See [clickable-element.css.ts](app/components/shared/clickable-element.css.ts).
+- Theme system with CSS variables via [app/styles/theme.css.ts](apps/react-router/app/styles/theme.css.ts); app styles are applied with `createGlobalTheme` (see "App styles" below)
+- CSS layers for cascade control ([layers.css.ts](apps/react-router/app/styles/layers.css.ts)): `reset`, then `app` (typography). Every global element rule sits in one of them, so any component class overrides it without extra specificity. Component styles stay unlayered.
+- Per-variant values are `createVar`s that a shared base reads, composed with `style([...])`/`styleVariants`, rather than functions spread into each variant. See [clickable-element.css.ts](apps/react-router/app/components/shared/clickable-element.css.ts).
 - Container queries name their container with `createContainer`, so they can't match an unrelated ancestor container.
 
 **Design Patterns:**
@@ -119,9 +141,9 @@ Every dialog uses [modal.css.ts](app/components/modal/modal.css.ts): `dialog` > 
 - Logical properties (paddingInline, insetInline) for internationalization
 - Shared `clickable` class for interactive elements
 
-**CSS build target:** `build.cssTarget` in [vite.config.ts](vite.config.ts) names the latest major browsers. Vite's default "widely available" baseline predates `light-dark()`, so LightningCSS rewrote it into `--lightningcss-light`/`--lightningcss-dark` fallbacks. Those variables are only defined where it also rewrites a `color-scheme` declaration, and this app sets `color-scheme: dark` only inside a dark-mode media query. So in light mode every `light-dark()` colour computed as invalid. That's why `textOnPalette` used to fall back to white text on pale list rows. Keep the target at versions that support `light-dark()` and `@scope`, or both will be transpiled again.
+**CSS build target:** `build.cssTarget` in [vite.config.ts](apps/react-router/vite.config.ts) names the latest major browsers. Vite's default "widely available" baseline predates `light-dark()`, so LightningCSS rewrote it into `--lightningcss-light`/`--lightningcss-dark` fallbacks. Those variables are only defined where it also rewrites a `color-scheme` declaration, and this app sets `color-scheme: dark` only inside a dark-mode media query. So in light mode every `light-dark()` colour computed as invalid. That's why `textOnPalette` used to fall back to white text on pale list rows. Keep the target at versions that support `light-dark()` and `@scope`, or both will be transpiled again.
 
-**Default palette:** home, and any list without its own palette, use an "ocean sunset" pair from the palette generator: cyan `primary` and pink `secondary`, adapted for dark mode with `toAdaptiveCss` like list palettes. Home's list rows use `palette.surface`, a deep shade of the primary hue with white ink (`textOnSurface`) in both schemes. `chrome` stays a neutral grey for icons and secondary ink. Primary's hex (`#0fc1e5`) is repeated in the `theme-color` meta tag, the manifest and `offline.html`. The PWA icons and the manifest's `background_color` still use the original sage (`#A9CBB7`, see [pwa-assets.config.ts](pwa-assets.config.ts)), because the icon's near-white glyph needs a darker backdrop than the new cyan.
+**Default palette:** home, and any list without its own palette, use an "ocean sunset" pair from the palette generator: cyan `primary` and pink `secondary`, adapted for dark mode with `toAdaptiveCss` like list palettes. Home's list rows use `palette.surface`, a deep shade of the primary hue with white ink (`textOnSurface`) in both schemes. `chrome` stays a neutral grey for icons and secondary ink. Primary's hex (`#0fc1e5`) is repeated in the `theme-color` meta tag, the manifest and `offline.html`. The PWA icons and the manifest's `background_color` still use the original sage (`#A9CBB7`, see [pwa-assets.config.ts](apps/react-router/pwa-assets.config.ts)), because the icon's near-white glyph needs a darker backdrop than the new cyan.
 
 **Theme Variables:**
 
@@ -133,37 +155,37 @@ vars.palette.secondary; // Secondary color
 
 **List Palettes:**
 
-Per-list `primary`/`secondary` colours come from [app/lib/palette.ts](app/lib/palette.ts), a port of the OKLCH strategies in [delphitools' Palette Generator](https://delphi.tools/tools/palette-genny/) (0BSD). Clicking 🎨 picks a random strategy (colour-theory harmonies, moods, eras, nature, art/culture) and opens a preview dialog ([theme.tsx](app/components/theme/theme.tsx), [palette-preview.tsx](app/components/theme/palette-preview.tsx)) with a wireframe mockup of the light and dark result before it's applied — Shuffle re-rolls, "Use these colours" commits and submits. Only the light colours are stored, as `oklch()` strings in `lists.theme_primary`/`theme_secondary`; lightness is remapped into OKLCH 0.65–0.85 (`BACKGROUND_L`) and chroma reduced to fit sRGB so black text stays legible on them. That band is deliberately not pushed lighter: max in-gamut chroma for warm/cool hues falls off sharply above ~L 0.75 (a colour can be light _or_ vivid, rarely both above that point), so 0.65–0.85 is chosen to stay closer to "vivid but readable" than "pastel" — even its darkest end keeps a worst-case ~5.5:1 contrast against black text, comfortably past WCAG AA's 4.5:1.
+Per-list `primary`/`secondary` colours come from [app/lib/palette.ts](apps/react-router/app/lib/palette.ts), a port of the OKLCH strategies in [delphitools' Palette Generator](https://delphi.tools/tools/palette-genny/) (0BSD). Clicking 🎨 picks a random strategy (colour-theory harmonies, moods, eras, nature, art/culture) and opens a preview dialog ([theme.tsx](apps/react-router/app/components/theme/theme.tsx), [palette-preview.tsx](apps/react-router/app/components/theme/palette-preview.tsx)) with a wireframe mockup of the light and dark result before it's applied — Shuffle re-rolls, "Use these colours" commits and submits. Only the light colours are stored, as `oklch()` strings in `lists.theme_primary`/`theme_secondary`; lightness is remapped into OKLCH 0.65–0.85 (`BACKGROUND_L`) and chroma reduced to fit sRGB so black text stays legible on them. That band is deliberately not pushed lighter: max in-gamut chroma for warm/cool hues falls off sharply above ~L 0.75 (a colour can be light _or_ vivid, rarely both above that point), so 0.65–0.85 is chosen to stay closer to "vivid but readable" than "pastel" — even its darkest end keeps a worst-case ~5.5:1 contrast against black text, comfortably past WCAG AA's 4.5:1.
 
 **Dark mode for palette colours:** rather than generating and storing a second dark pair, `toDarkModeCss` derives one from the stored light `oklch()` string: same hue, lightness remapped from `BACKGROUND_L` into a dark band (`DARK_BACKGROUND_L`, 0.35–0.48, chosen the same way — its lightest end keeps ≥5.8:1 contrast against white text), then chroma independently gamut-fit against a generous ceiling — _not_ scaled down from the light colour's own chroma, which is what keeps the dark variant vivid rather than washed toward grey. Older stored values that predate the OKLCH generator (plain `hsl()`) don't carry parseable L/c/h, so they fall back to `color-mix(in oklch, <light> 30%, black)`, a cruder but format-agnostic darkening. `Theme` injects both into a single custom property via `light-dark(<light>, <dark>)` (`toAdaptiveCss`), so it needs no `@media` query. `vars.palette.textOnPalette` (`light-dark(black, white)`) is the adaptive ink colour for anything painted directly on `primary`/`secondary`; it's deliberately a separate token from `vars.palette.text`, which stays a fixed `black` because it also backs fixed elements (e.g. the solid "Add" pill) that must not flip. `light-dark()` tracks the OS preference correctly here only because `color-scheme: dark` is set exclusively inside the existing `@media (prefers-color-scheme: dark)` block in [app.css](app/app.css) — never `light dark` unconditionally — so nothing else on the page (native form controls, the settings dialog, etc.) changes rendering as a side effect of this.
 
-**Colour scheme (light/dark):** a button on home cycles Auto → Light → Dark ([color-scheme.tsx](app/components/color-scheme/color-scheme.tsx)). Auto follows the OS through the `prefers-color-scheme` rule in [reset.css.ts](app/styles/reset.css.ts). Light and Dark set `data-color-scheme` on `<html>`, and an attribute rule pins `color-scheme`, which every `light-dark()` colour and system colour (`Canvas`, `CanvasText`) follows. So dark-mode styling must use `light-dark()` rather than its own `prefers-color-scheme` media query, or it will ignore the pinned scheme. It's a device preference, not an account one, so it's stored only in a cookie (`shorpin-color-scheme`, which Auto expires). The root loader reads the cookie so `<html>` is server-rendered in the right scheme with no flash. The toggle writes `document.cookie` directly and the attribute is read through `useSyncExternalStore`, the same way as the app style, so a change applies at once, even offline. It survives sign-out.
+**Colour scheme (light/dark):** a button on home cycles Auto → Light → Dark ([color-scheme.tsx](apps/react-router/app/components/color-scheme/color-scheme.tsx)). Auto follows the OS through the `prefers-color-scheme` rule in [reset.css.ts](apps/react-router/app/styles/reset.css.ts). Light and Dark set `data-color-scheme` on `<html>`, and an attribute rule pins `color-scheme`, which every `light-dark()` colour and system colour (`Canvas`, `CanvasText`) follows. So dark-mode styling must use `light-dark()` rather than its own `prefers-color-scheme` media query, or it will ignore the pinned scheme. It's a device preference, not an account one, so it's stored only in a cookie (`shorpin-color-scheme`, which Auto expires). The root loader reads the cookie so `<html>` is server-rendered in the right scheme with no flash. The toggle writes `document.cookie` directly and the attribute is read through `useSyncExternalStore`, the same way as the app style, so a change applies at once, even offline. It survives sign-out.
 
 **App styles:**
 
-Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GOV.UK, Y2K and MySpace, defined in [app/lib/app-style.ts](app/lib/app-style.ts). A style is separate from a list's palette. It changes type, shape, borders, shadows, focus treatment and surfaces. The "Style" link on home sets the account's style, and the one on a list page sets that list's override. Each opens a dialog route, `/style` and `/lists/:list/style`, in the same way as the config modal: a child route rendering `<Modal>` ([style-dialog.tsx](app/components/app-style/style-dialog.tsx)) with a `<Form>`. Its own action saves the choice and redirects back to the parent, so Save is an ordinary navigation and leaves the parent's `actionData` alone. Picking an option only moves the selection, and each option previews itself in miniature. Nothing applies until Save, and Cancel, Escape or a backdrop click go back without saving. The list route's `shouldRevalidate` keeps its data when the dialog opens or closes, and its loader doesn't count a revalidation coming from the dialog as a visit.
+Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GOV.UK, Y2K and MySpace, defined in [app/lib/app-style.ts](apps/react-router/app/lib/app-style.ts). A style is separate from a list's palette. It changes type, shape, borders, shadows, focus treatment and surfaces. The "Style" link on home sets the account's style, and the one on a list page sets that list's override. Each opens a dialog route, `/style` and `/lists/:list/style`, in the same way as the config modal: a child route rendering `<Modal>` ([style-dialog.tsx](apps/react-router/app/components/app-style/style-dialog.tsx)) with a `<Form>`. Its own action saves the choice and redirects back to the parent, so Save is an ordinary navigation and leaves the parent's `actionData` alone. Picking an option only moves the selection, and each option previews itself in miniature. Nothing applies until Save, and Cancel, Escape or a backdrop click go back without saving. The list route's `shouldRevalidate` keeps its data when the dialog opens or closes, and its loader doesn't count a revalidation coming from the dialog as a visit.
 
-- **Tokens, not overrides.** Everything a style can change is a `vars.style.*` custom property in [theme.css.ts](app/styles/theme.css.ts), with Classic as the default ([classic-style.ts](app/styles/classic-style.ts)). Components read those tokens. [app-styles.css.ts](app/styles/app-styles.css.ts) reassigns the whole group for each `[data-app-style="…"]`, using `assignVars` so TypeScript rejects a style that leaves a token out. Custom properties inherit, so the nearest attribute wins. That lets each picker option set its own attribute and preview real components in its style while the page uses another one.
-- **Buttons come in four variants**, all in [clickable-element.css.ts](app/components/shared/clickable-element.css.ts), shared by `Button` and button-styled `Link`s: `primary` (palette-filled), `solid` (a bar's main action, such as Add, which needs to stand out on a palette-filled bar where `primary` would vanish), `outline` and `destructive`. Each style decides how they look through `vars.style` tokens (`control*`, `solid*`, `outlineBorder`), so components shouldn't override a button's colours, border or shape. Pass a variant, and keep any extra class to layout and sizing.
+- **Tokens, not overrides.** Everything a style can change is a `vars.style.*` custom property in [theme.css.ts](apps/react-router/app/styles/theme.css.ts), with Classic as the default ([classic-style.ts](apps/react-router/app/styles/classic-style.ts)). Components read those tokens. [app-styles.css.ts](apps/react-router/app/styles/app-styles.css.ts) reassigns the whole group for each `[data-app-style="…"]`, using `assignVars` so TypeScript rejects a style that leaves a token out. Custom properties inherit, so the nearest attribute wins. That lets each picker option set its own attribute and preview real components in its style while the page uses another one.
+- **Buttons come in four variants**, all in [clickable-element.css.ts](apps/react-router/app/components/shared/clickable-element.css.ts), shared by `Button` and button-styled `Link`s: `primary` (palette-filled), `solid` (a bar's main action, such as Add, which needs to stand out on a palette-filled bar where `primary` would vanish), `outline` and `destructive`. Each style decides how they look through `vars.style` tokens (`control*`, `solid*`, `outlineBorder`), so components shouldn't override a button's colours, border or shape. Pass a variant, and keep any extra class to layout and sizing.
 - **`initial` means "keep the component's own value".** A custom property set to `initial` is guaranteed-invalid, so `fallbackVar` falls back to a value each component chooses. Classic uses this with a `revert` fallback, which substitutes as the CSS keyword, so buttons keep the browser's own font and border while button-styled links keep none. The surface tokens (`controlBackground`, `barBackground`, `rowBackground`, `itemBackground` and their inks) use it to fall back to the palette.
 - **Palette-filled or accent.** Classic, Brutalist, Y2K and MySpace paint bars, rows and buttons with the palette. Minimal, User agent and GOV.UK keep surfaces to the page's own colours (`Canvas`/`CanvasText`, so dark mode follows). They use the palette only as accents: a rule over the action bar in `primary`, list items divided in the list's `secondary`, badges and focus rings.
 - **User agent can't be expressed in tokens.** A custom property can't hold "use the browser default". This style reverts the author styles on text and controls with `revert !important`, inside `@scope ([data-app-style="user-agent"]) to ([data-app-style]:not(…))`. The `!important` beats component classes and their `:hover`/`:focus` states. The scope limit stops it at a nested preview of another style.
-- **Account style: `profiles.app_style`, cached in a cookie (`shorpin-style`).** NULL on the profile means Classic. The cookie lets the root loader render `<html>` in the right style with no lookup on most requests. On home, and whenever the cookie is missing (signed out, or the first request after signing in on a device), the root loader reads the profile via [app-style.server.ts](app/lib/app-style.server.ts) and updates the cookie if it differs. Sign-out expires the cookie alongside the offline data it already clears, so signed-out pages, and the next person on a shared device, get the default.
+- **Account style: `profiles.app_style`, cached in a cookie (`shorpin-style`).** NULL on the profile means Classic. The cookie lets the root loader render `<html>` in the right style with no lookup on most requests. On home, and whenever the cookie is missing (signed out, or the first request after signing in on a device), the root loader reads the profile via [app-style.server.ts](apps/react-router/app/lib/app-style.server.ts) and updates the cookie if it differs. Sign-out expires the cookie alongside the offline data it already clears, so signed-out pages, and the next person on a shared device, get the default.
   - **Saving** is online-only. The `/style` action updates the profile, re-issues the cookie and redirects home, and the root loader's revalidation picks up the new style. Offline, the route's clientAction (`saveStyleOnline`) keeps the dialog open with a toast.
   - **Other devices:** because home always reads the profile, a change made elsewhere shows up on the next visit home.
-  - **Reading it:** `useAccountAppStyle` in [use-app-style.ts](app/components/app-style/use-app-style.ts) reads the root loader's `appStyle`.
-- **List override: `lists.theme_style`** (NULL means the list follows each viewer's own style). Like the account style, saving is online-only: the `/lists/:list/style` action makes a direct update (any member may update the list) and redirects back to the list, whose loader then returns the new value. Offline, it declines with a toast instead of queueing. It's never part of the list form, so a stale tab adding an item can't reset another member's choice. The list loader returns it as `appStyleOverride`, and root uses the deepest match carrying that key. `"inherit"` (`INHERIT_APP_STYLE`) clears the override. Values are validated in the app (`zSetListStyle` in [style.server.ts](app/routes/list/style.server.ts)), not by a CHECK constraint, so adding a style needs no migration. `mutate_list` still accepts a `themeStyle` payload key, but the app no longer sends it.
+  - **Reading it:** `useAccountAppStyle` in [use-app-style.ts](apps/react-router/app/components/app-style/use-app-style.ts) reads the root loader's `appStyle`.
+- **List override: `lists.theme_style`** (NULL means the list follows each viewer's own style). Like the account style, saving is online-only: the `/lists/:list/style` action makes a direct update (any member may update the list) and redirects back to the list, whose loader then returns the new value. Offline, it declines with a toast instead of queueing. It's never part of the list form, so a stale tab adding an item can't reset another member's choice. The list loader returns it as `appStyleOverride`, and root uses the deepest match carrying that key. `"inherit"` (`INHERIT_APP_STYLE`) clears the override. Values are validated in the app (`zSetListStyle` in [style.server.ts](apps/react-router/app/routes/list/style.server.ts)), not by a CHECK constraint, so adding a style needs no migration. `mutate_list` still accepts a `themeStyle` payload key, but the app no longer sends it.
 
 ### Component Architecture
 
 **Key Components:**
 
-- [Link](app/components/link/link.tsx) - Wrapper around React Router Link with variant support
-- [Button](app/components/button/button.tsx) - Styled button using clickable styles
-- [Items](app/components/items.tsx) - Drag-to-reorder list with swipe-to-delete (see [Drag, reorder & swipe](#drag-reorder--swipe))
-- [Item](app/components/item.tsx) - Individual list item with swipe-to-delete
-- [Breadcrumbs](app/components/breadcrumbs/breadcrumbs.tsx) - Navigation breadcrumbs using route handles
-- [PageHeader](app/components/page-header/page-header.tsx) - Breadcrumbs with the page's actions beside them (see [Page header](#page-header))
+- [Link](apps/react-router/app/components/link/link.tsx) - Wrapper around React Router Link with variant support
+- [Button](apps/react-router/app/components/button/button.tsx) - Styled button using clickable styles
+- [Items](apps/react-router/app/components/items.tsx) - Drag-to-reorder list with swipe-to-delete (see [Drag, reorder & swipe](#drag-reorder--swipe))
+- [Item](apps/react-router/app/components/item.tsx) - Individual list item with swipe-to-delete
+- [Breadcrumbs](apps/react-router/app/components/breadcrumbs/breadcrumbs.tsx) - Navigation breadcrumbs using route handles
+- [PageHeader](apps/react-router/app/components/page-header/page-header.tsx) - Breadcrumbs with the page's actions beside them (see [Page header](#page-header))
 
 **Patterns to Follow:**
 
@@ -174,14 +196,14 @@ Seven app-wide looks: Classic (the original), Minimal, User agent, Brutalist, GO
 
 ### List Mutations (Add/Delete)
 
-The list route (`app/routes/list/list.tsx`) does **not** use Conform's `__INTENT__`/`intents:` custom-intent system for add-item or delete-item. Conform's formal intent handlers always call `preventDefault()` for any named intent — only a bare `type: 'submit'` submission ever reaches the network — so anything routed through `__INTENT__` for a server mutation silently never fires (see PR #64 for the full investigation).
+The list route (`apps/react-router/app/routes/list/list.tsx`) does **not** use Conform's `__INTENT__`/`intents:` custom-intent system for add-item or delete-item. Conform's formal intent handlers always call `preventDefault()` for any named intent — only a bare `type: 'submit'` submission ever reaches the network — so anything routed through `__INTENT__` for a server mutation silently never fires (see PR #64 for the full investigation).
 
 Instead:
 
-- **Add** is signalled purely by a non-empty `new` field on an ordinary submit. The server (`mutate_list` RPC, and its mock in `mocks/api/rest/v1/list_items.ts`) inserts whenever that field is present — no intent needed.
+- **Add** is signalled purely by a non-empty `new` field on an ordinary submit. The server (`mutate_list` RPC, and its mock in `packages/mocks/api/rest/v1/list_items.ts`) inserts whenever that field is present — no intent needed.
 - **Delete** is explicit: the delete path sends the removed row's id in `deletedIds`, and `mutate_list` deletes only those ids (migration `20261111000000`). The client still submits the full `items[]` array on every request (edits and reorders rely on it), but an active row missing from it is kept and moved after the submitted rows, because it's one this page hasn't seen yet, typically added on another device. Deletion used to be inferred from what `items[]` left out, so any submit from a stale page (a backgrounded tab that missed broadcasts) deleted every item it hadn't seen.
-- **Compatibility with older pages:** every submission carries a hidden `explicitDeletes` field, and the server action (`toRpcPayload` in [list.server.ts](app/routes/list/list.server.ts)) only passes `deletedIds` to `mutate_list` when it's present. A submission without it comes from a page loaded before this change, and the payload's lack of a `deletedIds` key makes `mutate_list` fall back to inferring that page's deletions, so they still work until it reloads. Either the migration or the app can deploy first: the previous function ignores `deletedIds`. Once old pages are gone, the fallback can be removed.
-- Conform itself is still used for schema validation and its **built-in** array intents (`intent.update`/`intent.remove`, used by `reorderViaConform`/`removeViaConform` in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts)) — only the custom named-intent layer was removed.
+- **Compatibility with older pages:** every submission carries a hidden `explicitDeletes` field, and the server action (`toRpcPayload` in [list.server.ts](apps/react-router/app/routes/list/list.server.ts)) only passes `deletedIds` to `mutate_list` when it's present. A submission without it comes from a page loaded before this change, and the payload's lack of a `deletedIds` key makes `mutate_list` fall back to inferring that page's deletions, so they still work until it reloads. Either the migration or the app can deploy first: the previous function ignores `deletedIds`. Once old pages are gone, the fallback can be removed.
+- Conform itself is still used for schema validation and its **built-in** array intents (`intent.update`/`intent.remove`, used by `reorderViaConform`/`removeViaConform` in [reorder-strategies.ts](apps/react-router/app/components/reorderable/reorder-strategies.ts)) — only the custom named-intent layer was removed.
 
 **Delete sequencing matters:** shrinking Conform's tracked items array renumbers every later item's field name (e.g. `items[2]` becomes `items[1]`). If that happens while the outgoing row's `<input>`s are still mid-exit-animation, two inputs can briefly share one name and corrupt the submission, writing the wrong value or position to a row. `items.tsx`'s `ReorderableItem` closes this two ways:
 
@@ -195,13 +217,13 @@ Instead:
 - The dialog renders inside the list `<Form>`, so its textarea has no `name`, and its buttons are `type="button"` rather than a nested `<form method="dialog">`.
 - Each row's edit button is labelled `Edit <text>`, so tests and assistive tech find rows by that label.
 
-**Tags:** an item can carry one tag. It's stored inside the value as a trailing `[tag]` (e.g. `Milk [dairy]`) rather than in its own column. So tags need no migration, and they ride along on every path that already carries a value: add, edit, undo-delete and offline replay. [item-tag.ts](app/lib/item-tag.ts) parses and formats them:
+**Tags:** an item can carry one tag. It's stored inside the value as a trailing `[tag]` (e.g. `Milk [dairy]`) rather than in its own column. So tags need no migration, and they ride along on every path that already carries a value: add, edit, undo-delete and offline replay. [item-tag.ts](apps/react-router/app/lib/item-tag.ts) parses and formats them:
 
 - Only the last bracket group, at the very end, counts. `Call [Sam] tomorrow` stays untagged, and a value that's only `[tag]` is shown as typed.
 - Typing `text [tag]` in the add box tags the new item.
 - The add bar also has a tag field: the same combobox as the edit dialog, so you can pick an existing tag or type a new one. It has no `name`. Instead, the form's `onSubmitCapture` folds its tag into the typed value as `[tag]` before anything reads the form, so online adds, offline queueing and replay all carry it unchanged. A tag typed into the value wins. The tag is React state, not a form field, so Conform's reset after each add leaves it alone and a run of items can share a tag until the page reloads. Enter in the tag field adds the item, like Enter in the item input.
 - The edit dialog splits the value into an Item textarea and a Tag field, then joins them back on save. Brackets are stripped from the tag.
-- The Tag field is a hybrid combobox ([tag-combobox.tsx](app/components/tag-combobox/tag-combobox.tsx), following the WAI-ARIA APG "list autocomplete" pattern).
+- The Tag field is a hybrid combobox ([tag-combobox.tsx](apps/react-router/app/components/tag-combobox/tag-combobox.tsx), following the WAI-ARIA APG "list autocomplete" pattern).
   - Opening it by focus, click or the arrow keys lists every tag, with the current one ticked, like a select. Only typing filters, so a chosen tag doesn't narrow the list to itself.
   - A typed tag that doesn't exist yet is offered as `Add "…"`.
   - Arrow keys move through the options and Enter picks one. With nothing highlighted, Enter saves the dialog. Escape closes the list without closing the dialog.
@@ -211,7 +233,7 @@ Instead:
 
 ### Drag, reorder & swipe
 
-Reorderable lists (list items and home lists) use a small in-house gesture hook, [use-drag-list.ts](app/components/reorderable/use-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
+Reorderable lists (list items and home lists) use a small in-house gesture hook, [use-drag-list.ts](apps/react-router/app/components/reorderable/use-drag-list.ts), built on pointer events and the Web Animations API, instead of Motion. Motion added ~48 KB gzipped to every `/app` route (its `Reorder` components pull in the full feature set, so `LazyMotion` couldn't defer it); the hook is ~2 KB gzipped and covers exactly what the lists use:
 
 - **Gesture intent:**
   - **Swipe:** a gesture becomes a swipe-to-delete once it moves 10px, mostly horizontally. This only applies where the row opts in via `swipe`.
@@ -223,7 +245,7 @@ Reorderable lists (list items and home lists) use a small in-house gesture hook,
 - **Springs** — sampled once into CSS `linear()` easings, so WAAPI plays them with no physics runtime.
 - Gesture listeners attach to `window` rather than using pointer capture, because React reorders rows by moving DOM nodes, which can drop capture mid-drag.
 
-[`useReorderable`](app/components/reorderable/use-reorderable.ts) owns the optimistic order and wires itself to the hook; persistence stays in [reorder-strategies.ts](app/components/reorderable/reorder-strategies.ts).
+[`useReorderable`](apps/react-router/app/components/reorderable/use-reorderable.ts) owns the optimistic order and wires itself to the hook; persistence stays in [reorder-strategies.ts](apps/react-router/app/components/reorderable/reorder-strategies.ts).
 
 ### Offline / Local-first (Home + List)
 
@@ -231,27 +253,27 @@ The home (`/`) and list (`/lists/:list`) routes work offline: reads are served f
 
 **Why not a service worker that fabricates `action` responses:** React Router 8's `.data` protocol encodes loader/action payloads with a vendored, unversioned `turbo-stream` serializer (`node_modules/react-router/dist/*/vendor/turbo-stream-v2/`), not JSON. A service worker hand-constructing that shape would be brittle against any React Router version bump and would duplicate logic that already works one layer up. Instead, offline handling lives in each route's `clientLoader`/`clientAction` — React Router's native extension point, which runs in JS _before_ any network request is attempted — backed by IndexedDB for durability across reloads. The service worker's job is narrower: precache the app shell/static assets, and act as a best-effort reliability backstop (via Background Sync) for draining the mutation queue.
 
-**IndexedDB (`shorpin-offline`, v1)** — three object stores, accessed through `app/lib/offline-store.client.ts`:
+**IndexedDB (`shorpin-offline`, v1)** — three object stores, accessed through `apps/react-router/app/lib/offline-store.client.ts`:
 
 - `home-cache` — singleton snapshot of the lists-of-lists view, replacing what used to be a `localStorage` cache.
 - `list-snapshots` (keyed by slug) — a `baseline` (last confirmed-from-server item state, frozen the moment the app goes offline) alongside `desired` (net local edits). Keeping both is what makes reconnect sync correct rather than just "replay the last thing we sent."
 - `mutation-queue` — durable FIFO of queued submissions, serialized as `[key, value][]` pairs (not a plain object — `FormData` isn't structured-clone-safe, and some forms repeat a key, e.g. `list-order`, which an object would collapse).
 
-A small hand-rolled promisifying wrapper (`app/lib/idb.client.ts`) is used instead of a dependency like `idb` — the schema is a single version with only get/put/cursor/index operations, well inside "the platform is fine here."
+A small hand-rolled promisifying wrapper (`apps/react-router/app/lib/idb.client.ts`) is used instead of a dependency like `idb` — the schema is a single version with only get/put/cursor/index operations, well inside "the platform is fine here."
 
-**Reconnect sync — why list mutations need a rebase, not a replay:** `list.server.ts`'s `action` calls a single Postgres RPC, `mutate_list`, which writes the _entire submitted `items[]` array_: each row's value and position. Blindly replaying a stale offline-queued snapshot would undo other devices' edits and reorders, and before explicit deletions (`deletedIds`, see "List Mutations" above) it also deleted every item they'd added. To avoid that, reconnect first revalidates to get fresh server state, then computes a bounded three-way merge (`app/lib/offline-merge.ts`'s `rebaseListItems`, given `baseline`/`desired`/`fresh`): concurrent additions/edits by other devices survive by default; our own deletions and edits win only for the specific ids we touched; only our own reordering overrides relative order. The rebased result is submitted as a single POST — collapsing the whole offline session into one request — with our own deletions named in `deletedIds`. `mutate_list` is idempotent on final state for `items[]`, and offline additions carry their client-generated ids (see below), so delivering the same sync twice is harmless.
+**Reconnect sync — why list mutations need a rebase, not a replay:** `list.server.ts`'s `action` calls a single Postgres RPC, `mutate_list`, which writes the _entire submitted `items[]` array_: each row's value and position. Blindly replaying a stale offline-queued snapshot would undo other devices' edits and reorders, and before explicit deletions (`deletedIds`, see "List Mutations" above) it also deleted every item they'd added. To avoid that, reconnect first revalidates to get fresh server state, then computes a bounded three-way merge (`apps/react-router/app/lib/offline-merge.ts`'s `rebaseListItems`, given `baseline`/`desired`/`fresh`): concurrent additions/edits by other devices survive by default; our own deletions and edits win only for the specific ids we touched; only our own reordering overrides relative order. The rebased result is submitted as a single POST — collapsing the whole offline session into one request — with our own deletions named in `deletedIds`. `mutate_list` is idempotent on final state for `items[]`, and offline additions carry their client-generated ids (see below), so delivering the same sync twice is harmless.
 
 Home's list-reordering doesn't need this treatment: it updates `sort_order` per-row directly (no diff-against-submitted-array), so it structurally can't resurrect or delete anything — last-write-wins is correct there, not just simpler. List creation is append-only and already de-duplicates slugs server-side, so it just replays in order.
 
-**Service worker (`app/sw.ts`, via `vite-plugin-pwa`'s `injectManifest` strategy):** precaches hashed static assets (`generateSW`/hand-rolling a precache list was ruled out — hashed chunk filenames change every build, so a hand-maintained list goes stale on the next deploy, which is exactly the kind of build-time problem the platform can't solve on its own). Navigation requests fall back to a static offline shell when the network is unavailable and nothing better is cached. Every POST and every `.data` GET passes straight through untouched — the service worker never participates in React Router's wire protocol. It also listens for a Background Sync event as a best-effort backstop for draining simple queued mutations (list creation, list reordering) even if the tab has closed; this has no effect on Safari/iOS, where the `online` event listener (already the primary sync trigger everywhere) remains the only mechanism.
+**Service worker (`apps/react-router/app/sw.ts`, via `vite-plugin-pwa`'s `injectManifest` strategy):** precaches hashed static assets (`generateSW`/hand-rolling a precache list was ruled out — hashed chunk filenames change every build, so a hand-maintained list goes stale on the next deploy, which is exactly the kind of build-time problem the platform can't solve on its own). Navigation requests fall back to a static offline shell when the network is unavailable and nothing better is cached. Every POST and every `.data` GET passes straight through untouched — the service worker never participates in React Router's wire protocol. It also listens for a Background Sync event as a best-effort backstop for draining simple queued mutations (list creation, list reordering) even if the tab has closed; this has no effect on Safari/iOS, where the `online` event listener (already the primary sync trigger everywhere) remains the only mechanism.
 
-**Updates wait for the user (`app/lib/service-worker.client.ts`):** a redeployed `sw.js` installs in the background and then _waits_ behind the current worker. `app/sw.ts` deliberately doesn't call `skipWaiting()` on install, so a tab never runs one build's JS under another build's worker. The page checks for a new build hourly and when the app returns to the foreground (at most every 15 minutes, since each check re-downloads `sw.js`). When one is waiting, the page shows a "A new version is available" toast. Its Reload action posts `SKIP_WAITING` to the waiting worker and reloads once that worker has taken control. A first-ever install has nothing to wait behind, so it activates straight away. The one exception is `version-guard.client.ts`: when a mutation fails because the server is a newer build, it activates the new worker immediately (`applyUpdateNow`) and retries without prompting. This is built on the platform `ServiceWorkerRegistration` API rather than `vite-plugin-pwa`'s `useRegisterSW`, which would add `workbox-window` to the page bundle for the same behaviour.
+**Updates wait for the user (`apps/react-router/app/lib/service-worker.client.ts`):** a redeployed `sw.js` installs in the background and then _waits_ behind the current worker. `apps/react-router/app/sw.ts` deliberately doesn't call `skipWaiting()` on install, so a tab never runs one build's JS under another build's worker. The page checks for a new build hourly and when the app returns to the foreground (at most every 15 minutes, since each check re-downloads `sw.js`). When one is waiting, the page shows a "A new version is available" toast. Its Reload action posts `SKIP_WAITING` to the waiting worker and reloads once that worker has taken control. A first-ever install has nothing to wait behind, so it activates straight away. The one exception is `version-guard.client.ts`: when a mutation fails because the server is a newer build, it activates the new worker immediately (`applyUpdateNow`) and retries without prompting. This is built on the platform `ServiceWorkerRegistration` API rather than `vite-plugin-pwa`'s `useRegisterSW`, which would add `workbox-window` to the page bundle for the same behaviour.
 
-**Runtime page cache (`shorpin-pages`, via Workbox `NetworkFirst`):** the IndexedDB caches above only serve offline reads to a tab that's already hydrated — a genuine fresh navigation (hard reload, cold open, new tab) while offline is a real browser navigation that the service worker intercepts, and until this cache existed it always fell back to the generic static `offline.html`, even when the user's actual list data was sitting right there in IndexedDB. Home and list navigations (and _only_ those two — see `isCacheablePageUrl` in `app/lib/page-cache.ts`) now go through a `NetworkFirst` strategy instead: always try the network first, and cache the successful response; only serve the cached copy when the network genuinely fails. `offline.html` remains the last-resort fallback for a page never visited. Bounded with Workbox's `ExpirationPlugin` (`maxEntries: 50`) so a long session doesn't grow it unbounded. Because this is cached _rendered HTML_ from an authenticated SSR route, it's per-user data — cleared on logout (`app/routes/auth/logout.tsx`) via `caches.delete("shorpin-pages")`, the same shared-device protection `clearAllOfflineData()` already gives the IndexedDB stores. Offline reads (from either cache) never re-verify auth — there's no network to check against — but every request made once back online goes through the normal Supabase auth middleware exactly as always; nothing about caching weakens that.
+**Runtime page cache (`shorpin-pages`, via Workbox `NetworkFirst`):** the IndexedDB caches above only serve offline reads to a tab that's already hydrated — a genuine fresh navigation (hard reload, cold open, new tab) while offline is a real browser navigation that the service worker intercepts, and until this cache existed it always fell back to the generic static `offline.html`, even when the user's actual list data was sitting right there in IndexedDB. Home and list navigations (and _only_ those two — see `isCacheablePageUrl` in `apps/react-router/app/lib/page-cache.ts`) now go through a `NetworkFirst` strategy instead: always try the network first, and cache the successful response; only serve the cached copy when the network genuinely fails. `offline.html` remains the last-resort fallback for a page never visited. Bounded with Workbox's `ExpirationPlugin` (`maxEntries: 50`) so a long session doesn't grow it unbounded. Because this is cached _rendered HTML_ from an authenticated SSR route, it's per-user data — cleared on logout (`apps/react-router/app/routes/auth/logout.tsx`) via `caches.delete("shorpin-pages")`, the same shared-device protection `clearAllOfflineData()` already gives the IndexedDB stores. Offline reads (from either cache) never re-verify auth — there's no network to check against — but every request made once back online goes through the normal Supabase auth middleware exactly as always; nothing about caching weakens that.
 
 **Reconnect sync must only rebase onto genuinely fresh server state:** just after reconnecting, the fresh-data fetch can fail while the connection is still settling, yet the sync's submit a moment later succeeds. `clientLoader` falls back to the cached list when a fetch fails, and that list predates anything other devices added meanwhile, so rebasing onto it would submit a snapshot that `mutate_list` reads as deleting those items. `clientLoader` therefore flags every cached fallback with `fromCache: true`. `performRebaseSync` never rebases onto flagged data; it retries the fetch with exponential backoff (1s doubling, capped at 30s) until it gets real server state. `list.spec.ts`'s "a failed fresh-data fetch on reconnect…" test covers this.
 
-**Reconnect sync must treat a redirected-away response as a failed delivery, not a success:** a stale/unrefreshable session makes `supabaseMiddleware` (`app/lib/supabase.middleware.ts`) throw a redirect to `/login` _before_ the route's action runs. The mutation-replay paths that use a raw `fetch()` (home's `onOnline` handler, the service worker's `drainSimpleMutations` Background Sync backstop) pass `redirect: "manual"` and check the response's `type`/`ok` before dequeuing — otherwise `fetch()` would silently follow the redirect, resolve "successfully" against the `/login` page, and the mutation would be dropped from the queue despite never having reached the actual action. List's rebase-and-resubmit sync (which goes through React Router's `submit()`, not raw `fetch`) does the equivalent check by confirming the browser is still on the expected list route before dequeuing. Both home and list also retry a pending queue once on mount (not just on an `online` transition), so an edit left queued by a stale-session redirect actually gets flushed once the user re-authenticates and comes back, instead of sitting inert until another real connectivity blip happens to occur on that page.
+**Reconnect sync must treat a redirected-away response as a failed delivery, not a success:** a stale/unrefreshable session makes `supabaseMiddleware` (`apps/react-router/app/lib/supabase.middleware.ts`) throw a redirect to `/login` _before_ the route's action runs. The mutation-replay paths that use a raw `fetch()` (home's `onOnline` handler, the service worker's `drainSimpleMutations` Background Sync backstop) pass `redirect: "manual"` and check the response's `type`/`ok` before dequeuing — otherwise `fetch()` would silently follow the redirect, resolve "successfully" against the `/login` page, and the mutation would be dropped from the queue despite never having reached the actual action. List's rebase-and-resubmit sync (which goes through React Router's `submit()`, not raw `fetch`) does the equivalent check by confirming the browser is still on the expected list route before dequeuing. Both home and list also retry a pending queue once on mount (not just on an `online` transition), so an edit left queued by a stale-session redirect actually gets flushed once the user re-authenticates and comes back, instead of sitting inert until another real connectivity blip happens to occur on that page.
 
 **Offline additions keep their client-generated ids, so a replayed sync can't duplicate them:** the queue is only dropped once the sync's response arrives, so a reload or tab close while that request is in flight leaves an edit the server already applied still queued, and the next mount sends it again. The rebase handles that for `items[]` (the already-applied row is just "fresh" state), but additions travel separately in `newItems`. So each addition's offline id goes along in the parallel `newItemIds` array, and `mutate_list` uses it as the row id with `ON CONFLICT (id) DO NOTHING` (migration `20261011000000`). It's a parallel array rather than `{ id, value }` objects so either the client or the migration can deploy first: the older function simply ignores `newItemIds`.
 
@@ -265,18 +287,18 @@ Home's list-reordering doesn't need this treatment: it updates `sort_order` per-
 
 ### App icons
 
-Home-screen icons and the favicon are generated from one master image, `public/icons/icon.png`, by `@vite-pwa/assets-generator` (`pnpm generate-pwa-assets`, configured in [pwa-assets.config.ts](pwa-assets.config.ts)). The outputs are committed, and the manifest and `<head>` links are hand-maintained to match, because the manifest is a hand-written file and `<head>` is rendered by React Router, not by the plugin's HTML injection. The generator produces a **maskable** icon (glyph padded into Android's safe zone, on the theme colour) and an opaque `apple-touch-icon`, because iOS fills transparent touch icons with black. [pwa.spec.ts](integration-tests/pwa.spec.ts) checks the icons load and are opaque. The original export had its alpha scaled to ~6%, which made the installed icon nearly invisible.
+Home-screen icons and the favicon are generated from one master image, `apps/react-router/public/icons/icon.png`, by `@vite-pwa/assets-generator` (`pnpm generate-pwa-assets`, configured in [pwa-assets.config.ts](apps/react-router/pwa-assets.config.ts)). The outputs are committed, and the manifest and `<head>` links are hand-maintained to match, because the manifest is a hand-written file and `<head>` is rendered by React Router, not by the plugin's HTML injection. The generator produces a **maskable** icon (glyph padded into Android's safe zone, on the theme colour) and an opaque `apple-touch-icon`, because iOS fills transparent touch icons with black. [pwa.spec.ts](packages/specs/integration-tests/pwa.spec.ts) checks the icons load and are opaque. The original export had its alpha scaled to ~6%, which made the installed icon nearly invisible.
 
 ### Default list on launch
 
 Each list row on home has a ☆/★ toggle that picks the list the installed PWA opens into. The manifest's `start_url` is `/?launch`; home's loader always redirects that URL away — to the starred list if it still exists, otherwise to plain `/` — so later revalidations of home never re-trigger it. Existing installs must be removed and re-added once to pick up the new `start_url` (Safari's "Add to Dock" snapshots the manifest at install time, so the default can't be expressed by rewriting the manifest per user).
 
-**iOS ignores `start_url`.** iOS home screen apps open at `/` (or wherever the page was when added), so `?launch` never arrives. The home `clientLoader` therefore also treats a load as a launch when the app is running standalone (`display-mode: standalone` or iOS's `navigator.standalone`), the document was opened fresh (`PerformanceNavigationTiming.type === "navigate"`, so not a pull-to-refresh reload) at `/`, and it's the first home load of that document (`app/lib/standalone-launch.client.ts`). It then redirects to `/?launch` so the existing server/offline paths resolve the starred list. In-app navigation back to home is client-side and never counts. This also covers installs made before `start_url` changed, with no reinstall.
-**Why a cookie, not a DB column:** "what opens when I click the Dock icon" is a per-device choice, and a cookie is readable by the server before render with no extra query or migration. It's set by the action via `Set-Cookie` (server-set cookies aren't subject to Safari's 7-day cap on script-writable storage), stored by list id (survives renames), and re-issued with a fresh 400-day `Max-Age` on every launch. It's deliberately not `HttpOnly`: offline, the home `clientLoader` reads `document.cookie` and performs the same redirect against the IndexedDB snapshot, and an offline star toggle writes `document.cookie` directly. The service worker's page cache strips the `launch` param from its cache key so an offline launch still finds the cached `/` HTML. Helpers live in `app/lib/default-list.ts`, built on React Router's `createCookie` — unsigned, because a signing secret can't ship to the client that reads it offline. (Supabase's auth cookies stay on `@supabase/ssr`'s parse/serialize: that library owns their format and chunking.)
+**iOS ignores `start_url`.** iOS home screen apps open at `/` (or wherever the page was when added), so `?launch` never arrives. The home `clientLoader` therefore also treats a load as a launch when the app is running standalone (`display-mode: standalone` or iOS's `navigator.standalone`), the document was opened fresh (`PerformanceNavigationTiming.type === "navigate"`, so not a pull-to-refresh reload) at `/`, and it's the first home load of that document (`apps/react-router/app/lib/standalone-launch.client.ts`). It then redirects to `/?launch` so the existing server/offline paths resolve the starred list. In-app navigation back to home is client-side and never counts. This also covers installs made before `start_url` changed, with no reinstall.
+**Why a cookie, not a DB column:** "what opens when I click the Dock icon" is a per-device choice, and a cookie is readable by the server before render with no extra query or migration. It's set by the action via `Set-Cookie` (server-set cookies aren't subject to Safari's 7-day cap on script-writable storage), stored by list id (survives renames), and re-issued with a fresh 400-day `Max-Age` on every launch. It's deliberately not `HttpOnly`: offline, the home `clientLoader` reads `document.cookie` and performs the same redirect against the IndexedDB snapshot, and an offline star toggle writes `document.cookie` directly. The service worker's page cache strips the `launch` param from its cache key so an offline launch still finds the cached `/` HTML. Helpers live in `apps/react-router/app/lib/default-list.ts`, built on React Router's `createCookie` — unsigned, because a signing secret can't ship to the client that reads it offline. (Supabase's auth cookies stay on `@supabase/ssr`'s parse/serialize: that library owns their format and chunking.)
 
 ### Error boundaries & network-down UX
 
-Every route's error boundary funnels network/server failures through one shared check — `isNetworkOrServerError` (`app/lib/network-error.ts`): a `fetch()` that never got a response (`TypeError`), or a 5xx bubbled up as a route error response — and one shared presentational component, `ErrorState` (`app/components/error-state/`), instead of each boundary reinventing "is this a dead server or a real bug." Home and list use it directly for their own errors; `root.tsx`'s boundary checks it before falling into its generic "something went wrong" branch, so any route with no offline handling of its own (auth, `/sign-ups`, `/config/:list`) still shows a friendly, retryable message — not a raw `Failed to fetch` — when a client-side (SPA) navigation fails because the app's own server, not just the user's connection, is unreachable.
+Every route's error boundary funnels network/server failures through one shared check — `isNetworkOrServerError` (`apps/react-router/app/lib/network-error.ts`): a `fetch()` that never got a response (`TypeError`), or a 5xx bubbled up as a route error response — and one shared presentational component, `ErrorState` (`apps/react-router/app/components/error-state/`), instead of each boundary reinventing "is this a dead server or a real bug." Home and list use it directly for their own errors; `root.tsx`'s boundary checks it before falling into its generic "something went wrong" branch, so any route with no offline handling of its own (auth, `/sign-ups`, `/config/:list`) still shows a friendly, retryable message — not a raw `Failed to fetch` — when a client-side (SPA) navigation fails because the app's own server, not just the user's connection, is unreachable.
 
 This is deliberately separate from the service worker's `offline.html` fallback above: the SW only intercepts full/hard navigations, never React Router's in-app `.data` fetches (see "Why not a service worker that fabricates `action` responses" above) — so SPA-navigation failures on routes outside the offline feature's scope had no graceful handling before this existed, regardless of whether the user was offline or the server was simply down. `ErrorState` also distinguishes the two cases via `navigator.onLine` ("You're offline." vs "Couldn't reach the server.") for messaging consistency with `offline.html`'s tone, without depending on `OnlineStatusProvider` (scoped to the authenticated app layout, and not necessarily mounted when an error boundary above it renders). Its "Cancel" action navigates back (or home, if there's no history), since home and list both have offline caches to land on.
 
@@ -320,7 +342,7 @@ https://shorpin.matthewbalaam.co.uk/set-password
 
 Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.uk`).
 
-**Only a definitive auth failure logs the user out.** Access tokens last an hour, so the first request after a long offline spell always has to refresh the session server-side (`supabaseMiddleware`), and every loader calls `getUser()` (`requireUser`). Both used to redirect to `/login` on _any_ failure — including a network blip, timeout, 5xx or rate limit from Supabase auth, where supabase-js has deliberately left the session cookies intact. Those now throw a `503` instead (`isTransientAuthError` / `authUnavailable` in `app/lib/supabase.server.ts`); home and list clientLoaders already fall back to their IndexedDB copy on any 5xx, so the user stays on their data and the next request retries. Only rejections that mean the session is really gone (e.g. `refresh_token_already_used`, `session_not_found`) redirect. Every forced redirect, and every transient 503, is recorded via `Sentry.logger` with the auth error `code`/`status`, since the middleware's `console.log` lines don't reach Sentry.
+**Only a definitive auth failure logs the user out.** Access tokens last an hour, so the first request after a long offline spell always has to refresh the session server-side (`supabaseMiddleware`), and every loader calls `getUser()` (`requireUser`). Both used to redirect to `/login` on _any_ failure — including a network blip, timeout, 5xx or rate limit from Supabase auth, where supabase-js has deliberately left the session cookies intact. Those now throw a `503` instead (`isTransientAuthError` / `authUnavailable` in `apps/react-router/app/lib/supabase.server.ts`); home and list clientLoaders already fall back to their IndexedDB copy on any 5xx, so the user stays on their data and the next request retries. Only rejections that mean the session is really gone (e.g. `refresh_token_already_used`, `session_not_found`) redirect. Every forced redirect, and every transient 503, is recorded via `Sentry.logger` with the auth error `code`/`status`, since the middleware's `console.log` lines don't reach Sentry.
 
 ### Database (Supabase)
 
@@ -335,7 +357,7 @@ Set **Site URL** to your deployment URL (e.g. `https://shorpin.matthewbalaam.co.
 No script configured. Generate types manually with:
 
 ```bash
-pnpx supabase gen types typescript --local > app/lib/database.types.ts
+pnpx supabase gen types typescript --local > packages/database/database.types.ts
 ```
 
 **Schema:**
@@ -358,10 +380,10 @@ which project was hit.
 
 ### Visual snapshot tests
 
-Each route's integration spec has a `@visual` test that screenshots the page with Playwright's `toHaveScreenshot`, next to that route's other tests. Two extra Playwright projects run only the `@visual` tests: `iphone-pro-max` (iPhone 17 Pro Max in WebKit) and `laptop` (1440×900 in Chromium). The `desktop` and `touch` projects skip them. See [integration-tests/README.md](integration-tests/README.md#visual-snapshots).
+Each route's integration spec has a `@visual` test that screenshots the page with Playwright's `toHaveScreenshot`, next to that route's other tests. Two extra Playwright projects run only the `@visual` tests: `iphone-pro-max` (iPhone 17 Pro Max in WebKit) and `laptop` (1440×900 in Chromium). The `desktop` and `touch` projects skip them. See [integration-tests/README.md](packages/specs/integration-tests/README.md#visual-snapshots).
 
 - **Local only for now.** Font rendering differs between operating systems, so the committed baselines (suffixed `-darwin`) only match on macOS. The visual projects are left out when `CI` is set. Running them in CI needs a pinned Docker image to generate and compare baselines in.
-- **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
+- **Per-test data the screenshots can rely on.** Each test's user emails come from a uuid derived from its test id, so they're the same on every run. The mock narrows users and waitlist entries to the requester's uuid ([mocks/scope.ts](packages/mocks/scope.ts)), so modals that list "everyone" only show that test's data, even with tests running in parallel.
 
 ### WebKit behaviour tests
 
@@ -372,10 +394,10 @@ Integration tests run in Chromium (`desktop`), which hides some bugs real iPhone
 The `integration` and `e2e-supabase` jobs run inside the
 `mcr.microsoft.com/playwright` Docker image, which bundles a specific browser
 build. That build must match the `@playwright/test` version installed from
-`package.json`, or tests fail with `browserType.launch: Executable doesn't
+the pnpm catalog, or tests fail with `browserType.launch: Executable doesn't
 exist`. Rather than hardcoding the image tag in both jobs (and re-breaking it
 on every Dependabot Playwright bump), a `playwright-version` job reads
-`@playwright/test` from `package.json` and both jobs consume its output as
+`@playwright/test` from the catalog in `pnpm-workspace.yaml` and both jobs consume its output as
 `needs.playwright-version.outputs.image` — the container tag always tracks
 whatever version is actually installed.
 
@@ -416,31 +438,31 @@ missing.
 The app includes lightweight client-side telemetry to help diagnose slow pages and route transitions:
 
 - Web vitals tracked in the browser: `TTFB`, `FCP`, `LCP`, `CLS`, `INP`
-- Route transition timing tracked in `app/root.tsx` using React Router navigation state
+- Route transition timing tracked in `apps/react-router/app/root.tsx` using React Router navigation state
 - Metrics are sent to `POST /perf` via `navigator.sendBeacon` with a `fetch(..., { keepalive: true })` fallback
 - Server-side processing currently logs only slow metrics to reduce noise
 
 Implementation files:
 
-- Client metrics collection: `app/lib/performance.client.ts`, dynamic-imported by `root.tsx` after hydration rather than shipped with the root route. Its observers use `buffered: true`, so entries from before it loads aren't lost
-- Metric ingestion route: `app/routes/perf.ts`
+- Client metrics collection: `apps/react-router/app/lib/performance.client.ts`, dynamic-imported by `root.tsx` after hydration rather than shipped with the root route. Its observers use `buffered: true`, so entries from before it loads aren't lost
+- Metric ingestion route: `apps/react-router/app/routes/perf.ts`
 
 ### Deferred Sentry (client)
 
 The client Sentry SDK (~60 KB gzipped with tracing, plus ~40 KB for replay when it loads) is kept off the critical path. Nothing imports `@sentry/react-router` statically on the client:
 
-- `app/lib/monitoring.client.ts` is the only entry point. `initMonitoring()` runs after `hydrateRoot` and dynamic-imports `app/lib/sentry.client.ts` once the browser is idle (`requestIdleCallback`, 3s timeout).
+- `apps/react-router/app/lib/monitoring.client.ts` is the only entry point. `initMonitoring()` runs after `hydrateRoot` and dynamic-imports `apps/react-router/app/lib/sentry.client.ts` once the browser is idle (`requestIdleCallback`, 3s timeout).
 - Uncaught errors and unhandled rejections before then are queued by early `window` listeners, and `reportError()` (used by the root `ErrorBoundary`) queues too; the queue is flushed into Sentry once it initialises.
 - `sentry.client.ts` uses named imports so the dynamic chunk still tree-shakes. Don't `await import("@sentry/react-router")` directly — the namespace import pulls in every integration.
 - There's deliberately no `manualChunks` rule for `@sentry/`: it dragged `react` into the Sentry chunk, which made the entry import it eagerly.
-- Session replay is a chunk of its own ([sentry-replay.client.ts](app/lib/sentry-replay.client.ts)), dynamic-imported by `sentry.client.ts`: at init for the 10% of sessions recorded from the start, and otherwise on the session's first error event (`afterSendEvent`), from where it records the rest of the session.
+- Session replay is a chunk of its own ([sentry-replay.client.ts](apps/react-router/app/lib/sentry-replay.client.ts)), dynamic-imported by `sentry.client.ts`: at init for the 10% of sessions recorded from the start, and otherwise on the session's first error event (`afterSendEvent`), from where it records the rest of the session.
 - The chunks are precached by the service worker like any other asset, so it works offline. Sentry's CDN `lazyLoadIntegration()` isn't used for that reason.
 
 Trade-offs: the pageload trace starts late, and an error's replay starts at the error, without the lead-up Sentry's on-error buffer would keep (that buffer needs replay loaded in every session from the start). Errors are captured either way. Server-side Sentry (`entry.server.tsx`, `instrument.server.mjs`) is unaffected.
 
 ### Page header
 
-Each page under the app layout renders its own [`<PageHeader>`](app/components/page-header/page-header.tsx), passing its actions (Sign out and pending sign-ups on home; Style, Colours and Group on a list). The layout used to render the breadcrumbs, with each page's actions placed separately in the same grid cell, so neither made room for the other and a long list name ran under the buttons.
+Each page under the app layout renders its own [`<PageHeader>`](apps/react-router/app/components/page-header/page-header.tsx), passing its actions (Sign out and pending sign-ups on home; Style, Colours and Group on a list). The layout used to render the breadcrumbs, with each page's actions placed separately in the same grid cell, so neither made room for the other and a long list name ran under the buttons.
 
 - The breadcrumbs and actions share one flex row. The current page's title shrinks and truncates with an ellipsis. The actions take the rest of the row, but never less than their icon-only width.
 - The actions are a size container. Below a threshold they show icons only, as square buttons. Each one wraps its text in `<ActionLabel>`, which is visually hidden then, so it stays the control's accessible name.
@@ -450,7 +472,7 @@ Each page under the app layout renders its own [`<PageHeader>`](app/components/p
 
 Notifications open a panel in the page grid's `notifications` row, between the breadcrumbs and the content, rather than floating over the page. It shows the newest one with a count of the rest. Successes are confirmations, so they clear themselves after 5s, with a small clock showing the time left. The countdown starts when the panel first shows one, so a success queued behind a newer notification waits its turn rather than clearing unseen; once started it keeps going even if covered, so one already seen doesn't come back later. It pauses while the panel is hovered or focused: the store stops its timers and keeps their time left, and the clock's CSS animation pauses with them (it starts part way through for one that's come back to the front). Everything else, and anything with an action (e.g. "Reload"), stays until the user clears it ("Clear", or "Clear all" when there's more than one). Showing one that's already queued (same `id`, which defaults to its type and message) moves it to the front instead of stacking a copy.
 
-- Call `toast.*` from `~/lib/toast` anywhere: loaders' flash messages (`remix-toast`, shown by the app and auth layouts), client actions and effects. It's a small external store, read by `<Notifications>` ([app/components/notifications](app/components/notifications)) with `useSyncExternalStore`.
+- Call `toast.*` from `~/lib/toast` anywhere: loaders' flash messages (`remix-toast`, shown by the app and auth layouts), client actions and effects. It's a small external store, read by `<Notifications>` ([app/components/notifications](apps/react-router/app/components/notifications)) with `useSyncExternalStore`.
 - It replaced Sonner, which floated toasts over the page, had to be lazy-loaded to stay off the critical path, and dropped toasts emitted before its `<Toaster>` mounted. The store has nothing to load and holds notifications until the panel reads them.
 - The panel animates `grid-template-rows` between `0fr` and `1fr` (skipped for reduced motion), and keeps the last notification on screen until the closing animation ends. Its `role="status"` region is always rendered, so screen readers announce new notifications.
 
@@ -460,13 +482,30 @@ Built as a Docker image (`Dockerfile`) and deployed via Coolify, which fronts
 the container with a Traefik reverse proxy that terminates TLS and forwards
 plain HTTP plus `X-Forwarded-Proto: https` / `X-Forwarded-Host`.
 
-Each push to `main` builds `ghcr.io/mattybalaam/shorpin:latest`, triggers the
-production app's Coolify webhook, and waits for `/version` to report the
-commit ([ci.yml](.github/workflows/ci.yml) `deploy`). Production deploys run
-one at a time (`concurrency: production`): they share the `:latest` tag and
-the Coolify app, so two merges close together raced and production could end
-up on the earlier commit. A merge landing while one deploy runs and another
-waits replaces the waiting one, so `main`'s latest commit still ships.
+Each push to `main` deploys every app in [deploy/apps.json](deploy/apps.json)
+marked `deploy: true`. For each one it builds the root `Dockerfile` with
+`APP=<app>`, pushes the app's `image` as `:latest`, triggers the Coolify
+webhook in the secret its `coolifyWebhookSecret` names, and waits for
+`https://<host>/version` to report the commit ([ci.yml](.github/workflows/ci.yml)
+`deploy`). React Router keeps `ghcr.io/mattybalaam/shorpin` and
+`COOLIFY_WEBHOOK_URL`, so its Coolify app needs no change. Each app's deploys
+run one at a time (`concurrency: production-<app>`): they share the `:latest`
+tag and the Coolify app, so two merges close together raced and production
+could end up on the earlier commit. A merge landing while one deploy runs and
+another waits replaces the waiting one, so `main`'s latest commit still ships.
+
+**Adding an app's deployment:**
+
+1. Add a Coolify app (Docker Image build pack) for the app's image, with its
+   domain, e.g. `https://html.shorpin.matthewbalaam.co.uk`. The DNS wildcard
+   for previews already covers it.
+2. Add its deploy webhook URL as a repo secret, e.g. `COOLIFY_HTML_FIRST_WEBHOOK_URL`.
+3. Add the app to `deploy/apps.json` with that `host`, an `image` such as
+   `ghcr.io/mattybalaam/shorpin-html-first`, the secret's name, and
+   `deploy: true`.
+
+Its CSRF origin check must allow its own host; the `*.shorpin.matthewbalaam.co.uk`
+wildcard below covers every subdomain.
 
 ### Forwarded-proto / action origin validation
 
@@ -536,7 +575,11 @@ picked on the login page, with a one-click user per preview.
    pointing at the same public IP as the production domain. Traefik requests a
    Let's Encrypt certificate per preview host over HTTP-01, so no wildcard
    certificate is needed.
-5. **Build variable.** Add `BUILD_SCRIPT=build:preview` as a build variable,
+5. **Build variables.** `APP` picks which app the Dockerfile builds (default
+   `react-router`). For another app's previews, add another previews app like
+   this one with its own `APP` and a URL template such as
+   `{{pr_id}}-html.shorpin.matthewbalaam.co.uk`, which stays one label deep.
+   Add `BUILD_SCRIPT=build:preview` as a build variable,
    both for the app itself and under **Environment Variables → Preview
    Deployments**. The Dockerfile runs `pnpm run "$BUILD_SCRIPT"` (default
    `build`), so production and staging are unaffected, and the app's own
@@ -563,14 +606,14 @@ removes the deployment when the PR is closed or merged.
 
 #### Choosing the backend
 
-[app/lib/supabase-backend.ts](app/lib/supabase-backend.ts) holds both
+[app/lib/supabase-backend.ts](apps/react-router/app/lib/supabase-backend.ts) holds both
 configs. A preview build with `VITE_TEST_SUPABASE_*` set shows a **Backend**
 choice on the dev login page: **Mock** or **Supabase test project**. Other
 builds compile the choice out and use `VITE_SUPABASE_*` as before.
 
 - **The choice is a `shorpin-backend` cookie**, set by the login action.
-  [supabase.server.ts](app/lib/supabase.server.ts) reads it for every
-  request's client, and [supabase.client.ts](app/lib/supabase.client.ts) for
+  [supabase.server.ts](apps/react-router/app/lib/supabase.server.ts) reads it for every
+  request's client, and [supabase.client.ts](apps/react-router/app/lib/supabase.client.ts) for
   realtime, so it isn't `HttpOnly`. The action signs in with a client for the
   chosen backend, since the request's cookie still names the old one.
 - **Sessions don't mix.** Supabase names its session cookie after the project
@@ -588,7 +631,7 @@ builds compile the choice out and use `VITE_SUPABASE_*` as before.
   small fixed pill at the top of every page says so, so a deployed preview
   can't be mistaken for real data. The root loader works it out from the
   backend cookie (`mocksEnabled` in
-  [supabase-backend.ts](app/lib/supabase-backend.ts)). It ignores clicks, and
+  [supabase-backend.ts](apps/react-router/app/lib/supabase-backend.ts)). It ignores clicks, and
   its colours are fixed rather than themed. Local mock builds (`pnpm dev`, the
   integration tests) don't show it, so the visual snapshots don't change.
 
@@ -603,12 +646,12 @@ quick-login users. Each preview gets its own pair, named after its host:
 - **Seeded like the mock.** The first sign-in creates both users and gives
   them the mock's lists, items and sharing (the owner's Shopping list is
   shared with the collaborator). Both seeds read
-  [mocks/seed-data.ts](mocks/seed-data.ts), so they can't drift apart.
+  [mocks/seed-data.ts](packages/mocks/seed-data.ts), so they can't drift apart.
   `lists.slug` is unique across the project, so seeded slugs get the preview's
   label as a suffix (`shopping-172`). Seeding only happens when the owner is
   new. If it fails, the new users are deleted again, so the next sign-in
   starts over instead of finding a half-seeded account.
-- [preview-user.server.ts](app/lib/preview-user.server.ts) creates the users
+- [preview-user.server.ts](apps/react-router/app/lib/preview-user.server.ts) creates the users
   with `admin.createUser` (already confirmed); the profile trigger adds their
   profiles. Sign-in needs no password: the admin API generates a magic-link
   token (nothing is emailed) and `verifyOtp` exchanges it for session

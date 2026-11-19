@@ -17,6 +17,10 @@ on:
         description: Branch, tag or commit to deploy
         required: true
         default: main
+      app:
+        description: App to deploy, a key of deploy/apps.json (ignored by branches from before the monorepo)
+        required: true
+        default: react-router
 
 # One staging deploy at a time; a newer one waits rather than cancelling a
 # half-pushed image.
@@ -100,6 +104,7 @@ jobs:
           # No VITE_SENTRY_DSN: staging errors would land in prod's Sentry
           # project with nothing to tell them apart.
           build-args: |
+            APP=${{ inputs.app }}
             VITE_SUPABASE_URL=${{ secrets.E2E_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.E2E_SUPABASE_ANON_KEY }}
             VITE_GIT_HASH=${{ env.SHA }}
@@ -121,7 +126,8 @@ jobs:
             sleep 5
           done
           [ "$deployed" = "$SHA" ] || { echo "::error::staging is on ${deployed:-nothing}, expected $SHA"; exit 1; }
-          echo "Deployed \`$REF\` ($SHA) to $STAGING_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed \`$APP\` from \`$REF\` ($SHA) to $STAGING_URL" >> "$GITHUB_STEP_SUMMARY"
         env:
           STAGING_URL: ${{ vars.STAGING_URL }}
           REF: ${{ inputs.ref }}
+          APP: ${{ inputs.app }}

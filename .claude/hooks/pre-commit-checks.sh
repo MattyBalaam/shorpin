@@ -69,77 +69,115 @@ fi
 
 # --- 2. Scoped integration tests ------------------------------------------
 #
-# Each staged file maps to the specs that cover it. Any file with no mapping
-# runs the full suite, so a new kind of file is never silently untested.
-SPECS=()
-RUN_ALL=""
+# The shared suite (packages/specs) runs once per app (deploy/apps.json).
+# Each staged file maps to the apps and specs that cover it, as
+# "<app> <spec>" lines: app "*" is every app, spec "*" the full suite. Any
+# file with no mapping runs the full suite for every app, so a new kind of
+# file is never silently untested.
+APPS=$(jq -r 'keys[]' deploy/apps.json)
+TARGETS=()
+RUN_ALL_REASON=""
 add_specs() {
-  local spec
-  for spec in "$@"; do SPECS+=("integration-tests/$spec"); done
+  local app=$1 spec
+  shift
+  for spec in "$@"; do TARGETS+=("$app integration-tests/$spec"); done
 }
 
+SPEC_DIR=packages/specs/integration-tests
 for f in "${STAGED[@]}"; do
   case "$f" in
-    *.css.ts | *.d.ts | *.md | *.toml | *.yaml | *.yml | .claude/* | .githooks/*) ;;
-    app/routes/home/*) add_specs home.spec.ts offline.spec.ts ;;
-    app/components/app-style/* | app/lib/app-style.ts) add_specs app-style.spec.ts home.spec.ts ;;
-    app/components/color-scheme/* | app/lib/color-scheme.ts) add_specs color-scheme.spec.ts ;;
-    app/components/notifications/* | app/lib/toast.ts) add_specs notifications.spec.ts auth.spec.ts list.spec.ts ;;
-    app/routes/list/*) add_specs list.spec.ts delete.spec.ts config.spec.ts offline.spec.ts bin.spec.ts ;;
-    app/routes/delete*) add_specs delete.spec.ts ;;
-    app/routes/auth/*) add_specs auth.spec.ts ;;
-    app/routes/sign-ups*) add_specs sign-ups.spec.ts ;;
-    # Needs a real Supabase instance — its own runner, not this one.
-    integration-tests/supabase-*) ;;
-    integration-tests/*.spec.ts) SPECS+=("$f") ;;
-    integration-tests/*.spec.ts-snapshots/*) SPECS+=("${f%%-snapshots/*}") ;;
-    *) RUN_ALL=$f ;;
+    *.css.ts | *.d.ts | *.md | *.toml | *.yaml | *.yml | .claude/* | .githooks/* | deploy/*) ;;
+    apps/react-router/app/routes/home/*) add_specs react-router home.spec.ts offline.spec.ts ;;
+    apps/react-router/app/components/app-style/* | apps/react-router/app/lib/app-style.ts) add_specs react-router app-style.spec.ts home.spec.ts ;;
+    apps/react-router/app/components/color-scheme/* | apps/react-router/app/lib/color-scheme.ts) add_specs react-router color-scheme.spec.ts ;;
+    apps/react-router/app/components/notifications/* | apps/react-router/app/lib/toast.ts) add_specs react-router notifications.spec.ts auth.spec.ts list.spec.ts ;;
+    apps/react-router/app/routes/list/*) add_specs react-router list.spec.ts delete.spec.ts config.spec.ts offline.spec.ts bin.spec.ts ;;
+    apps/react-router/app/routes/delete*) add_specs react-router delete.spec.ts ;;
+    apps/react-router/app/routes/auth/*) add_specs react-router auth.spec.ts ;;
+    apps/react-router/app/routes/sign-ups*) add_specs react-router sign-ups.spec.ts ;;
+    # Unit tests run in CI, not here.
+    apps/*.test.ts | apps/*.test.tsx) ;;
+    # Anything else in an app: that app's full suite.
+    apps/*/*) app=${f#apps/}; TARGETS+=("${app%%/*} *") ;;
+    # Needs a real Supabase instance: its own runner, not this one.
+    packages/specs/e2e/* | packages/specs/playwright.supabase.config.ts) ;;
+    # An app's adapter: that app's full suite. The shared adapter files: all.
+    packages/specs/apps/*.ts)
+      app=$(basename "$f" .ts)
+      case "$app" in index | types) TARGETS+=("* *") ;; *) TARGETS+=("$app *") ;; esac ;;
+    # A shared spec runs for every app; a snapshot only for its own app.
+    "$SPEC_DIR"/*.spec.ts) TARGETS+=("* ${f#packages/specs/}") ;;
+    "$SPEC_DIR"/*.spec.ts-snapshots/*/*)
+      spec=${f#packages/specs/}
+      spec=${spec%%-snapshots/*}
+      app=${f#*.spec.ts-snapshots/}
+      TARGETS+=("${app%%/*} $spec") ;;
+    *) TARGETS+=("* *"); RUN_ALL_REASON=$f ;;
   esac
 done
 
-if [ -n "$RUN_ALL" ]; then
-  SPECS=()
-  SCOPE="full suite ($RUN_ALL has no spec mapping)"
-elif [ ${#SPECS[@]} -eq 0 ]; then
-  exit 0
-else
-  lines_to_array SPECS <<<"$(printf '%s\n' "${SPECS[@]}" | sort -u)"
-  SCOPE="${SPECS[*]}"
-fi
+[ ${#TARGETS[@]} -eq 0 ] && exit 0
 
 LOG_DIR="${TMPDIR:-/tmp}"; LOG_DIR="${LOG_DIR%/}/claude-pre-commit"
 mkdir -p "$LOG_DIR"
-RUN="$LOG_DIR/$(date +%Y%m%d-%H%M%S)"
-
-echo "[pre-commit] Integration: $SCOPE (log: $RUN.log)" >&2
-
-# One retry, so a single flake doesn't block the commit; the summary below
-# still names anything that only passed on retry.
-PLAYWRIGHT_JSON_OUTPUT_FILE="$RUN.json" PLAYWRIGHT_JSON_OUTPUT_NAME="$RUN.json" \
-  pnpm test:integration --retries=1 --reporter=line,json "${SPECS[@]}" >"$RUN.log" 2>&1
-STATUS=$?
+STAMP=$(date +%Y%m%d-%H%M%S)
 
 tests_with_status() {
-  [ -f "$RUN.json" ] || return
+  [ -f "$2" ] || return
   jq -r --arg status "$1" '
     [.. | objects | select(has("specs")) | .specs[]
       | select(any(.tests[]; .status == $status))
       | "\(.file):\(.line) › \(.title)"]
-    | unique | .[]' "$RUN.json" 2>/dev/null
+    | unique | .[]' "$2" 2>/dev/null
 }
 
-if [ $STATUS -ne 0 ]; then
-  FAILED=$(tests_with_status unexpected)
-  deny "Integration tests failed ($SCOPE). Fix before committing.
+SUMMARY=()
+FLAKY_ALL=""
+for APP in $APPS; do
+  # This app's specs: its own targets and the every-app ones.
+  APP_SPECS=$(printf '%s\n' "${TARGETS[@]}" | awk -v app="$APP" '$1 == app || $1 == "*" { print $2 }' | sort -u)
+  [ -z "$APP_SPECS" ] && continue
+  if grep -qxF '*' <<<"$APP_SPECS"; then
+    SPECS=()
+    SCOPE="$APP: full suite${RUN_ALL_REASON:+ ($RUN_ALL_REASON has no spec mapping)}"
+  else
+    lines_to_array SPECS <<<"$APP_SPECS"
+    SCOPE="$APP: ${SPECS[*]}"
+  fi
+
+  RUN="$LOG_DIR/$STAMP-$APP"
+  echo "[pre-commit] Integration: $SCOPE (log: $RUN.log)" >&2
+
+  # One retry, so a single flake doesn't block the commit; the summary below
+  # still names anything that only passed on retry.
+  APP=$APP PLAYWRIGHT_JSON_OUTPUT_FILE="$RUN.json" PLAYWRIGHT_JSON_OUTPUT_NAME="$RUN.json" \
+    pnpm test:integration --retries=1 --reporter=line,json "${SPECS[@]}" >"$RUN.log" 2>&1
+  STATUS=$?
+
+  if [ $STATUS -ne 0 ]; then
+    FAILED=$(tests_with_status unexpected "$RUN.json")
+    deny "Integration tests failed ($SCOPE). Fix before committing.
 ${FAILED:-$(tail_output "$(cat "$RUN.log")")}
 Full output: $RUN.log"
-fi
+  fi
 
-FLAKY=$(tests_with_status flaky)
-if [ -n "$FLAKY" ]; then
-  pre_tool_decision allow "Integration tests passed ($SCOPE), but these only passed on retry:
+  FLAKY=$(tests_with_status flaky "$RUN.json")
+  if [ -n "$FLAKY" ]; then
+    FLAKY_ALL+="$APP:
 $FLAKY
-Full output: $RUN.log"
+Full output: $RUN.log
+"
+  fi
+  SUMMARY+=("$SCOPE")
+done
+
+[ ${#SUMMARY[@]} -eq 0 ] && exit 0
+SCOPE=$(printf '%s; ' "${SUMMARY[@]}")
+SCOPE=${SCOPE%; }
+
+if [ -n "$FLAKY_ALL" ]; then
+  pre_tool_decision allow "Integration tests passed ($SCOPE), but these only passed on retry:
+$FLAKY_ALL"
 fi
 
 pre_tool_decision allow "Integration tests passed ($SCOPE)."

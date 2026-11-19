@@ -15,7 +15,7 @@ mocks/server.ts    — Node HTTP server used for local dev and integration tests
 
 ### Local development (`pnpm dev`)
 
-`mocks/server.ts` starts on port 9001 (default). It:
+`packages/mocks/server.ts` starts on port 9001 (default). It:
 
 1. Seeds the DB with a fixed owner (`owner@test.com`) and collaborator (`collab@test.com`).
 2. Sets up MSW to intercept `fetch()` calls inside the Node process — so every Supabase API call the React Router server makes hits an MSW handler instead of the network.
@@ -25,14 +25,14 @@ The port is read from `MOCK_SERVER_PORT` env var (default `9001`), so it can be 
 
 ### Integration tests (`pnpm test:integration`)
 
-`pnpm test:integration` runs [`scripts/test-integration.mjs`](../scripts/test-integration.mjs), which finds free ports starting from `9001` (mock) and `5174` (app) before starting Playwright. This prevents port conflicts when `pnpm dev` or another test run is already using those ports.
+`pnpm test:integration` runs [`scripts/test-integration.mjs`](../packages/specs/scripts/test-integration.mjs), which finds free ports starting from `9001` (mock) and `5174` (app) before starting Playwright. This prevents port conflicts when `pnpm dev` or another test run is already using those ports.
 
 Playwright passes the chosen ports to both web servers as `MOCK_SERVER_PORT` / `APP_SERVER_PORT` env vars. The app is built with `react-router build --mode mock` before being served via `react-router-serve`, with `VITE_SUPABASE_URL=http://localhost:${mockPort}` baked in at build time so it always points at the correct mock instance. The `PORT` env var controls which port the production server listens on. A `timeout` of 120 s is set on the app webServer entry to accommodate the build step.
 
 Test isolation is handled through:
 
-- **UUID-namespaced users**: `createTestContext()` in `integration-tests/helpers.ts` generates unique `owner-{uuid}@test.com` / `collab-{uuid}@test.com` emails per test.
-- **Per-test DB reset**: the `ctx` fixture in `integration-tests/fixtures.ts` calls `POST /test/reset` before each test, which clears and re-seeds only the data for that test's users. The shared DB is never fully wiped, so parallel workers (`fullyParallel: true`) each operate on their own slice of data without interference.
+- **UUID-namespaced users**: `createTestContext()` in `packages/specs/integration-tests/helpers.ts` generates unique `owner-{uuid}@test.com` / `collab-{uuid}@test.com` emails per test.
+- **Per-test DB reset**: the `ctx` fixture in `packages/specs/integration-tests/fixtures.ts` calls `POST /test/reset` before each test, which clears and re-seeds only the data for that test's users. The shared DB is never fully wiped, so parallel workers (`fullyParallel: true`) each operate on their own slice of data without interference.
 - **User-scoped slug conflict checks**: the slug prefix query (used when creating a list to find an available slug) is scoped to the requesting user's `user_id`, preventing parallel workers from inflating each other's slug counters.
 
 The mock server handles `SIGTERM` and `SIGINT` gracefully, closing its HTTP listener before exiting. This ensures Playwright's webServer teardown (and Ctrl+C in local dev) does not leave orphaned processes holding the port.
@@ -56,23 +56,23 @@ The server intercepts all Supabase calls before they hit the network, so no real
 
 `msw` must stay external to the SSR bundle (only `@msw/data` is in `ssr.noExternal`): its `@mswjs/interceptors` dependency reads an `llhttp.wasm` file relative to its own module, which fails once inlined into `build/server`. The plugin only emits `mockServiceWorker.js` for client bundles that import `virtual:msw`, and none do, so no worker ships to the browser.
 
-`mocks/server.ts` runs under plain Node (not Vite), so it keeps using `setupServer` from `msw/node`. Handlers import from the v3 entrypoints: `msw/http` for `http`/`HttpResponse` and `msw/utils/<name>` for utilities like `delay`.
+`packages/mocks/server.ts` runs under plain Node (not Vite), so it keeps using `setupServer` from `msw/node`. Handlers import from the v3 entrypoints: `msw/http` for `http`/`HttpResponse` and `msw/utils/<name>` for utilities like `delay`.
 
 ## Key files
 
-| File                                                              | Purpose                                                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [mocks/db.ts](../mocks/db.ts)                                     | `@msw/data` collections — one per Supabase table. Valibot schemas are checked against `database.types.ts` at typecheck time so mock drift is caught early.                                                                                                      |
-| [mocks/handlers.ts](../mocks/handlers.ts)                         | Shared MSW handlers for auth (`/auth/v1/*`) and REST API (`/rest/v1/*`). Auth uses the email as the bearer token so any password works. Slug prefix checks are scoped to the requesting user to prevent parallel test workers from interfering with each other. |
-| [mocks/seed.ts](../mocks/seed.ts)                                 | Creates two users with lists and a collaborator relationship. Accepts email overrides so integration tests can seed isolated namespaced users.                                                                                                                  |
-| [mocks/server.ts](../mocks/server.ts)                             | Starts MSW in the Node process and wraps it in an HTTP server. Port is read from `MOCK_SERVER_PORT` (default `9001`). Exposes `POST /test/reset` for per-test isolation. Shuts down cleanly on SIGTERM/SIGINT.                                                  |
-| [scripts/test-integration.mjs](../scripts/test-integration.mjs)   | Port-finding wrapper that probes for free ports before starting Playwright, so concurrent runs never collide.                                                                                                                                                   |
-| [integration-tests/helpers.ts](../integration-tests/helpers.ts)   | `createTestContext()` generates UUID-namespaced emails. `resetDb()` posts to `/test/reset`. `login()` drives the login form and waits for React hydration at `/` before returning.                                                                              |
-| [integration-tests/fixtures.ts](../integration-tests/fixtures.ts) | Playwright `ctx` fixture that calls `resetDb` before each test and forwards browser console / page errors to stdout. Import `test` and `expect` from here, not from `@playwright/test`.                                                                         |
+| File                                                                             | Purpose                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [mocks/db.ts](../packages/mocks/db.ts)                                           | `@msw/data` collections — one per Supabase table. Valibot schemas are checked against `database.types.ts` at typecheck time so mock drift is caught early.                                                                                                      |
+| [mocks/handlers.ts](../packages/mocks/handlers.ts)                               | Shared MSW handlers for auth (`/auth/v1/*`) and REST API (`/rest/v1/*`). Auth uses the email as the bearer token so any password works. Slug prefix checks are scoped to the requesting user to prevent parallel test workers from interfering with each other. |
+| [mocks/seed.ts](../packages/mocks/seed.ts)                                       | Creates two users with lists and a collaborator relationship. Accepts email overrides so integration tests can seed isolated namespaced users.                                                                                                                  |
+| [mocks/server.ts](../packages/mocks/server.ts)                                   | Starts MSW in the Node process and wraps it in an HTTP server. Port is read from `MOCK_SERVER_PORT` (default `9001`). Exposes `POST /test/reset` for per-test isolation. Shuts down cleanly on SIGTERM/SIGINT.                                                  |
+| [scripts/test-integration.mjs](../packages/specs/scripts/test-integration.mjs)   | Port-finding wrapper that probes for free ports before starting Playwright, so concurrent runs never collide.                                                                                                                                                   |
+| [integration-tests/helpers.ts](../packages/specs/integration-tests/helpers.ts)   | `createTestContext()` generates UUID-namespaced emails. `resetDb()` posts to `/test/reset`. `login()` drives the login form and waits for React hydration at `/` before returning.                                                                              |
+| [integration-tests/fixtures.ts](../packages/specs/integration-tests/fixtures.ts) | Playwright `ctx` fixture that calls `resetDb` before each test and forwards browser console / page errors to stdout. Import `test` and `expect` from here, not from `@playwright/test`.                                                                         |
 
 ## Schema contract checks
 
-`mocks/db.ts` includes a compile-time assertion that each mock schema is assignable to the corresponding Supabase `Tables<"...">` type:
+`packages/mocks/db.ts` includes a compile-time assertion that each mock schema is assignable to the corresponding Supabase `Tables<"...">` type:
 
 ```ts
 void ({

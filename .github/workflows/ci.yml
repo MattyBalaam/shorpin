@@ -124,7 +124,27 @@ jobs:
 
       - run: pnpm verify
 
-      - run: pnpm vitest run
+      - run: pnpm test:unit
+
+  # The apps in deploy/apps.json, which every app-specific job runs once for.
+  apps:
+    runs-on: ubuntu-latest
+    outputs:
+      all: ${{ steps.apps.outputs.all }}
+      deployed: ${{ steps.apps.outputs.deployed }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: apps
+        run: |
+          node -e '
+            const apps = require("./deploy/apps.json");
+            const deployed = Object.entries(apps)
+              .filter(([, app]) => app.deploy)
+              .map(([name, app]) => ({ name, ...app }));
+            console.log(`all=${JSON.stringify(Object.keys(apps))}`);
+            console.log(`deployed=${JSON.stringify(deployed)}`);
+          ' >> "$GITHUB_OUTPUT"
 
   playwright-version:
     if: github.event_name == 'pull_request'
@@ -134,15 +154,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Pinned once for the whole workspace, in the pnpm catalog.
       - id: version
-        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(sed -nE 's/^ *"@playwright\/test": "(.+)"$/\1/p' pnpm-workspace.yaml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
+  # The shared suite, once per app (packages/specs, README "Monorepo").
   integration:
     if: github.event_name == 'pull_request'
-    needs: playwright-version
+    needs: [apps, playwright-version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.apps.outputs.all) }}
+    env:
+      APP: ${{ matrix.app }}
     container:
       image: ${{ needs.playwright-version.outputs.image }}
       options: --ipc=host
@@ -163,25 +193,38 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-report-${{ matrix.app }}
+          path: packages/specs/playwright-report/
           retention-days: 7
 
+      # Into reports/<app>/ only, keeping the other apps' reports and the
+      # benchmark dashboard (/bench/) on gh-pages.
       - name: Deploy report to GitHub Pages
         if: failure()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./playwright-report
+          publish_dir: ./packages/specs/playwright-report
+          destination_dir: reports/${{ matrix.app }}
+          keep_files: true
 
       - name: Link to report
         if: failure()
-        run: echo "### [View Playwright Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
+        run: echo "### [View Playwright Report (${{ matrix.app }})](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ matrix.app }}/)" >> $GITHUB_STEP_SUMMARY
 
   e2e-supabase:
     if: github.event_name == 'pull_request'
-    needs: playwright-version
+    needs: [apps, playwright-version]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Every app shares the one e2e project, whose setup and teardown reset
+      # its data, so the apps take turns.
+      max-parallel: 1
+      matrix:
+        app: ${{ fromJSON(needs.apps.outputs.all) }}
+    env:
+      APP: ${{ matrix.app }}
     container:
       image: ${{ needs.playwright-version.outputs.image }}
       options: --ipc=host
@@ -241,8 +284,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-supabase
-          path: playwright-report/
+          name: playwright-report-supabase-${{ matrix.app }}
+          path: packages/specs/playwright-report/
           retention-days: 7
 
   migrate-prod:
@@ -290,19 +333,28 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
+  # Each app in deploy/apps.json with `deploy: true`, to its own subdomain.
   deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: migrate-prod
-    # One production deploy at a time. Every deploy pushes the same `:latest`
-    # tag and triggers the same Coolify app, so two merges close together
-    # raced: production landed on the earlier commit and the later run's smoke
-    # test failed. Queued, the later run deploys after the earlier one.
-    # GitHub keeps one pending run per group, so a third merge replaces the
-    # second's pending run (shown as cancelled) and main's latest still ships.
+    needs: [apps, migrate-prod]
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.apps.outputs.deployed) }}
+    # One production deploy per app at a time. Every deploy pushes the same
+    # `:latest` tag and triggers the same Coolify app, so two merges close
+    # together raced: production landed on the earlier commit and the later
+    # run's smoke test failed. Queued, the later run deploys after the
+    # earlier one. GitHub keeps one pending run per group, so a third merge
+    # replaces the second's pending run (shown as cancelled) and main's
+    # latest still ships.
     concurrency:
-      group: production
+      group: production-${{ matrix.app.name }}
       cancel-in-progress: false
+    env:
+      IMAGE_NAME: ${{ matrix.app.image }}
+      APP_URL: https://${{ matrix.app.host }}
     permissions:
       contents: read
       packages: write
@@ -320,9 +372,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Set image name
-        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
-
       - name: Resolve PR number for commit
         run: |
           PR_NUMBER=$(curl -fsSL \
@@ -338,9 +387,10 @@ jobs:
           context: .
           push: true
           tags: ${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
           build-args: |
+            APP=${{ matrix.app.name }}
             VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.SUPABASE_ANON_KEY }}
             VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
@@ -351,7 +401,7 @@ jobs:
 
       - name: Trigger Coolify deploy
         run: |
-          curl -X POST "${{ secrets.COOLIFY_WEBHOOK_URL }}" \
+          curl -X POST "${{ secrets[matrix.app.coolifyWebhookSecret] }}" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
             -w "\nHTTP Status: %{http_code}\n" \
             -f
@@ -359,14 +409,14 @@ jobs:
       - name: Smoke test deploy
         run: |
           for i in $(seq 1 30); do
-            deployed=$(curl -fsS https://shorpin.matthewbalaam.co.uk/version | jq -r .hash)
+            deployed=$(curl -fsS "$APP_URL/version" | jq -r .hash)
             [ "$deployed" = "${{ github.sha }}" ] && break
             sleep 5
           done
           [ "$deployed" = "${{ github.sha }}" ] || { echo "::error::still on $deployed, expected ${{ github.sha }}"; exit 1; }
 
-          status=$(curl -s -o /tmp/body.txt -w '%{http_code}' -X POST https://shorpin.matthewbalaam.co.uk/login \
-            -H "Origin: https://shorpin.matthewbalaam.co.uk" \
+          status=$(curl -s -o /tmp/body.txt -w '%{http_code}' -X POST "$APP_URL/login" \
+            -H "Origin: $APP_URL" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "email=smoketest@example.com" \
             --data-urlencode "password=smoke-test")

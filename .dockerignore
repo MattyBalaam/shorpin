@@ -1,12 +1,18 @@
-node_modules
-build
+**/node_modules
+**/build
+**/dist
+**/.output
+**/.react-router
+**/.tanstack
 .git
 .github
-playwright-report
-test-results
+**/playwright-report
+**/test-results
+bench-results
 supabase/.branches
 supabase/.temp
-.env*
+**/.env*
 # Placeholder values only; needed by `build:preview` (see Dockerfile BUILD_SCRIPT)
-!.env.preview
-*.local
+!apps/*/.env.preview
+!apps/*/.env.mock
+**/*.local

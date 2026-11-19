@@ -1,0 +1,10 @@
+{
+  "name": "@shorpin/database",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types generated from the shared Supabase schema (supabase/migrations).",
+  "type": "module",
+  "exports": {
+    ".": "./database.types.ts"
+  }
+}
