@@ -41,6 +41,26 @@ export const reactRouter: AppAdapter = {
     headers: { "X-Remix-Redirect": location, "X-Remix-Status": "302" },
   }),
 
+  // The Supabase realtime WebSocket (Phoenix channels).
+  realtime: {
+    async trackJoins(page) {
+      let joins = 0;
+      await page.routeWebSocket(/\/realtime\//, (ws) => {
+        const server = ws.connectToServer();
+        server.onMessage((message) => {
+          // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
+          const [, , topic, event] = JSON.parse(String(message)) as unknown[];
+          if (event === "phx_reply" && String(topic).includes("list-")) joins += 1;
+          ws.send(message);
+        });
+      });
+      return () => joins;
+    },
+    async block(page) {
+      await page.routeWebSocket(/\/realtime\//, () => {});
+    },
+  },
+
   offlineQueue: { database: "shorpin-offline", store: "mutation-queue" },
 
   parityGaps: [],

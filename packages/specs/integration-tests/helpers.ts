@@ -127,5 +127,11 @@ export async function expectPageSnapshot(
   const { pathname } = new URL(page.url());
   await expect(page.locator(`html[data-hydrated-path="${pathname}"]`)).toBeAttached();
   await page.evaluate(() => document.fonts.ready);
+  // Wherever the last click left it, the pointer could be hovering a row.
+  await page.mouse.move(0, 0);
+  // Hover state updates on the next frame.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask });
 }

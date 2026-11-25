@@ -11,7 +11,17 @@ test("a success notification clears itself", async ({ page, ctx }) => {
 
   const panel = page.getByRole("region", { name: "Notifications" });
   await expect(panel.getByText("You have been logged out.")).toBeVisible();
-  await expect(panel).toHaveJSProperty("offsetHeight", 0, { timeout: 10_000 });
+  // Read with a plain evaluate: the dismissal is a CSS animation, and
+  // polling it through the role locator kept it from finishing in Chromium.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => document.querySelector<HTMLElement>("[aria-label=Notifications]")?.offsetHeight,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(0);
 });
 
 test("shows the newest notification with a count, and clears one or all", async ({

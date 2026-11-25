@@ -69,7 +69,7 @@ Each worker's seed contains:
 
 ### Hydration gate
 
-`login()` in `integration-tests/helpers.ts` waits for the app to hydrate at `/` before returning. The app writes `data-hydrated-path="/"` to `<html>` inside a `useEffect` (client-only) after every route render. The helper asserts that attribute is present within 300ms:
+`login()` in `integration-tests/helpers.ts` waits for the app to hydrate at `/` before returning. Every app writes `data-hydrated-path` to `<html>` once it can take input: React Router in a `useEffect` after every route render, html-first in `client/enhance/base.ts` once its module scripts have run and any incoming view transition has finished. The helper asserts that attribute is present within 300ms:
 
 ```ts
 await expect(page.locator('html[data-hydrated-path="/"]')).toBeAttached({ timeout: 300 });
