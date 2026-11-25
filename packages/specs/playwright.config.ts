@@ -6,11 +6,16 @@ const appPort = process.env.APP_SERVER_PORT ?? "5174";
 
 const useDevServer = process.argv.includes("--dev");
 
+// Specs for one app only live in integration-tests/app-only/<app>/; every
+// other app's folder is skipped.
+const otherAppsOnly = new RegExp(`/app-only/(?!${appName}/)`);
+const supabaseSpecs = "**/supabase-*.spec.ts";
+
 function visualProject(name: string, use: Project["use"]): Project {
   return {
     name,
     grep: /@visual/,
-    testIgnore: ["**/supabase-*.spec.ts"],
+    testIgnore: [supabaseSpecs, otherAppsOnly],
     // The service worker's "Offline support ready" toast appears at a
     // timing-dependent point, so keep it out of the snapshots.
     use: { ...use, serviceWorkers: "block" },
@@ -21,7 +26,7 @@ export default defineConfig({
   testDir: "./integration-tests",
   // Each app renders its own pixels, so each keeps its own baselines.
   snapshotPathTemplate: `{testDir}/{testFileName}-snapshots/${appName}/{arg}{-projectName}{-snapshotSuffix}{ext}`,
-  testIgnore: ["**/supabase-*.spec.ts"],
+  testIgnore: [supabaseSpecs, otherAppsOnly],
   fullyParallel: true,
   reporter: [["html", { open: "never" }]],
   use: {
@@ -30,8 +35,15 @@ export default defineConfig({
   },
   projects: [
     {
+      // Core flows with JavaScript off, for an app that must work as plain
+      // HTML (its app-only no-js.spec.ts).
+      name: "no-js",
+      use: { javaScriptEnabled: false },
+      testMatch: "**/no-js.spec.ts",
+    },
+    {
       name: "desktop",
-      testIgnore: ["**/supabase-*.spec.ts", "**/touch.spec.ts"],
+      testIgnore: [supabaseSpecs, otherAppsOnly, "**/touch.spec.ts", "**/no-js.spec.ts"],
       grepInvert: /@visual/,
     },
     {

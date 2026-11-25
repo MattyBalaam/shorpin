@@ -1,0 +1,45 @@
+{
+  "name": "@shorpin/html-first",
+  "version": "0.2.0",
+  "private": true,
+  "files": [
+    "dist",
+    "server",
+    "lib"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --kill-others --names mock,client,sw,server \"pnpm --filter @shorpin/mocks start\" \"vite build --watch --mode development\" \"vite build --watch --mode development --config vite.sw.config.ts\" \"node --watch-path=server --watch-path=lib --env-file=.env.mock server/index.ts\"",
+    "dev:mock": "concurrently --kill-others --names client,sw,server \"vite build --watch --mode development\" \"vite build --watch --mode development --config vite.sw.config.ts\" \"node --watch-path=server --watch-path=lib --env-file=.env.mock server/index.ts\"",
+    "dev:supabase": "concurrently --kill-others --names client,sw,server \"vite build --watch --mode development\" \"vite build --watch --mode development --config vite.sw.config.ts\" \"node --watch-path=server --watch-path=lib --env-file-if-exists=.env server/index.ts\"",
+    "build": "vite build && vite build --config vite.sw.config.ts",
+    "build:mock": "pnpm build && cp .env.mock dist/runtime.env",
+    "build:preview": "pnpm build && vite build --config vite.preview.config.ts && cp .env.preview dist/runtime.env",
+    "serve": "node server/index.ts",
+    "start": "NODE_ENV=production node --env-file-if-exists=.env server/index.ts",
+    "typecheck": "tsc && tsc -p client/sw.tsconfig.json",
+    "test": "vitest",
+    "test:unit": "vitest run",
+    "generate-pwa-assets": "pwa-assets-generator && mv public/icons/favicon.ico public/favicon.ico"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "catalog:",
+    "hono": "4.13.17",
+    "linkify-it": "^6.1.0",
+    "valibot": "catalog:"
+  },
+  "devDependencies": {
+    "@msw/data": "catalog:",
+    "@shorpin/database": "workspace:*",
+    "@shorpin/mocks": "workspace:*",
+    "@types/node": "catalog:",
+    "@vite-pwa/assets-generator": "2.0.0",
+    "concurrently": "10.0.6",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

@@ -4,5 +4,11 @@
     "image": "ghcr.io/mattybalaam/shorpin",
     "coolifyWebhookSecret": "COOLIFY_WEBHOOK_URL",
     "deploy": true
+  },
+  "html-first": {
+    "host": "html.shorpin.matthewbalaam.co.uk",
+    "image": "ghcr.io/mattybalaam/shorpin-html-first",
+    "coolifyWebhookSecret": "COOLIFY_WEBHOOK_URL_HTML_FIRST",
+    "deploy": false
   }
 }

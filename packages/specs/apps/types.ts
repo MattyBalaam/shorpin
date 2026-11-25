@@ -1,4 +1,4 @@
-import type { Route } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 
 /**
  * Matches the URL of a request the app makes. A plain function so it works
@@ -59,6 +59,21 @@ export interface AppAdapter {
    * encodes it as a 204 with headers rather than a 3xx.
    */
   redirect(location: string): FulfillOptions;
+
+  /**
+   * The live-update channel that tells an open list another member changed
+   * it, for specs that wait on it or cut it off.
+   */
+  realtime: {
+    /**
+     * Counts the list subscriptions `page` opens from now on. A test that
+     * expects an update waits for one first, or the change can land before
+     * anyone is listening.
+     */
+    trackJoins(page: Page): Promise<() => number>;
+    /** Keeps `page`'s live-update connection from opening, as for a suspended tab. */
+    block(page: Page): Promise<void>;
+  };
 
   /** Where the client keeps changes made offline until they sync. */
   offlineQueue: { database: string; store: string };

@@ -69,6 +69,25 @@ export async function login(page: Page, email: string) {
 }
 
 /**
+ * Clears the notification sign-in leaves on home ("Welcome back!"), as a
+ * user would. Left alone, html-first collapses it after 5s, shifting the rows
+ * under a test that's mid-drag.
+ */
+export async function clearNotifications(page: Page) {
+  const notifications = page.getByRole("region", { name: "Notifications" });
+  await notifications.getByRole("button", { name: "Clear", exact: true }).click();
+  // Gone, whether an app removes the message or collapses the panel over it.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const panel = document.querySelector<HTMLElement>("[aria-label=Notifications]");
+        return !panel?.textContent?.includes("Welcome back!") || panel.offsetHeight === 0;
+      }),
+    )
+    .toBe(true);
+}
+
+/**
  * Intercepts the first GET matching `urlPattern` and holds it until the
  * returned `release()` is called. Subsequent matching GETs pass through
  * immediately so they don't accumulate after the test releases.
@@ -127,5 +146,11 @@ export async function expectPageSnapshot(
   const { pathname } = new URL(page.url());
   await expect(page.locator(`html[data-hydrated-path="${pathname}"]`)).toBeAttached();
   await page.evaluate(() => document.fonts.ready);
+  // Wherever the last click left it, the pointer could be hovering a row.
+  await page.mouse.move(0, 0);
+  // Hover state updates on the next frame.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true, mask });
 }

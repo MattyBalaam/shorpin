@@ -251,6 +251,39 @@ export const handlers = [
     const isUpsert = (request.headers.get("Prefer") ?? "").includes("resolution=merge-duplicates");
     const rawBody = await request.json();
 
+    // Insert-or-skip (supabase-js upsert with ignoreDuplicates): a repeated
+    // id is a no-op, which is what makes replayed adds safe. Used by
+    // html-first's offline queue.
+    if ((request.headers.get("Prefer") ?? "").includes("resolution=ignore-duplicates")) {
+      const rows = (Array.isArray(rawBody) ? rawBody : [rawBody]) as Array<{
+        id: string;
+        list_id: string;
+        value: string;
+        state: "active" | "deleted";
+        sort_order: number;
+        updated_at: number;
+        updated_by?: string;
+      }>;
+      for (const row of rows) {
+        if (listItems.findFirst((q) => q.where({ id: row.id }))) continue;
+        await listItems.create({
+          id: row.id,
+          list_id: row.list_id,
+          value: row.value,
+          state: row.state,
+          sort_order: row.sort_order,
+          updated_at: row.updated_at,
+          updated_by: row.updated_by,
+        });
+        await lists.update((q) => q.where({ id: row.list_id }), {
+          data(draft) {
+            draft.updated_at = row.updated_at;
+          },
+        });
+      }
+      return HttpResponse.json([], { status: 201 });
+    }
+
     if (isUpsert) {
       const items = (Array.isArray(rawBody) ? rawBody : [rawBody]) as Array<{
         id: string;
@@ -322,6 +355,7 @@ export const handlers = [
       state?: "active" | "deleted";
       sort_order?: number;
       updated_at?: number;
+      updated_by?: string;
     };
     const idParam = url.searchParams.get("id")?.replace("eq.", "");
     if (idParam) {
@@ -332,6 +366,7 @@ export const handlers = [
           if (body.state !== undefined) draft.state = body.state;
           if (body.sort_order !== undefined) draft.sort_order = body.sort_order;
           if (body.updated_at !== undefined) draft.updated_at = now;
+          if (body.updated_by !== undefined) draft.updated_by = body.updated_by;
         },
       });
       const item = await listItems.findFirst((q) => q.where({ id: idParam }));

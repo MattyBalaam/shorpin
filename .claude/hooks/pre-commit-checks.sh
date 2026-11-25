@@ -105,6 +105,11 @@ for f in "${STAGED[@]}"; do
     packages/specs/apps/*.ts)
       app=$(basename "$f" .ts)
       case "$app" in index | types) TARGETS+=("* *") ;; *) TARGETS+=("$app *") ;; esac ;;
+    # An app-only spec runs for its own app. Before the shared pattern below,
+    # whose `*` would match the subfolders too.
+    "$SPEC_DIR"/app-only/*/*.spec.ts)
+      app=${f#"$SPEC_DIR"/app-only/}
+      TARGETS+=("${app%%/*} ${f#packages/specs/}") ;;
     # A shared spec runs for every app; a snapshot only for its own app.
     "$SPEC_DIR"/*.spec.ts) TARGETS+=("* ${f#packages/specs/}") ;;
     "$SPEC_DIR"/*.spec.ts-snapshots/*/*)

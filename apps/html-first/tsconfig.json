@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["server", "lib", "client", "*.ts"],
+  "exclude": ["dist", "client/sw.ts"],
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2024", "ESNext.Collection"],
+    "types": ["node", "vite/client"],
+    "target": "ES2024",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    // The server runs as plain .ts through Node's type stripping: imports
+    // name the real file, and nothing may need emitting (no enums,
+    // namespaces or parameter properties).
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true
+  }
+}

@@ -36,25 +36,6 @@ function queuedMutationCount(page: Page) {
   );
 }
 
-/**
- * Counts the page's realtime join replies for list channels. The channel joins
- * lazily after render, so a test that expects a broadcast must wait for the
- * join first, or the broadcast can go out before anyone is listening.
- */
-async function trackListChannelJoins(page: Page) {
-  let joins = 0;
-  await page.routeWebSocket(/\/realtime\//, (ws) => {
-    const server = ws.connectToServer();
-    server.onMessage((message) => {
-      // Phoenix v2 frames: [join_ref, ref, topic, event, payload].
-      const [, , topic, event] = JSON.parse(String(message)) as unknown[];
-      if (event === "phx_reply" && String(topic).includes("list-")) joins += 1;
-      ws.send(message);
-    });
-  });
-  return () => joins;
-}
-
 test("list shows all items", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -112,7 +93,9 @@ test("an item added to a long list is scrolled into view @webkit", async ({ page
           return li.getBoundingClientRect().bottom - scroller.getBoundingClientRect().bottom;
         }),
       )
-      .toBeLessThanOrEqual(0);
+      // Within a pixel: the scroll range is whole pixels, rows needn't be,
+      // so the last row can sit a fraction past the end.
+      .toBeLessThan(1);
   }
 });
 
@@ -228,8 +211,9 @@ test("editing an item in the modal saves the new value", async ({ page, ctx }) =
 
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
-  // Values are plain text now, not editable fields.
-  await expect(page.locator("li textarea")).toHaveCount(0);
+  // Values are plain text, not editable fields (an app may keep a closed
+  // edit dialog's textarea in the row).
+  await expect(page.locator("li textarea:visible")).toHaveCount(0);
 
   await openList(page, "shopping");
   await expect(page.getByRole("button", { name: "Edit Oat Milk" })).toBeVisible();
@@ -565,14 +549,16 @@ test("an item added offline syncs to the server on reconnect", async ({ page, ct
 test("an add that fails before the browser reports offline is queued, not an error", async ({
   page,
   ctx,
+  context,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
   await expect(page.getByLabel("Edit Milk")).toBeVisible();
 
   // A dead connection that navigator.onLine hasn't noticed yet — what a
-  // phone does for a few seconds after losing signal.
-  await page.route(shoppingData, (route) => route.abort("internetdisconnected"));
+  // phone does for a few seconds after losing signal. On the context, not
+  // the page: an app's service worker may be what sends the request.
+  await context.route(shoppingData, (route) => route.abort("internetdisconnected"));
 
   await page.getByLabel("New item").fill("Lie-fi butter");
   await page.getByRole("button", { name: "Add" }).click();
@@ -583,7 +569,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 
   // No offline→online transition happens, so the sync's own backoff retry
   // has to deliver it once the server is reachable.
-  await page.unroute(shoppingData);
+  await context.unroute(shoppingData);
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -593,6 +579,7 @@ test("an add that fails before the browser reports offline is queued, not an err
 test("an add whose response is lost isn't duplicated when the queued copy syncs", async ({
   page,
   ctx,
+  context,
 }) => {
   await login(page, ctx.ownerEmail);
   await openList(page, "shopping");
@@ -600,7 +587,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
 
   // The POST reaches the server and is applied, but the response never
   // makes it back, so the client queues the same add offline.
-  await page.route(shoppingData, async (route) => {
+  await context.route(shoppingData, async (route) => {
     if (route.request().method() === "POST") await route.fetch();
     await route.abort("internetdisconnected");
   });
@@ -610,7 +597,7 @@ test("an add whose response is lost isn't duplicated when the queued copy syncs"
   await expect(page.getByLabel("Edit Lost-response jam")).toBeVisible();
   await expect.poll(() => queuedMutationCount(page)).toBeGreaterThan(0);
 
-  await page.unroute(shoppingData);
+  await context.unroute(shoppingData);
   await expect.poll(() => queuedMutationCount(page), { timeout: 10000 }).toBe(0);
 
   await openList(page, "shopping");
@@ -888,7 +875,7 @@ test("coming back to the app refetches the list, so an add keeps items added els
     await login(collabPage, ctx.collabEmail);
 
     // The owner's realtime connection never opens, as for a suspended tab.
-    await ownerPage.routeWebSocket(/\/realtime\//, () => {});
+    await app.realtime.block(ownerPage);
     await openList(ownerPage, "shopping");
 
     await openList(collabPage, "shopping");
@@ -995,7 +982,7 @@ async function withStaleOwnerList(
     await login(ownerPage, ctx.ownerEmail);
     await login(collabPage, ctx.collabEmail);
 
-    await ownerPage.routeWebSocket(/\/realtime\//, () => {});
+    await app.realtime.block(ownerPage);
     await openList(ownerPage, "shopping");
 
     await openList(collabPage, "shopping");
@@ -1070,7 +1057,7 @@ test("own changes do not trigger the updated-by-another-user notification", asyn
     await login(collabPage, ctx.collabEmail);
 
     await openList(ownerPage, "shopping");
-    const collabJoins = await trackListChannelJoins(collabPage);
+    const collabJoins = await app.realtime.trackJoins(collabPage);
     await openList(collabPage, "shopping");
     await expect.poll(collabJoins).toBeGreaterThan(0);
 
@@ -1185,7 +1172,7 @@ test("collab sees real-time update when owner adds an item", async ({ browser, c
 
     // Both navigate to the owner's Shopping list (collab is a member)
     await openList(ownerPage, "shopping");
-    const collabJoins = await trackListChannelJoins(collabPage);
+    const collabJoins = await app.realtime.trackJoins(collabPage);
     await openList(collabPage, "shopping");
     await expect.poll(collabJoins).toBeGreaterThan(0);
 

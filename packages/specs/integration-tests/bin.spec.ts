@@ -12,10 +12,13 @@ function listSaved(page: Page, slug: string) {
   return page.waitForResponse(isPost(app.requests.list(slug)));
 }
 
-/** Deletes an item and waits for the save and the reload after it. */
+/**
+ * Deletes an item and waits for the save and the reload after it. The reload
+ * is awaited on the context: an app's service worker may be what makes it.
+ */
 async function deleteItem(page: Page, name: string) {
   const saved = listSaved(page, "shopping");
-  const reloaded = page.waitForResponse(isGet(app.requests.list("shopping")));
+  const reloaded = page.context().waitForEvent("response", isGet(app.requests.list("shopping")));
   await page.getByRole("button", { name: `Delete ${name}` }).click();
   await saved;
   await reloaded;

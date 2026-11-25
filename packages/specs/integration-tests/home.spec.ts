@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { app, expectPageSnapshot, isPost, login } from "./helpers";
+import { app, clearNotifications, expectPageSnapshot, isPost, login } from "./helpers";
 
 test("owner can create a new list", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
@@ -141,6 +141,7 @@ test("owner sees their two lists", async ({ page, ctx }) => {
 
 test("owner can reorder lists from home", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
+  await clearNotifications(page);
 
   const getListOrder = async () =>
     page.locator('li a[href^="/lists/"]').evaluateAll((elements) => {
@@ -186,6 +187,7 @@ test("owner can reorder lists while offline, synced on reconnect", async ({
   context,
 }) => {
   await login(page, ctx.ownerEmail);
+  await clearNotifications(page);
 
   const getListOrder = async () =>
     page
@@ -239,6 +241,7 @@ test("owner can reorder lists while offline, synced on reconnect", async ({
 
 test("reordering does not snap back immediately after drop", async ({ page, ctx }) => {
   await login(page, ctx.ownerEmail);
+  await clearNotifications(page);
 
   const firstList = () => page.locator('li a[href^="/lists/"]').first();
 

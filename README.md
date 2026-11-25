@@ -22,15 +22,17 @@ The repo holds several implementations of the same app, so they can be compared 
 
 ```
 apps/react-router/     React Router SSR: production, documented in the rest of this README
+apps/html-first/       Hono, HTML-first with progressive enhancement (its own README)
 packages/specs/        Playwright suites (integration-tests/, e2e/), run against any app
   apps/<app>.ts        each app's adapter: how to serve it, its wire format, its parity gaps
+  integration-tests/app-only/<app>/   specs for one app only, e.g. html-first's no-JS flows
 packages/mocks/        MSW mock of the Supabase API: dev loops, preview builds, specs
 packages/database/     types generated from the shared schema
 supabase/              the shared schema's migrations
 deploy/apps.json       each app's subdomain, image and Coolify webhook
 ```
 
-- **One suite, many apps.** `APP=<name> pnpm test:integration` runs the shared specs against one app (React Router by default). Specs describe what a user sees: roles, labels and URLs, which every app must share. When a test has to touch the wire (wait for a save, cut the network to one endpoint, fake a redirect), it asks the app's adapter by intent, e.g. `isPost(app.requests.list("shopping"))`, rather than matching React Router's `.data` URLs. A spec an app doesn't pass yet goes in that adapter's `parityGaps`, which marks it `test.fixme` with a reason, so the gap shows in every report instead of being deleted. Visual baselines are per app (`<spec>-snapshots/<app>/`), since each app renders its own pixels.
+- **One suite, many apps.** `APP=<name> pnpm test:integration` runs the shared specs against one app (React Router by default). Specs describe what a user sees: roles, labels and URLs, which every app must share. When a test has to touch the wire (wait for a save, cut the network to one endpoint, fake a redirect), it asks the app's adapter by intent, e.g. `isPost(app.requests.list("shopping"))`, rather than matching React Router's `.data` URLs. A spec an app doesn't pass yet goes in that adapter's `parityGaps`, which marks it `test.fixme` with a reason, so the gap shows in every report instead of being deleted. Visual baselines are per app (`<spec>-snapshots/<app>/`), since each app renders its own pixels. A behaviour only one app has gets a spec in `integration-tests/app-only/<app>/`, which only that app's run picks up (see [packages/specs/README.md](packages/specs/README.md)).
 - **One database.** Every app reads and writes the same Supabase project, so `supabase/migrations` must stay compatible with all of them. The mock is shared for the same reason.
 - **Shared versions.** Dependencies used by more than one package are pinned once in the `catalog:` of [pnpm-workspace.yaml](pnpm-workspace.yaml).
 - **One Dockerfile.** The root [Dockerfile](Dockerfile) builds the app named by the `APP` build argument and copies just that package and its dependencies into the image with `pnpm deploy`.
@@ -499,13 +501,18 @@ another waits replaces the waiting one, so `main`'s latest commit still ships.
 1. Add a Coolify app (Docker Image build pack) for the app's image, with its
    domain, e.g. `https://html.shorpin.matthewbalaam.co.uk`. The DNS wildcard
    for previews already covers it.
-2. Add its deploy webhook URL as a repo secret, e.g. `COOLIFY_HTML_FIRST_WEBHOOK_URL`.
+2. Add its deploy webhook URL as a repo secret, e.g. `COOLIFY_WEBHOOK_URL_HTML_FIRST`.
 3. Add the app to `deploy/apps.json` with that `host`, an `image` such as
    `ghcr.io/mattybalaam/shorpin-html-first`, the secret's name, and
    `deploy: true`.
 
 Its CSRF origin check must allow its own host; the `*.shorpin.matthewbalaam.co.uk`
-wildcard below covers every subdomain.
+wildcard below covers every subdomain. html-first checks `Sec-Fetch-Site`
+instead, so it needs no host list.
+
+html-first is already in `deploy/apps.json` with `deploy: false`: steps 1 and 2,
+then flip it to `true`. Add `https://html.shorpin.matthewbalaam.co.uk/**` (and
+its preview pattern) to Supabase Auth's redirect URLs too.
 
 ### Forwarded-proto / action origin validation
 

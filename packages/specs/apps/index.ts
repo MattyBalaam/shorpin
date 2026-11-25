@@ -1,3 +1,4 @@
+import { htmlFirst } from "./html-first.ts";
 import { reactRouter } from "./react-router.ts";
 import type { AppAdapter } from "./types.ts";
 
@@ -6,6 +7,7 @@ export type { AppAdapter, RequestMatcher } from "./types.ts";
 /** Every app the shared specs run against, by the name `APP` takes. */
 export const apps = {
   "react-router": reactRouter,
+  "html-first": htmlFirst,
 } satisfies Record<string, AppAdapter>;
 
 export type AppName = keyof typeof apps;
