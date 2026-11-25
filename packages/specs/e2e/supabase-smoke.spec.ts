@@ -63,8 +63,7 @@ test("supabase smoke", async ({ page }) => {
 
   await test.step("an add from a stale page keeps items it hasn't seen", async () => {
     // A second tab whose live updates never connect, so it misses the add
-    // below. (An app may block them for the whole context, which doesn't
-    // matter to this tab: it reloads to check.)
+    // below.
     const stalePage = await page.context().newPage();
     await app.realtime.block(stalePage);
     await stalePage.goto(`/lists/${listSlug}`);

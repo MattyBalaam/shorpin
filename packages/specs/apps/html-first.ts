@@ -63,8 +63,9 @@ export const htmlFirst: AppAdapter = {
       return () => joins;
     },
     async block(page) {
-      // Never answered, so EventSource never opens or retries.
-      await page.context().route(events, () => {});
+      // Never answered, so EventSource never opens or retries. This page
+      // only: other tabs in the context keep theirs.
+      await page.route(events, () => {});
     },
   },
 
