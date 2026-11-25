@@ -1346,15 +1346,10 @@
   grid-template-columns: subgrid;
   overflow: hidden;
 }
-.list-undo-button {
+.list-bin-link {
   grid-column-start: input;
   grid-column-end: done;
   margin-left: auto;
-}
-.list-undo-icon {
-  display: block;
-  width: 18px;
-  height: 18px;
 }
 .list-actions {
   grid-column: content;

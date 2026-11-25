@@ -130,23 +130,43 @@ new MutationObserver(setUpReorder).observe(document.body, { childList: true, sub
 // Live updates: the server says when someone else changed the list, and the
 // page re-renders itself — after any of its own saves, and not while an edit
 // dialog is open (the swap would close it).
-if (page) {
-  const events = new EventSource(
-    `/lists/${page.dataset.slug}/events?client=${page.dataset.clientId}`,
-  );
-  let waiting = false;
-  events.addEventListener("changed", () => {
-    if (waiting) return;
-    waiting = true;
-    void afterPending(async () => {
-      const open = items()?.querySelector<HTMLDialogElement>("dialog[open]");
-      if (open)
-        await new Promise((resolve) => open.addEventListener("close", resolve, { once: true }));
-      waiting = false;
-      await refresh();
-      toast("info", "List updated by another user");
-    });
+let refreshing: Promise<void> | null = null;
+let announce = false;
+
+/** Refreshes once pending saves and any open edit dialog are done. */
+function refreshSoon({ changed = false } = {}) {
+  announce ||= changed;
+  refreshing ??= afterPending(async () => {
+    const open = items()?.querySelector<HTMLDialogElement>("dialog[open]");
+    if (open)
+      await new Promise((resolve) => open.addEventListener("close", resolve, { once: true }));
+    refreshing = null;
+    const toastAfter = announce;
+    announce = false;
+    await refresh();
+    if (toastAfter) toast("info", "List updated by another user");
   });
 }
+
+if (page) {
+  const version = items()?.dataset.version ?? "";
+  const events = new EventSource(
+    `/lists/${page.dataset.slug}/events?client=${page.dataset.clientId}&version=${version}`,
+  );
+  events.addEventListener("changed", () => refreshSoon({ changed: true }));
+  // The list changed while the stream wasn't open (before it first opened,
+  // or while it reconnected): catch up without announcing it.
+  events.addEventListener("stale", () => refreshSoon());
+}
+
+// A backgrounded tab (or a suspended phone) can miss changes even with the
+// stream open, and a page restored from the back/forward cache missed them
+// all, so catch up whenever the page is shown again.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshSoon();
+});
+addEventListener("pageshow", (event) => {
+  if (event.persisted) refreshSoon();
+});
 
 replayWhenOnline();

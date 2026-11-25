@@ -223,9 +223,29 @@ html:not([data-drag-enabled]) .reorder-grip {
   }
 }
 
-/* The undo slot is only there to be swapped; it mustn't take a flex gap. */
-.list-undo-slot {
-  display: contents;
+/* --- Bin (/lists/:list/bin) --------------------------------------------- */
+
+.bin-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-sm);
+}
+.bin-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.bin-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bin-tag {
+  margin-inline-start: var(--spacing-sm);
+  color: var(--palette-chrome);
+  font-size: var(--font-size-sm);
 }
 
 /* --- Pending submissions (submit.ts) ------------------------------------- */

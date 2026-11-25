@@ -5,6 +5,7 @@
 // in-progress typing where they are. The notification panel isn't swapped
 // (it holds the script's own notifications); a flash in the new page joins
 // them instead.
+import { enhancedUrl } from "../../lib/enhanced.ts";
 import { readFlash, toast } from "./toast.ts";
 
 export function swapFrom(markup: string) {
@@ -25,8 +26,16 @@ export function swapFrom(markup: string) {
   return Promise.resolve();
 }
 
-/** Re-fetches the current page and swaps it in. */
+/**
+ * Re-fetches the current page and swaps it in. A failed fetch is left
+ * alone: the page on screen stays, and the next refresh tries again.
+ */
 export async function refresh() {
-  const response = await fetch(location.href, { headers: { "X-Enhance": "1" } });
+  let response: Response;
+  try {
+    response = await fetch(enhancedUrl(location.href), { headers: { "X-Enhance": "1" } });
+  } catch {
+    return;
+  }
   if (response.ok) await swapFrom(await response.text());
 }

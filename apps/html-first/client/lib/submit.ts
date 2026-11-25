@@ -2,6 +2,7 @@
 // instead of navigating; the server answers exactly as it would without a
 // script (a 303 back to the page), fetch follows it, and the returned page
 // is swapped in (see swap.ts). Posts go one at a time, in order.
+import { ENHANCED_PARAM } from "../../lib/enhanced.ts";
 import { enqueue, isQueueable } from "./queue.ts";
 import { refresh, swapFrom } from "./swap.ts";
 import { toast } from "./toast.ts";
@@ -47,11 +48,12 @@ export function send(action: string, data: FormData, form?: HTMLFormElement): Pr
       }
       if (response.status === 204) return "saved";
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      // Keeps the address in step, e.g. `?deleted=` after a delete. `?tag=`
-      // is how a reload keeps the tag without a script; here the field just
-      // keeps its value, and a reload starts afresh.
+      // Keeps the address in step with where the save went. `?tag=` is how
+      // a reload keeps the tag without a script; here the field just keeps
+      // its value, and a reload starts afresh.
       const url = new URL(response.url);
       url.searchParams.delete("tag");
+      url.searchParams.delete(ENHANCED_PARAM);
       if (url.href !== location.href) history.replaceState(null, "", url);
       await swapFrom(await response.text());
       return "saved";

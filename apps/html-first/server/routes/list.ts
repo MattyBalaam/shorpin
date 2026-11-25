@@ -1,4 +1,5 @@
 import { type Context, Hono } from "hono";
+import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import * as v from "valibot";
 import { type AppStyle, appStyles, INHERIT_APP_STYLE, isAppStyle } from "../../lib/app-style.ts";
@@ -14,6 +15,7 @@ import type { AppEnv, Supabase } from "../supabase.ts";
 import {
   actionLabel,
   actionsBar,
+  closeButton,
   icons,
   iconSprite,
   spriteIcons,
@@ -27,6 +29,9 @@ import {
 import { styleDialog } from "../views/style-dialog.ts";
 
 export const list = new Hono<AppEnv>();
+
+/** The previous view's time, for the visit in progress (see listPage). */
+const VISIT_COOKIE = "shorpin-visit";
 
 type ListContext = Context<AppEnv>;
 
@@ -49,6 +54,11 @@ interface LoadedList {
   items: Item[];
   /** Soft-deleted items, newest first. */
   deleted: Item[];
+  /**
+   * The newest change to any item (a delete changes it too), so a page can
+   * say which state it shows. 0 for a list never written to.
+   */
+  version: number;
 }
 
 const zUuid = v.pipe(v.string(), v.uuid());
@@ -91,6 +101,7 @@ async function loadList(supabase: Supabase, slug: string): Promise<LoadedList | 
     deleted: all
       .filter((item) => item.state === "deleted")
       .sort((a, b) => b.updatedAt - a.updatedAt),
+    version: Math.max(0, ...all.map((item) => item.updatedAt)),
   };
 }
 
@@ -349,16 +360,28 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
     });
   }
 
-  // "New" is relative to the previous visit, read before this one is
-  // recorded. Coming back to the list from itself (an action's redirect,
-  // the style dialog) isn't a visit, so it doesn't clear the markers.
+  // "New" is relative to the previous visit, and lasts the whole of this
+  // one. Opening the list records the view and keeps the previous one in a
+  // cookie for the list's pages. Coming back to the list from itself (a
+  // save's redirect, a refresh, the style or bin dialog) isn't a visit, so
+  // it reads that cookie: the view it would find now is this visit's own,
+  // and would clear every marker.
   const viewedAt = await lastViewedAt(supabase, loaded.id, user.id);
   const referer = c.req.header("Referer");
   const fromSameList = referer ? new URL(referer).pathname.startsWith(`/lists/${slug}`) : false;
-  if (!fromSameList) await recordView(supabase, loaded.id, user.id);
+  const visitCookie = Number(getCookie(c, VISIT_COOKIE));
+  let newSince = viewedAt;
+  if (fromSameList && Number.isFinite(visitCookie)) {
+    newSince = visitCookie;
+  } else {
+    await recordView(supabase, loaded.id, user.id);
+    setCookie(c, VISIT_COOKIE, String(viewedAt), {
+      path: `/lists/${slug}`,
+      sameSite: "Lax",
+      httpOnly: true,
+    });
+  }
 
-  const deletedId = c.req.query("deleted");
-  const recreatable = loaded.deleted.find((item) => item.id === deletedId);
   const showPalette = c.req.query("colours") !== undefined;
   const lastTag = c.req.query("tag") ?? "";
   const clientId = crypto.randomUUID();
@@ -404,7 +427,7 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
             html`<form method="post" action="${action}" data-enhance>
               <input type="hidden" name="op" value="group" />
               <button type="submit" class="button button-outline">
-                ${icons.group}${actionLabel("Group by tag")}
+                ${icons.group}${actionLabel("Group")}
               </button>
             </form>`,
           ],
@@ -422,11 +445,12 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
               class="items-list"
               id="list-items"
               data-swap
+              data-version="${loaded.version}"
               data-reorder-list="items"
               data-reorder-action="${action}"
             >
               ${loaded.items.map((item) =>
-                itemRow(item, { slug, isNew: item.updatedAt > viewedAt }),
+                itemRow(item, { slug, isNew: item.updatedAt > newSince }),
               )}
               ${loaded.items.length === 0 ? html`<li class="items-empty-state">No items yet — add one below</li>` : ""}
             </ul>`,
@@ -464,18 +488,8 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
                 />
               </span>
               <button type="submit" class="button button-solid list-add-button">Add</button>
-              <span id="undo-slot" data-swap class="list-undo-slot"
-                >${
-                  recreatable
-                    ? html`<button
-                        type="submit"
-                        form="recreate-form"
-                        class="button button-outline list-undo-button"
-                      >
-                        ${visuallyHidden("Recreate last deleted")}${icons.undo}
-                      </button>`
-                    : ""
-                }</span
+              <a class="button button-outline list-bin-link" href="/lists/${slug}/bin"
+                >${icons.bin}${visuallyHidden("Bin")}</a
               >
             </form>`,
           )}
@@ -484,17 +498,6 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
         <datalist id="tags" data-swap>
           ${tags.map((tag) => html`<option value="${tag}"></option>`)}
         </datalist>
-        <div id="recreate-slot" data-swap>
-          ${
-            recreatable
-              ? html`<form method="post" action="${action}" id="recreate-form" hidden data-enhance>
-                  <input type="hidden" name="op" value="recreate" />
-                  <input type="hidden" name="id" value="${recreatable.id}" />
-                  <input type="hidden" name="new-id" value="${crypto.randomUUID()}" />
-                </form>`
-              : ""
-          }
-        </div>
         ${showPalette ? "" : paletteDialog(slug, false)}
         ${showPalette ? paletteDialog(slug, true) : ""}
         ${dialog ? dialog(loaded, accountStyle) : ""}`,
@@ -502,6 +505,56 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
 }
 
 list.get("/lists/:list", (c) => listPage(c));
+
+/**
+ * The list's deleted items, newest first. Undelete re-adds a value as a new
+ * item (the `recreate` op) and leaves the deleted row behind, so values back
+ * on the list are left out (a second click would add them twice), and a
+ * value deleted more than once shows once. The forms post without a script:
+ * the save's redirect goes back to the list, closing the dialog.
+ */
+function binDialog(loaded: LoadedList) {
+  const hidden = new Set(loaded.items.map(({ value }) => value));
+  const items = loaded.deleted.flatMap((item) => {
+    if (hidden.has(item.value)) return [];
+    hidden.add(item.value);
+    return [item];
+  });
+  const action = `/lists/${loaded.slug}/items`;
+
+  return routeDialog({
+    closeUrl: `/lists/${loaded.slug}`,
+    labelledBy: "bin-heading",
+    content: html`<h2 id="bin-heading">Bin</h2>
+      <div class="modal-body">
+        ${
+          items.length === 0
+            ? html`<p>Nothing in the bin. Deleted items show here.</p>`
+            : html`<ul class="bin-items">
+                ${items.map((item) => {
+                  const { text, tag } = parseItemTag(item.value);
+                  return html`<li class="bin-item">
+                    <span class="bin-value"
+                      >${text}${tag ? html`<span class="bin-tag">${tag}</span>` : ""}</span
+                    >
+                    <form method="post" action="${action}">
+                      <input type="hidden" name="op" value="recreate" />
+                      <input type="hidden" name="id" value="${item.id}" />
+                      <input type="hidden" name="new-id" value="${crypto.randomUUID()}" />
+                      <button type="submit" class="button button-outline">
+                        Undelete${visuallyHidden(` ${text}`)}
+                      </button>
+                    </form>
+                  </li>`;
+                })}
+              </ul>`
+        }
+      </div>
+      <div class="modal-actions">${closeButton("Close")}</div>`,
+  });
+}
+
+list.get("/lists/:list/bin", (c) => listPage(c, { dialog: (loaded) => binDialog(loaded) }));
 
 list.get("/lists/:list/style", (c) =>
   listPage(c, {
@@ -651,15 +704,14 @@ list.post("/lists/:list/items", async (c) => {
         .eq("id", id)
         .eq("list_id", loaded.id);
       if (error) return failed(error);
-      // Keep the ten most recent deletions; older ones go for good.
+      // Keep the ten most recent deletions (the bin); older ones go for good.
       const expired = loaded.deleted.slice(9).map((item) => item.id);
       if (expired.length > 0) await supabase.from("list_items").delete().in("id", expired);
-      params.set("deleted", id);
       break;
     }
 
     case "recreate": {
-      // Re-adds the value as a fresh item at the end: "recreate", not undo.
+      // Undelete from the bin: re-adds the value as a fresh item at the end.
       const deleted = loaded.deleted.find((item) => item.id === field("id"));
       if (!deleted) return c.redirect(listUrl, 303);
       const id = v.is(zUuid, field("new-id")) ? field("new-id") : crypto.randomUUID();
@@ -727,18 +779,31 @@ list.post("/lists/:list/items", async (c) => {
 /**
  * Server-sent events: a "changed" event whenever another member changes the
  * list. The page re-fetches itself in response; no data rides on the event.
+ *
+ * Changes aren't redelivered, so a page can miss them while it isn't
+ * connected: between its render and the stream first opening, and while a
+ * dropped stream reconnects. So the stream opens with a "stale" event when
+ * the list has changed since the version the page last saw: the one it was
+ * rendered with (`?version=`), or on a reconnect the id of the last event
+ * it got (Last-Event-ID). A "stale" refresh is silent; it's catching up, not
+ * news. Opening with nothing new sends nothing, so a page load doesn't
+ * refresh itself (a swap closes open dialogs and resets swipes).
  */
 list.get("/lists/:list/events", async (c) => {
   const loaded = await loadList(c.get("supabase"), c.req.param("list"));
   if (!loaded) return c.notFound();
   const clientId = c.req.query("client") ?? null;
+  const seen = Number(c.req.header("Last-Event-ID") ?? c.req.query("version"));
 
   c.header("Cache-Control", "no-cache, no-transform");
   return streamSSE(c, async (stream) => {
     const unsubscribe = subscribe(loaded.id, (source) => {
       if (source === clientId) return;
-      void stream.writeSSE({ event: "changed", data: "" });
+      void stream.writeSSE({ event: "changed", data: "", id: String(Date.now()) });
     });
+    if (!Number.isFinite(seen) || loaded.version > seen) {
+      await stream.writeSSE({ event: "stale", data: "", id: String(loaded.version) });
+    }
     stream.onAbort(unsubscribe);
     // Comments keep proxies from timing the stream out.
     while (!stream.aborted) {

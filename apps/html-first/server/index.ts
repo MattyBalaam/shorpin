@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
+import { ENHANCED_PARAM } from "../lib/enhanced.ts";
 import { distDir } from "./assets.ts";
 import { env } from "./env.ts";
 import { html } from "./html.ts";
@@ -49,6 +50,24 @@ app.use(async (c, next) => {
     }
   }
   await next();
+});
+
+/**
+ * A script's fetch of a page (submit.ts, swap.ts) asks for it with
+ * `?enhanced`, so it can be told apart from a navigation to the same page,
+ * in logs and in the specs' request matchers. A redirect answering a
+ * script's post keeps the marker for the page fetch follows it to.
+ */
+app.use(async (c, next) => {
+  await next();
+  if (!c.req.header("X-Enhance") || c.res.status < 300 || c.res.status >= 400) return;
+  const location = c.res.headers.get("Location");
+  if (!location) return;
+  const base = new URL(c.req.url);
+  const url = new URL(location, base);
+  if (url.origin !== base.origin) return;
+  url.searchParams.set(ENHANCED_PARAM, "");
+  c.res.headers.set("Location", `${url.pathname}${url.search}`);
 });
 
 app.use(async (c, next) => {
