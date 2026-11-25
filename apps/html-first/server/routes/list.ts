@@ -41,6 +41,8 @@ interface Item {
   state: "active" | "deleted";
   sortOrder: number;
   updatedAt: number;
+  /** Who last changed it; null for rows from before the column. */
+  updatedBy: string | null;
 }
 
 interface LoadedList {
@@ -69,7 +71,7 @@ async function loadList(supabase: Supabase, slug: string): Promise<LoadedList | 
   const { data, error } = await supabase
     .from("lists")
     .select(
-      "id, name, slug, theme_primary, theme_secondary, theme_style, list_items(id, value, state, sort_order, updated_at)",
+      "id, name, slug, theme_primary, theme_secondary, theme_style, list_items(id, value, state, sort_order, updated_at, updated_by)",
     )
     .eq("slug", slug)
     .eq("state", "active")
@@ -89,6 +91,7 @@ async function loadList(supabase: Supabase, slug: string): Promise<LoadedList | 
     state: item.state,
     sortOrder: item.sort_order,
     updatedAt: item.updated_at,
+    updatedBy: item.updated_by,
   }));
   return {
     id: data.id,
@@ -450,7 +453,11 @@ async function listPage(c: ListContext, { dialog, status }: ListPageOptions = {}
               data-reorder-action="${action}"
             >
               ${loaded.items.map((item) =>
-                itemRow(item, { slug, isNew: item.updatedAt > newSince }),
+                itemRow(item, {
+                  slug,
+                  // Your own changes are never "new" to you.
+                  isNew: item.updatedAt > newSince && item.updatedBy !== user.id,
+                }),
               )}
               ${loaded.items.length === 0 ? html`<li class="items-empty-state">No items yet — add one below</li>` : ""}
             </ul>`,
