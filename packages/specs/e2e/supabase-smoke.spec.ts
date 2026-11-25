@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { app } from "../apps/index.ts";
 import { CREDS_FILE } from "./supabase-setup.ts";
 
 const { email, password } = JSON.parse(readFileSync(CREDS_FILE, "utf-8")) as {
@@ -61,9 +62,11 @@ test("supabase smoke", async ({ page }) => {
   });
 
   await test.step("an add from a stale page keeps items it hasn't seen", async () => {
-    // A second tab whose realtime never connects, so it misses the add below.
+    // A second tab whose live updates never connect, so it misses the add
+    // below. (An app may block them for the whole context, which doesn't
+    // matter to this tab: it reloads to check.)
     const stalePage = await page.context().newPage();
-    await stalePage.routeWebSocket(/\/realtime\//, () => {});
+    await app.realtime.block(stalePage);
     await stalePage.goto(`/lists/${listSlug}`);
     await expect(stalePage.getByLabel("Edit Test item")).toBeVisible();
 
